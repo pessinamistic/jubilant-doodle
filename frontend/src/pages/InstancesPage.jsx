@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'ERROR', 'REMOVED']
+const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'REMOVING', 'ERROR', 'REMOVED']
 
 const STATUS_SORT_ORDER = {
   RUNNING: 0,
@@ -100,6 +100,7 @@ export function InstancesPage() {
   const statCards = stats ? [
     {
       label: 'Total',
+      filter: 'ALL',
       value: stats.total,
       icon: <Database className="w-4 h-4" />,
       color: 'text-[var(--status-deploying)]',
@@ -108,6 +109,7 @@ export function InstancesPage() {
     },
     {
       label: 'Running',
+      filter: 'RUNNING',
       value: stats.running,
       icon: <Play className="w-4 h-4" />,
       color: 'text-[var(--status-running)]',
@@ -117,6 +119,7 @@ export function InstancesPage() {
     },
     {
       label: 'Stopped',
+      filter: 'STOPPED',
       value: stats.stopped,
       icon: <CircleOff className="w-4 h-4" />,
       color: 'text-[var(--status-stopped)]',
@@ -125,6 +128,7 @@ export function InstancesPage() {
     },
     {
       label: 'Deploying',
+      filter: 'DEPLOYING',
       value: stats.deploying,
       icon: <RefreshCw className={`w-4 h-4 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />,
       color: 'text-[var(--status-deploying)]',
@@ -133,6 +137,7 @@ export function InstancesPage() {
     },
     {
       label: 'Removing',
+      filter: 'REMOVING',
       value: stats.removing,
       icon: <RefreshCw className={`w-4 h-4 ${stats.removing > 0 ? 'animate-spin' : ''}`} />,
       color: 'text-[var(--status-removing)]',
@@ -141,6 +146,7 @@ export function InstancesPage() {
     },
     {
       label: 'Errors',
+      filter: 'ERROR',
       value: stats.error,
       icon: <TriangleAlert className="w-4 h-4" />,
       color: stats.error > 0 ? 'text-[var(--status-error)]' : 'text-[var(--status-stopped)]',
@@ -149,6 +155,7 @@ export function InstancesPage() {
     },
     {
       label: 'Removed',
+      filter: 'REMOVED',
       value: stats.removed,
       icon: <CircleX className="w-4 h-4" />,
       color: stats.removed > 0 ? 'text-[var(--status-removed)]' : 'text-[var(--status-stopped)]',
@@ -209,7 +216,13 @@ export function InstancesPage() {
           <p className="section-label">Overview</p>
           <div className="flex flex-wrap gap-3 stagger-children">
             {statCards.map(s => (
-              <div key={s.label} className={`stat-card border ${s.border} flex-1 min-w-[110px] animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group`}>
+              <button
+                key={s.label}
+                type="button"
+                onClick={() => setStatusFilter(s.filter)}
+                aria-pressed={statusFilter === s.filter}
+                className={`stat-card border ${s.border} flex-1 min-w-[110px] animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group text-left cursor-pointer ${statusFilter === s.filter ? 'ring-2 ring-[var(--border-strong)] shadow-[var(--shadow-raised)]' : ''}`}
+              >
                 <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center ${s.color} transition-transform duration-200 group-hover:scale-110`}>
                   {s.icon}
                 </div>
@@ -219,7 +232,7 @@ export function InstancesPage() {
                   </div>
                   <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>

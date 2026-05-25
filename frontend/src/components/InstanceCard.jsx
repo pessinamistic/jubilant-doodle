@@ -121,13 +121,13 @@ export function InstanceCard({ instance, onRefresh }) {
     <>
       <div
         onClick={() => navigate(`/instances/${instance.id}`)}
-        className="card overflow-hidden group cursor-pointer hover:scale-[1.015] transition-transform duration-150"
+        className="card h-full flex flex-col overflow-hidden group cursor-pointer hover:scale-[1.015] transition-transform duration-150"
       >
         {/* Status accent stripe */}
         <div className="h-[3px]" style={{ backgroundColor: accentColor }} />
 
         {/* Card body with very subtle status tint */}
-        <div className="p-4" style={{ backgroundColor: statusToken.background }}>
+        <div className="p-4 flex-1" style={{ backgroundColor: statusToken.background }}>
 
           {/* ── Header row: icon + name + navigate btn ── */}
           <div className="flex items-start gap-3 mb-3">
