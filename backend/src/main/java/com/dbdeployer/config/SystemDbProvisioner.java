@@ -120,7 +120,9 @@ public class SystemDbProvisioner
                 .withEnv(
                         "POSTGRES_USER="     + username,
                         "POSTGRES_PASSWORD=" + password,
-                        "POSTGRES_DB="       + database
+                    "POSTGRES_DB="       + database,
+                    "TZ=UTC",
+                    "PGTZ=UTC"
                 )
                 .withExposedPorts(containerPort)
                 .withHostConfig(HostConfig.newHostConfig()
@@ -136,12 +138,16 @@ public class SystemDbProvisioner
 
     private void waitForPostgres(int port, int maxSeconds) {
         log.info("Waiting for system Postgres to accept connections on port {}...", port);
-        long deadline = System.currentTimeMillis() + (maxSeconds * 1000L);
+        int safeMaxSeconds = Math.max(1, maxSeconds);
 
-        while (System.currentTimeMillis() < deadline) {
+        for (int elapsedSeconds = 0; elapsedSeconds < safeMaxSeconds; elapsedSeconds++) {
             if (isPortOpen("localhost", port)) {
+                log.info("Postgres startup progress {}", formatProgressBar(elapsedSeconds, safeMaxSeconds, true));
                 return;
             }
+
+            log.info("Postgres startup progress {}", formatProgressBar(elapsedSeconds + 1, safeMaxSeconds, false));
+
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -155,8 +161,21 @@ public class SystemDbProvisioner
             ". Check Docker logs for container 'dbdeployer-system-db'.");
     }
 
+    private String formatProgressBar(int elapsedSeconds, int maxSeconds, boolean ready) {
+        int safeMaxSeconds = Math.max(1, maxSeconds);
+        int clampedElapsed = Math.max(0, Math.min(elapsedSeconds, safeMaxSeconds));
+        int barWidth = 24;
+        int filled = (int) Math.round((clampedElapsed * barWidth) / (double) safeMaxSeconds);
+        int percent = (int) Math.round((clampedElapsed * 100.0) / safeMaxSeconds);
+
+        String bar = "[" + "=".repeat(filled) + "-".repeat(barWidth - filled) + "]";
+        String status = ready ? "ready" : "waiting";
+
+        return bar + " " + percent + "% (" + clampedElapsed + "s/" + safeMaxSeconds + "s, " + status + ")";
+    }
+
     private boolean isPortOpen(String host, int port) {
-        try (Socket s = new Socket(host, port)) {
+        try (Socket ignored = new Socket(host, port)) {
             return true;
         } catch (Exception e) {
             return false;

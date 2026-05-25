@@ -14,6 +14,10 @@ spring:
       connection-timeout: 30000
       initialization-fail-timeout: 60000   # wait up to 60s for Postgres to be ready
       maximum-pool-size: 5
+      # Force UTC at connection start to avoid host-specific timezone aliases.
+      data-source-properties:
+        options: -c TimeZone=UTC
+      connection-init-sql: SET TIME ZONE 'UTC'
 
   jpa:
     hibernate:
@@ -23,6 +27,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: UTC
 
   jackson:
     serialization:
