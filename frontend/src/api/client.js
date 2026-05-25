@@ -20,3 +20,5 @@ export const reImportInstance    = (id, data)     => api.put(`/instances/${id}/r
 export const renameInstance      = (id, name)     => api.patch(`/instances/${id}`, { name }).then(r => r.data)
 export const getPipeline         = (id)           => api.get(`/instances/${id}/pipeline`).then(r => r.data)
 export const getSystemStats      = ()             => api.get('/system/stats').then(r => r.data)
+export const getMetricsHistory   = ()             => api.get('/system/metrics/history').then(r => r.data)
+export const getDeploymentActivity = ()           => api.get('/system/metrics/activity').then(r => r.data)

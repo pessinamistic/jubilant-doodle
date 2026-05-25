@@ -1,0 +1,324 @@
+2026-05-26 00:12:50.054204+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:12:50.065388+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:12:50.071116+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:12:50.075323+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:13:00.894004+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:13:00.897351+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:13:00.900490+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:13:00.903052+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:16.332884+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:16.341106+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:16.347431+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:16.352990+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:40.682178+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:40.688968+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:40.693447+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:14:40.698773+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:10.873052+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:10.881760+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:38.373463+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:38.380661+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:38.387522+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:38.392570+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:40.878139+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:15:40.887947+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:10.683233+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:10.706595+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:12.858602+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:12.867264+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:12.871638+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:12.876050+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:26.942327+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:36.994095+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:37.001216+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:37.007572+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:16:37.012637+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]
+2026-05-26 00:17:01.507522+05:30 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT CAST(created_at AS DATE) AS [*]day, COUNT(*) AS cnt\000aFROM deployment_config\000aWHERE is_system = false\000a  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY\000aGROUP BY CAST(created_at AS DATE)\000aORDER BY day\000a"; expected "identifier"; SQL statement:
+SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt
+FROM deployment_config
+WHERE is_system = false
+  AND created_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+GROUP BY CAST(created_at AS DATE)
+ORDER BY day
+ [42001-232]

@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline, getSystemStats,
+  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline,
+  getSystemStats, getMetricsHistory, getDeploymentActivity,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
@@ -39,6 +40,13 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { PIPELINE_STATUS_TOKENS, PIPELINE_STEP_TOKENS } from '../theme/statusTokens'
+import {
+  ResponsiveContainer,
+  LineChart, Line,
+  BarChart, Bar,
+  PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts'
 
 const TABS = [
   { id: 'overview',       label: 'Overview',          icon: <BarChart3 className="w-4 h-4" /> },
@@ -264,12 +272,89 @@ export function InstanceDetailPage() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+/*  DonutChart — reusable mini donut/pie chart helper                         */
+/* ─────────────────────────────────────────────────────────────────────────── */
+const TOOLTIP_STYLE = {
+  contentStyle: {
+    background: 'rgba(10,10,16,0.97)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    borderRadius: 6,
+    fontSize: 11,
+    fontFamily: 'ui-monospace, monospace',
+    padding: '8px 12px',
+  },
+  labelStyle: { color: 'rgba(255,255,255,0.45)', marginBottom: 4, fontWeight: 600 },
+  itemStyle : { color: 'rgba(255,255,255,0.8)' },
+  cursor    : { stroke: 'rgba(255,255,255,0.06)' },
+}
+
+const AXIS_STYLE = {
+  stroke  : 'rgba(255,255,255,0.06)',
+  tick    : { fill: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: 'ui-monospace, monospace' },
+  axisLine: { stroke: 'rgba(255,255,255,0.06)' },
+  tickLine: false,
+}
+
+const GRID_STYLE = { stroke: 'rgba(255,255,255,0.04)', strokeDasharray: '3 3' }
+
+function DonutChart({ data, pickColor }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-24 text-xs text-[var(--text-muted)]">
+        No data yet
+      </div>
+    )
+  }
+  const total = data.reduce((s, d) => s + (d.count ?? 0), 0)
+  return (
+    <div>
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={140}>
+          <PieChart>
+            <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="50%"
+              innerRadius={38} outerRadius={60} paddingAngle={2} startAngle={90} endAngle={-270}>
+              {data.map((d, i) => <Cell key={i} fill={pickColor(d, i)} />)}
+            </Pie>
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE.contentStyle}
+              labelStyle={TOOLTIP_STYLE.labelStyle}
+              itemStyle={TOOLTIP_STYLE.itemStyle}
+              formatter={(v, n) => [`${v}`, n]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <div className="text-lg font-bold font-mono text-[var(--text-primary)]">{total}</div>
+            <div className="text-[10px] text-[var(--text-muted)]">total</div>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 justify-center">
+        {data.map((d, i) => (
+          <div key={d.label} className="flex items-center gap-1.5 text-xs">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: pickColor(d, i) }} />
+            <span className="text-[var(--text-muted)]">{d.label}</span>
+            <span className="font-mono text-[var(--text-secondary)]">{d.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 /*  System Internals Tab  (H2 embedded DB — system instance only)             */
 /* ─────────────────────────────────────────────────────────────────────────── */
+const DB_TYPE_COLORS = ['#4f46e5','#f97316','#ef4444','#06b6d4','#22c55e','#8b5cf6','#a855f7','#ec4899']
+const STATUS_COLORS  = { RUNNING:'#22c55e', STOPPED:'#f59e0b', DEPLOYING:'#3b82f6', ERROR:'#ef4444', REMOVED:'#6b7280' }
+
 function SystemInternalsTab() {
-  const [stats, setStats]       = useState(null)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const [stats,    setStats]    = useState(null)
+  const [history,  setHistory]  = useState(null)
+  const [activity, setActivity] = useState(null)
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState(null)
   const [lastRefresh, setLastRefresh] = useState(null)
 
   const fmtBytes = (bytes) => {
@@ -281,34 +366,31 @@ function SystemInternalsTab() {
 
   const fmtUptime = (secs) => {
     if (secs == null) return '—'
-    const d = Math.floor(secs / 86400)
-    const h = Math.floor((secs % 86400) / 3600)
-    const m = Math.floor((secs % 3600) / 60)
-    const s = secs % 60
+    const d = Math.floor(secs / 86400), h = Math.floor((secs % 86400) / 3600)
+    const m = Math.floor((secs % 3600) / 60), s = secs % 60
     if (d > 0) return `${d}d ${h}h ${m}m`
     if (h > 0) return `${h}h ${m}m`
     if (m > 0) return `${m}m ${s}s`
     return `${s}s`
   }
 
-  const fetch = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     try {
-      const data = await getSystemStats()
-      setStats(data)
-      setLastRefresh(new Date())
-      setError(null)
+      const [s, h, a] = await Promise.all([getSystemStats(), getMetricsHistory(), getDeploymentActivity()])
+      setStats(s); setHistory(h); setActivity(a)
+      setLastRefresh(new Date()); setError(null)
     } catch {
-      setError('Failed to load system stats')
+      setError('Failed to load system metrics')
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetch()
-    const t = setInterval(fetch, 30_000)
+    loadAll()
+    const t = setInterval(loadAll, 30_000)
     return () => clearInterval(t)
-  }, [fetch])
+  }, [loadAll])
 
   if (loading) {
     return (
@@ -318,40 +400,46 @@ function SystemInternalsTab() {
       </div>
     )
   }
+  if (error) return <div className="card p-6 text-center text-[var(--status-error)] text-sm">{error}</div>
 
-  if (error) {
-    return <div className="card p-6 text-center text-[var(--status-error)] text-sm">{error}</div>
-  }
-
-  const heapPct = stats?.jvm ? Math.round((stats.jvm.heapUsedMb / stats.jvm.heapMaxMb) * 100) : 0
-  const heapColor = heapPct > 85 ? 'bg-red-500' : heapPct > 60 ? 'bg-yellow-500' : 'bg-green-500'
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const heapPct    = stats?.jvm ? Math.round((stats.jvm.heapUsedMb / stats.jvm.heapMaxMb) * 100) : 0
+  const heapColor  = heapPct > 85 ? 'bg-red-500' : heapPct > 60 ? 'bg-yellow-500' : 'bg-green-500'
   const poolActive = stats?.pool?.activeConnections ?? 0
   const poolMax    = stats?.pool?.maxSize ?? 1
   const poolPct    = Math.round((poolActive / poolMax) * 100)
+  const samples    = history?.samples ?? []
+  const actDays    = activity?.deploymentsByDay ?? []
+  const byType     = activity?.instancesByDbType ?? []
+  const byStatus   = activity?.instancesByStatus ?? []
+
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const fmtDate = (d)   => new Date(d + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' })
+  const heapDomain = [0, (samples[0]?.heapMaxMb ?? 512) + 32]
 
   return (
     <div className="space-y-6">
 
-      {/* ── Refresh controls ── */}
+      {/* ── Refresh header ── */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-[var(--text-muted)]">
           Auto-refreshes every 30s
           {lastRefresh && <> · Last updated {lastRefresh.toLocaleTimeString()}</>}
         </p>
-        <button onClick={fetch} className="btn-ghost flex items-center gap-1.5 text-xs">
+        <button onClick={loadAll} className="btn-ghost flex items-center gap-1.5 text-xs">
           <RefreshCw className="w-3.5 h-3.5" />
           Refresh now
         </button>
       </div>
 
-      {/* ── Database section ── */}
+      {/* ── Database ── */}
       <div>
         <p className="section-label">Database</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 stagger-children">
           {[
-            { label: 'Engine',      value: 'H2 Embedded',                   icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { label: 'Version',     value: stats?.db?.version ?? '—',       icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10' },
-            { label: 'File Size',   value: fmtBytes(stats?.db?.fileSizeBytes), icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { label: 'Engine',    value: 'H2 Embedded',                      icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { label: 'Version',   value: stats?.db?.version ?? '—',          icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
+            { label: 'File Size', value: fmtBytes(stats?.db?.fileSizeBytes), icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
           ].map(s => (
             <div key={s.label} className="stat-card animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 transition-all duration-200">
               <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
@@ -368,6 +456,103 @@ function SystemInternalsTab() {
             <span className="text-xs font-mono text-[var(--text-muted)] truncate">{stats.db.filePath}.mv.db</span>
           </div>
         )}
+      </div>
+
+      {/* ── Live Metrics charts ── */}
+      <div>
+        <p className="section-label">
+          Live Metrics
+          {samples.length > 0 && (
+            <span className="ml-2 text-[10px] font-normal normal-case text-[var(--text-quiet)]">
+              (last {Math.max(1, Math.round(samples.length * 0.5))} min)
+            </span>
+          )}
+        </p>
+        {samples.length >= 2 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+            {/* JVM Heap over time */}
+            <div className="card p-5">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Cpu className="w-3.5 h-3.5" /> JVM Heap (MB)
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <LineChart data={samples} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis dataKey="timestamp" {...AXIS_STYLE} tickFormatter={fmtTime} interval="preserveStartEnd" />
+                  <YAxis {...AXIS_STYLE} domain={heapDomain} unit=" MB" width={54} />
+                  <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v} MB`, 'Heap Used']} />
+                  <Line type="monotone" dataKey="heapUsedMb" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#3b82f6' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Pool active connections over time */}
+            <div className="card p-5">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5" /> Pool Active Connections
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <LineChart data={samples} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis dataKey="timestamp" {...AXIS_STYLE} tickFormatter={fmtTime} interval="preserveStartEnd" />
+                  <YAxis {...AXIS_STYLE} domain={[0, (stats?.pool?.maxSize ?? 5) + 1]} allowDecimals={false} width={36} />
+                  <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v}`, 'Active']} />
+                  <Line type="monotone" dataKey="poolActive" stroke="#8b5cf6" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#8b5cf6' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        ) : (
+          <div className="card p-5 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin shrink-0" />
+            <p className="text-xs text-[var(--text-muted)]">Collecting live metrics — first snapshot arrives in ~30 seconds. Data builds up over time.</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Deployment Activity ── */}
+      <div>
+        <p className="section-label">Deployment Activity</p>
+
+        {/* Bar chart — deployments per day */}
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Zap className="w-3.5 h-3.5" /> Deployments — last 30 days
+          </p>
+          {actDays.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={actDays} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid {...GRID_STYLE} vertical={false} />
+                <XAxis dataKey="date" {...AXIS_STYLE} tickFormatter={fmtDate}
+                  interval={Math.max(0, Math.ceil(actDays.length / 7) - 1)} />
+                <YAxis {...AXIS_STYLE} allowDecimals={false} width={28} />
+                <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtDate} formatter={(v) => [`${v}`, 'Deployments']} />
+                <Bar dataKey="count" fill="#4f46e5" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-20 text-xs text-[var(--text-muted)]">
+              No deployments recorded in the last 30 days
+            </div>
+          )}
+        </div>
+
+        {/* Donut charts — by type & by status */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+          <div className="card p-5">
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Database className="w-3.5 h-3.5" /> Instances by DB Type
+            </p>
+            <DonutChart data={byType} pickColor={(_, i) => DB_TYPE_COLORS[i % DB_TYPE_COLORS.length]} />
+          </div>
+          <div className="card p-5">
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Server className="w-3.5 h-3.5" /> Instances by Status
+            </p>
+            <DonutChart data={byStatus} pickColor={(d) => STATUS_COLORS[d.label] ?? '#6b7280'} />
+          </div>
+        </div>
       </div>
 
       {/* ── Connection Pool ── */}
@@ -431,17 +616,15 @@ function SystemInternalsTab() {
         </div>
       </div>
 
-      {/* ── JVM Heap + App Uptime ── */}
+      {/* ── JVM Heap + App Info ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        {/* JVM Heap */}
         <div>
           <p className="section-label">JVM Heap</p>
           <div className="card p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Used',  value: `${stats?.jvm?.heapUsedMb ?? '—'} MB`, color: 'text-[var(--text-primary)]' },
-                { label: 'Max',   value: `${stats?.jvm?.heapMaxMb  ?? '—'} MB`, color: 'text-[var(--text-muted)]' },
+                { label: 'Used', value: `${stats?.jvm?.heapUsedMb ?? '—'} MB`, color: 'text-[var(--text-primary)]' },
+                { label: 'Max',  value: `${stats?.jvm?.heapMaxMb  ?? '—'} MB`, color: 'text-[var(--text-muted)]'   },
               ].map(item => (
                 <div key={item.label} className="bg-white/[0.03] rounded-lg p-3 text-center">
                   <div className={`text-xl font-bold font-mono ${item.color}`}>{item.value}</div>
@@ -455,27 +638,21 @@ function SystemInternalsTab() {
                 <span className="font-mono">{heapPct}%</span>
               </div>
               <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${heapColor}`}
-                  style={{ width: `${heapPct}%` }}
-                />
+                <div className={`h-full rounded-full transition-all duration-500 ${heapColor}`} style={{ width: `${heapPct}%` }} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Application info */}
         <div>
           <p className="section-label">Application</p>
           <div className="card p-5 space-y-3">
             {[
-              { label: 'Uptime',      value: fmtUptime(stats?.app?.uptimeSeconds), icon: <Clock3 className="w-4 h-4" /> },
-              { label: 'Started At',  value: stats?.app?.startedAt ? new Date(stats.app.startedAt).toLocaleString() : '—', icon: <Zap className="w-4 h-4" /> },
+              { label: 'Uptime',     value: fmtUptime(stats?.app?.uptimeSeconds), icon: <Clock3 className="w-4 h-4" /> },
+              { label: 'Started At', value: stats?.app?.startedAt ? new Date(stats.app.startedAt).toLocaleString() : '—', icon: <Zap className="w-4 h-4" /> },
             ].map(row => (
               <div key={row.label} className="flex items-center gap-3 py-1">
-                <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-[var(--text-muted)] shrink-0">
-                  {row.icon}
-                </div>
+                <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-[var(--text-muted)] shrink-0">{row.icon}</div>
                 <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
                   <span className="text-xs text-[var(--text-muted)]">{row.label}</span>
                   <span className="text-sm font-mono text-[var(--text-secondary)] truncate">{row.value}</span>
@@ -483,12 +660,14 @@ function SystemInternalsTab() {
               </div>
             ))}
             <div className="pt-2 border-t border-white/[0.06]">
-              <button
-                onClick={() => window.open('/h2-console', '_blank')}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 transition-colors">
+              <a
+                href="/h2-console"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 transition-colors no-underline">
                 <ExternalLink className="w-4 h-4" />
                 Open H2 Console
-              </button>
+              </a>
             </div>
           </div>
         </div>
