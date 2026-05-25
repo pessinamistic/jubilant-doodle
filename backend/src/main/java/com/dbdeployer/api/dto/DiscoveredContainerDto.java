@@ -3,7 +3,7 @@ package com.dbdeployer.api.dto;
 import com.dbdeployer.model.DbType;
 
 /**
- * A Docker container that is running but not yet tracked in db_instances.
+ * A Docker container that is running but not yet tracked by DB Deployer.
  * Returned by GET /api/instances/discover.
  */
 public record DiscoveredContainerDto(

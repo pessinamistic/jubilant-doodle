@@ -206,6 +206,7 @@ public class DbInstanceService {
     @Transactional
     public void syncStatuses() {
         containerRepo.findByStatusNot(InstanceStatus.REMOVED).forEach(container -> {
+            // Skip containers still deploying with no containerId — DeploymentRecovery handles those on boot
             if (container.getContainerId() == null) return;
             InstanceStatus current = docker.getStatus(container);
             boolean changed = current != container.getStatus();

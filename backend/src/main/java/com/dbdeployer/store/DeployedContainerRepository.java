@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface DeployedContainerRepository extends JpaRepository<DeployedContainer, String> {
     Optional<DeployedContainer> findByConfigId(String configId);
     boolean existsByContainerId(String containerId);
-    /** All containers that are not yet REMOVED — used by the status sync scheduler. */
+    /** All containers not yet REMOVED — used by the status sync scheduler. */
     List<DeployedContainer> findByStatusNot(InstanceStatus status);
+    /** All containers in a specific status — used by DeploymentRecovery. */
+    List<DeployedContainer> findByStatus(InstanceStatus status);
 }
