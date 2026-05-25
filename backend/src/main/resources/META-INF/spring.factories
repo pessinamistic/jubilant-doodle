@@ -1,2 +1,1 @@
-org.springframework.context.ApplicationContextInitializer=\
-  com.dbdeployer.config.SystemDbProvisioner
+# SystemDbProvisioner removed — system database is now embedded H2 (no Docker provisioning needed)

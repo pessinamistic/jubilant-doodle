@@ -3,6 +3,7 @@ package com.dbdeployer.model;
 public enum DbType {
     POSTGRESQL,
     MYSQL,
+    H2,
     MONGODB,
     REDIS,
     MARIADB,

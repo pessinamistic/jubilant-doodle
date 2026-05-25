@@ -39,6 +39,21 @@ public class DatabaseCatalog {
     private static final Map<DbType, DbDefinition> CATALOG = new LinkedHashMap<>();
 
     static {
+        // H2 — system store only; not user-deployable but needs a catalog entry for display
+        CATALOG.put(DbType.H2, new DbDefinition(
+                DbType.H2,
+                "H2",
+                "Port Wrangler’s embedded system database (internal use only)",
+                "🗄️",
+                null,       // no Docker image
+                -1,         // no external port
+                List.of(),
+                List.of(),
+                "jdbc:h2:file:./data/dbdeployer",
+                null,
+                true, false, false
+        ));
+
         CATALOG.put(DbType.POSTGRESQL, new DbDefinition(
                 DbType.POSTGRESQL,
                 "PostgreSQL",
