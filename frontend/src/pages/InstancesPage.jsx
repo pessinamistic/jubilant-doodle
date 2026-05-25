@@ -21,6 +21,29 @@ import toast from 'react-hot-toast'
 
 const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'ERROR', 'REMOVED']
 
+const STATUS_SORT_ORDER = {
+  RUNNING: 0,
+  STOPPED: 1,
+  DEPLOYING: 2,
+  REMOVING: 3,
+  ERROR: 4,
+  REMOVED: 5,
+}
+
+function getStatusSortOrder(status) {
+  return STATUS_SORT_ORDER[status] ?? 99
+}
+
+function sortInstances(a, b) {
+  const statusDiff = getStatusSortOrder(a.status) - getStatusSortOrder(b.status)
+  if (statusDiff !== 0) return statusDiff
+
+  const nameDiff = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  if (nameDiff !== 0) return nameDiff
+
+  return String(a.id).localeCompare(String(b.id))
+}
+
 export function InstancesPage() {
   const [instances, setInstances]       = useState([])
   const [stats, setStats]               = useState(null)
@@ -69,9 +92,10 @@ export function InstancesPage() {
     }
   }
 
-  // Split active vs removed
-  const activeInstances  = instances.filter(i => i.status !== 'REMOVED')
-  const removedInstances = instances.filter(i => i.status === 'REMOVED')
+  // Split active vs removed after applying status and name sort.
+  const sortedInstances  = [...instances].sort(sortInstances)
+  const activeInstances  = sortedInstances.filter(i => i.status !== 'REMOVED')
+  const removedInstances = sortedInstances.filter(i => i.status === 'REMOVED')
 
   const statCards = stats ? [
     {
