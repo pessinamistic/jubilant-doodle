@@ -20,8 +20,7 @@ import com.dbdeployer.store.DeployedContainerRepository;
 import com.dbdeployer.store.DeploymentConfigRepository;
 
 /**
- * Runs after the Spring context is fully started ({@code @Order(2)}, after
- * {@link SystemDbMigrator}).
+ * Runs at startup ({@code @Order(1)}).
  * Upserts the embedded H2 system database into the {@code deployment_config} /
  * {@code deployed_container} tables so it appears in the UI as a read-only SYSTEM
  * entry with live metadata (H2 version, uptime, file size, etc.).
@@ -29,7 +28,7 @@ import com.dbdeployer.store.DeploymentConfigRepository;
  * No Docker interaction is required.
  */
 @Component
-@Order(2)
+@Order(1)
 public class SystemDbRegistrar implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SystemDbRegistrar.class);
