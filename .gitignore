@@ -1,0 +1,57 @@
+# ──────────────────────────────────────────────
+#  DB Deployer — .gitignore
+# ──────────────────────────────────────────────
+
+# ── Gradle (backend) ──────────────────────────
+.gradle/
+backend/build/
+backend/.gradle/
+!backend/gradle/wrapper/gradle-wrapper.jar
+!backend/gradle/wrapper/gradle-wrapper.properties
+
+# ── Java / Kotlin compiled output ─────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# ── Node / Vite (frontend) ────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# ── Environment / secrets ─────────────────────
+.env
+.env.*
+!.env.example
+*.local
+
+# ── macOS ─────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ── IntelliJ IDEA / JetBrains ─────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ── VS Code ───────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+
+# ── Logs ──────────────────────────────────────
+*.log
+logs/
+
+# ── Runtime data / volumes ────────────────────
+~/.db-deployer/
+local-data/
