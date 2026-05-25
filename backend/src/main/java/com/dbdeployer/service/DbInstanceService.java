@@ -65,6 +65,25 @@ public class DbInstanceService {
         return configRepo.findAll();
     }
 
+    /** Aggregate status counts across all instances. Derived directly from the DB. */
+    public InstanceStatsResponse getStats() {
+        List<DeployedContainer> all = containerRepo.findAll();
+        int running   = 0, stopped  = 0, deploying = 0,
+            removing  = 0, error    = 0, removed   = 0;
+        for (DeployedContainer c : all) {
+            switch (c.getStatus()) {
+                case RUNNING   -> running++;
+                case STOPPED   -> stopped++;
+                case DEPLOYING -> deploying++;
+                case REMOVING  -> removing++;
+                case ERROR     -> error++;
+                case REMOVED   -> removed++;
+            }
+        }
+        int total = running + stopped + deploying + removing + error; // active only
+        return new InstanceStatsResponse(total, running, stopped, deploying, removing, error, removed);
+    }
+
     public DeploymentConfig getById(String id) {
         return configRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));

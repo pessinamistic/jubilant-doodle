@@ -33,6 +33,12 @@ public class DbInstanceController {
                 .toList();
     }
 
+    /** Aggregate status counts — used by the overview stats panel */
+    @GetMapping("/instances/stats")
+    public InstanceStatsResponse stats() {
+        return service.getStats();
+    }
+
     /** Get a single instance */
     @GetMapping("/instances/{id}")
     public InstanceResponse get(@PathVariable String id) {

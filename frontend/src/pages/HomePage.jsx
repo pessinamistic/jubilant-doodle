@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getInstances, deployInstance } from '../api/client'
+import { getInstances, getStats, deployInstance } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { DeployModal } from '../components/DeployModal'
 import { StatusBadge } from '../components/StatusBadge'
@@ -8,18 +8,21 @@ import {
   CircleStackIcon, PlayIcon, StopCircleIcon,
   ExclamationTriangleIcon, ArrowPathIcon, PlusIcon,
   BoltIcon, ClockIcon, CheckCircleIcon, Cog6ToothIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
 export function HomePage() {
   const [instances, setInstances] = useState([])
+  const [stats, setStats]         = useState(null)
   const [showModal, setShowModal] = useState(false)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
     try {
-      const inst = await getInstances()
+      const [inst, statsData] = await Promise.all([getInstances(), getStats()])
       setInstances(inst)
+      setStats(statsData)
     } catch { /* silent */ }
   }, [])
 
@@ -35,22 +38,16 @@ export function HomePage() {
     load()
   }
 
-  // Derived stats
-  const total     = instances.length
-  const running   = instances.filter(i => i.status === 'RUNNING').length
-  const stopped   = instances.filter(i => i.status === 'STOPPED').length
-  const deploying = instances.filter(i => i.status === 'DEPLOYING').length
-  const errored   = instances.filter(i => i.status === 'ERROR').length
-
-  // Recent = last 5, sorted by createdAt descending
+  // Recent = last 5 active instances, sorted by createdAt descending
   const recent = [...instances]
+    .filter(i => i.status !== 'REMOVED')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5)
 
-  const stats = [
+  const statCards = stats ? [
     {
       label: 'Total Instances',
-      value: total,
+      value: stats.total,
       icon: <CircleStackIcon className="w-5 h-5" />,
       color: 'text-blue-400',
       bg: 'bg-blue-500/10',
@@ -58,16 +55,16 @@ export function HomePage() {
     },
     {
       label: 'Running',
-      value: running,
+      value: stats.running,
       icon: <PlayIcon className="w-5 h-5" />,
       color: 'text-green-400',
       bg: 'bg-green-500/10',
       border: 'border-green-500/20',
-      pulse: running > 0,
+      pulse: stats.running > 0,
     },
     {
       label: 'Stopped',
-      value: stopped,
+      value: stats.stopped,
       icon: <StopCircleIcon className="w-5 h-5" />,
       color: 'text-gray-400',
       bg: 'bg-gray-500/10',
@@ -75,21 +72,37 @@ export function HomePage() {
     },
     {
       label: 'Deploying',
-      value: deploying,
-      icon: <ArrowPathIcon className={`w-5 h-5 ${deploying > 0 ? 'animate-spin' : ''}`} />,
+      value: stats.deploying,
+      icon: <ArrowPathIcon className={`w-5 h-5 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />,
       color: 'text-blue-300',
       bg: 'bg-blue-400/10',
       border: 'border-blue-400/20',
     },
     {
-      label: 'Errors',
-      value: errored,
-      icon: <ExclamationTriangleIcon className="w-5 h-5" />,
-      color: errored > 0 ? 'text-red-400' : 'text-gray-600',
-      bg: errored > 0 ? 'bg-red-500/10' : 'bg-gray-500/5',
-      border: errored > 0 ? 'border-red-500/20' : 'border-white/[0.06]',
+      label: 'Removing',
+      value: stats.removing,
+      icon: <ArrowPathIcon className={`w-5 h-5 ${stats.removing > 0 ? 'animate-spin' : ''}`} />,
+      color: 'text-orange-400',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/20',
     },
-  ]
+    {
+      label: 'Errors',
+      value: stats.error,
+      icon: <ExclamationTriangleIcon className="w-5 h-5" />,
+      color: stats.error > 0 ? 'text-red-400' : 'text-gray-600',
+      bg: stats.error > 0 ? 'bg-red-500/10' : 'bg-gray-500/5',
+      border: stats.error > 0 ? 'border-red-500/20' : 'border-white/[0.06]',
+    },
+    {
+      label: 'Removed',
+      value: stats.removed,
+      icon: <XCircleIcon className="w-5 h-5" />,
+      color: stats.removed > 0 ? 'text-gray-400' : 'text-gray-600',
+      bg: 'bg-gray-500/10',
+      border: 'border-gray-500/20',
+    },
+  ] : []
 
   return (
     <AppShell onDeploy={() => setShowModal(true)} onRefresh={load}>
@@ -130,28 +143,30 @@ export function HomePage() {
       </section>
 
       {/* ── Stat cards ── */}
-      <section className="mb-10">
-        <p className="section-label">Overview</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {stats.map(s => (
-            <Link
-              key={s.label}
-              to="/instances"
-              className={`stat-card border ${s.border} hover:scale-[1.02] transition-transform group`}
-            >
-              <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
-                {s.icon}
-              </div>
-              <div>
-                <div className={`text-2xl font-bold text-white tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
-                  {s.value}
+      {statCards.length > 0 && (
+        <section className="mb-10">
+          <p className="section-label">Overview</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+            {statCards.map(s => (
+              <Link
+                key={s.label}
+                to="/instances"
+                className={`stat-card border ${s.border} hover:scale-[1.02] transition-transform group`}
+              >
+                <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
+                  {s.icon}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+                <div>
+                  <div className={`text-2xl font-bold text-white tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
+                    {s.value}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Recent instances ── */}
       <section>
@@ -181,7 +196,7 @@ export function HomePage() {
       </section>
 
       {/* ── Quick start guide (only when empty) ── */}
-      {total === 0 && (
+      {stats?.total === 0 && (
         <section className="mt-10">
           <p className="section-label">Quick Start</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

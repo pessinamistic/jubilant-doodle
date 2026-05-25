@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getInstances, deployInstance } from '../api/client'
+import { getInstances, getStats, deployInstance } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { InstanceCard } from '../components/InstanceCard'
 import { DeployModal } from '../components/DeployModal'
@@ -8,14 +8,15 @@ import {
   PlusIcon, MagnifyingGlassIcon, CloudArrowDownIcon,
   CircleStackIcon, PlayIcon, StopCircleIcon,
   ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon,
-  TrashIcon,
+  TrashIcon, XCircleIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
-const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'ERROR']
+const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'ERROR', 'REMOVED']
 
 export function InstancesPage() {
   const [instances, setInstances]       = useState([])
+  const [stats, setStats]               = useState(null)
   const [loading, setLoading]           = useState(true)
   const [showModal, setShowModal]       = useState(false)
   const [showImport, setShowImport]     = useState(false)
@@ -25,8 +26,9 @@ export function InstancesPage() {
 
   const load = useCallback(async () => {
     try {
-      const data = await getInstances()
+      const [data, statsData] = await Promise.all([getInstances(), getStats()])
       setInstances(data)
+      setStats(statsData)
     } catch {
       toast.error('Failed to load instances')
     } finally {
@@ -59,17 +61,10 @@ export function InstancesPage() {
   const activeInstances  = instances.filter(i => i.status !== 'REMOVED')
   const removedInstances = instances.filter(i => i.status === 'REMOVED')
 
-  // Derived stats (active only)
-  const total     = activeInstances.length
-  const running   = activeInstances.filter(i => i.status === 'RUNNING').length
-  const stopped   = activeInstances.filter(i => i.status === 'STOPPED').length
-  const deploying = activeInstances.filter(i => i.status === 'DEPLOYING').length
-  const errored   = activeInstances.filter(i => i.status === 'ERROR').length
-
-  const stats = [
+  const statCards = stats ? [
     {
       label: 'Total',
-      value: total,
+      value: stats.total,
       icon: <CircleStackIcon className="w-4 h-4" />,
       color: 'text-blue-400',
       bg: 'bg-blue-500/10',
@@ -77,16 +72,16 @@ export function InstancesPage() {
     },
     {
       label: 'Running',
-      value: running,
+      value: stats.running,
       icon: <PlayIcon className="w-4 h-4" />,
       color: 'text-green-400',
       bg: 'bg-green-500/10',
       border: 'border-green-500/20',
-      pulse: running > 0,
+      pulse: stats.running > 0,
     },
     {
       label: 'Stopped',
-      value: stopped,
+      value: stats.stopped,
       icon: <StopCircleIcon className="w-4 h-4" />,
       color: 'text-gray-400',
       bg: 'bg-gray-500/10',
@@ -94,24 +89,43 @@ export function InstancesPage() {
     },
     {
       label: 'Deploying',
-      value: deploying,
-      icon: <ArrowPathIcon className={`w-4 h-4 ${deploying > 0 ? 'animate-spin' : ''}`} />,
+      value: stats.deploying,
+      icon: <ArrowPathIcon className={`w-4 h-4 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />,
       color: 'text-blue-300',
       bg: 'bg-blue-400/10',
       border: 'border-blue-400/20',
     },
     {
-      label: 'Errors',
-      value: errored,
-      icon: <ExclamationTriangleIcon className="w-4 h-4" />,
-      color: errored > 0 ? 'text-red-400' : 'text-gray-600',
-      bg: errored > 0 ? 'bg-red-500/10' : 'bg-gray-500/5',
-      border: errored > 0 ? 'border-red-500/20' : 'border-white/[0.06]',
+      label: 'Removing',
+      value: stats.removing,
+      icon: <ArrowPathIcon className={`w-4 h-4 ${stats.removing > 0 ? 'animate-spin' : ''}`} />,
+      color: 'text-orange-400',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/20',
     },
-  ]
+    {
+      label: 'Errors',
+      value: stats.error,
+      icon: <ExclamationTriangleIcon className="w-4 h-4" />,
+      color: stats.error > 0 ? 'text-red-400' : 'text-gray-600',
+      bg: stats.error > 0 ? 'bg-red-500/10' : 'bg-gray-500/5',
+      border: stats.error > 0 ? 'border-red-500/20' : 'border-white/[0.06]',
+    },
+    {
+      label: 'Removed',
+      value: stats.removed,
+      icon: <XCircleIcon className="w-4 h-4" />,
+      color: stats.removed > 0 ? 'text-gray-400' : 'text-gray-600',
+      bg: 'bg-gray-500/10',
+      border: 'border-gray-500/20',
+    },
+  ] : []
 
-  const filtered = activeInstances
-    .filter(i => statusFilter === 'ALL' || i.status === statusFilter)
+  // When REMOVED filter is active, show removed list; otherwise show active list
+  const showingRemoved = statusFilter === 'REMOVED'
+
+  const filtered = (showingRemoved ? removedInstances : activeInstances)
+    .filter(i => showingRemoved || statusFilter === 'ALL' || i.status === statusFilter)
     .filter(i => !search
       || i.name.toLowerCase().includes(search.toLowerCase())
       || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase()))
@@ -130,8 +144,12 @@ export function InstancesPage() {
         <div>
           <h1 className="text-xl font-semibold text-white">Instances</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {total} active &nbsp;·&nbsp; {running} running
-            {removedInstances.length > 0 && <> &nbsp;·&nbsp; {removedInstances.length} removed</>}
+            {stats ? (
+              <>
+                {stats.total} active &nbsp;·&nbsp; {stats.running} running
+                {stats.removed > 0 && <> &nbsp;·&nbsp; {stats.removed} removed</>}
+              </>
+            ) : 'Loading…'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -150,27 +168,26 @@ export function InstancesPage() {
       </div>
 
       {/* ── Overview stats ── */}
-      <section className="mb-8">
-        <p className="section-label">Overview</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {stats.map(s => (
-            <div
-              key={s.label}
-              className={`stat-card border ${s.border}`}
-            >
-              <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
-                {s.icon}
-              </div>
-              <div>
-                <div className={`text-2xl font-bold text-white tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
-                  {s.value}
+      {statCards.length > 0 && (
+        <section className="mb-8">
+          <p className="section-label">Overview</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {statCards.map(s => (
+              <div key={s.label} className={`stat-card border ${s.border}`}>
+                <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
+                  {s.icon}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+                <div>
+                  <div className={`text-2xl font-bold text-white tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
+                    {s.value}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Search + status filter ── */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
@@ -201,26 +218,26 @@ export function InstancesPage() {
         </div>
       </div>
 
-      {/* ── Active card grid ── */}
+      {/* ── Card grid ── */}
       {loading ? (
         <div className="flex items-center justify-center py-24 text-gray-500 gap-2">
           <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           Loading instances…
         </div>
-      ) : filtered.length === 0 && activeInstances.length === 0 ? (
+      ) : filtered.length === 0 && activeInstances.length === 0 && !showingRemoved ? (
         <EmptyState onDeploy={() => setShowModal(true)} hasInstances={false} />
       ) : filtered.length === 0 ? (
         <EmptyState onDeploy={() => setShowModal(true)} hasInstances={true} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${showingRemoved ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}>
           {filtered.map(instance => (
             <InstanceCard key={instance.id} instance={instance} onRefresh={load} />
           ))}
         </div>
       )}
 
-      {/* ── Removed section ── */}
-      {!loading && (filteredRemoved.length > 0 || removedInstances.length > 0) && (
+      {/* ── Removed section (only shown when not already filtering by REMOVED) ── */}
+      {!loading && !showingRemoved && (filteredRemoved.length > 0 || removedInstances.length > 0) && (
         <section className="mt-10">
           <button
             onClick={() => setShowRemoved(v => !v)}

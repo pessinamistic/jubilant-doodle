@@ -3,6 +3,7 @@ import axios from 'axios'
 const api = axios.create({ baseURL: '/api' })
 
 export const getInstances  = ()        => api.get('/instances').then(r => r.data)
+export const getStats      = ()        => api.get('/instances/stats').then(r => r.data)
 export const getInstance   = (id)      => api.get(`/instances/${id}`).then(r => r.data)
 export const deployInstance = (data)   => api.post('/instances', data).then(r => r.data)
 export const startInstance  = (id)     => api.post(`/instances/${id}/start`).then(r => r.data)
