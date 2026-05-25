@@ -1,11 +1,12 @@
 package com.dbdeployer.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Resolves the correct Docker socket URI for the current machine and sets
@@ -14,11 +15,13 @@ import java.nio.file.Paths;
  *
  * Priority order:
  *  1. DOCKER_HOST environment variable (user override)
- *  2. Colima default socket  (~/.colima/default/docker.sock)
- *  3. Colima named profile   (~/.colima/<profile>/docker.sock)
- *  4. Standard Unix socket   (/var/run/docker.sock)
- *  5. Rootless Docker socket (~/.docker/run/docker.sock)
- *  6. Docker Desktop socket  (~/.docker/desktop/run/docker.sock)  [macOS]
+ *  2. DOCKER_HOST system property (JVM override)
+ *  3. Windows named pipe     (npipe:////./pipe/docker_engine)
+ *  4. Colima default socket  (~/.colima/default/docker.sock)
+ *  5. Colima named profile   (~/.colima/<profile>/docker.sock)
+ *  6. Standard Unix socket   (/var/run/docker.sock)
+ *  7. Rootless Docker socket (~/.docker/run/docker.sock)
+ *  8. Docker Desktop socket  (~/.docker/desktop/run/docker.sock)  [macOS]
  */
 public class DockerSocketResolver {
 
@@ -43,9 +46,24 @@ public class DockerSocketResolver {
             return envDockerHost;
         }
 
+        // 2. Explicit JVM override
+        String systemDockerHost = System.getProperty("DOCKER_HOST");
+        if (systemDockerHost != null && !systemDockerHost.isBlank()) {
+            log.info("Docker socket from DOCKER_HOST system property: {}", systemDockerHost);
+            return systemDockerHost;
+        }
+
+        // 3. Windows Docker Desktop default named pipe
+        String osName = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (osName.contains("win")) {
+            String uri = "npipe:////./pipe/docker_engine";
+            log.info("Docker socket resolved to Windows named pipe: {}", uri);
+            return uri;
+        }
+
         String home = System.getProperty("user.home");
 
-        // 2. Colima default profile
+        // 4. Colima default profile
         Path colimaDefault = Paths.get(home, ".colima", "default", "docker.sock");
         if (Files.exists(colimaDefault)) {
             String uri = "unix://" + colimaDefault.toAbsolutePath();
@@ -53,11 +71,11 @@ public class DockerSocketResolver {
             return uri;
         }
 
-        // 3. Colima — any named profile (pick first found)
+        // 5. Colima — any named profile (pick first found)
         Path colimaDir = Paths.get(home, ".colima");
         if (Files.isDirectory(colimaDir)) {
-            try {
-                var found = Files.list(colimaDir)
+            try (var profiles = Files.list(colimaDir)) {
+                var found = profiles
                         .filter(Files::isDirectory)
                         .map(p -> p.resolve("docker.sock"))
                         .filter(Files::exists)
@@ -70,13 +88,13 @@ public class DockerSocketResolver {
             } catch (Exception ignored) {}
         }
 
-        // 4. Standard Unix socket (Linux / Docker Engine)
+        // 6. Standard Unix socket (Linux / Docker Engine)
         if (Files.exists(Path.of("/var/run/docker.sock"))) {
             log.info("Docker socket resolved to standard Unix socket");
             return "unix:///var/run/docker.sock";
         }
 
-        // 5. Rootless Docker
+        // 7. Rootless Docker
         Path rootless = Paths.get(home, ".docker", "run", "docker.sock");
         if (Files.exists(rootless)) {
             String uri = "unix://" + rootless.toAbsolutePath();
@@ -84,7 +102,7 @@ public class DockerSocketResolver {
             return uri;
         }
 
-        // 6. Docker Desktop (macOS)
+        // 8. Docker Desktop (macOS)
         Path dockerDesktop = Paths.get(home, ".docker", "desktop", "run", "docker.sock");
         if (Files.exists(dockerDesktop)) {
             String uri = "unix://" + dockerDesktop.toAbsolutePath();

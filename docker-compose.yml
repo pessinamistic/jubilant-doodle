@@ -11,6 +11,8 @@ services:
       POSTGRES_USER: dbdeployer
       POSTGRES_PASSWORD: dbdeployer_internal
       POSTGRES_DB: dbdeployer
+      TZ: UTC
+      PGTZ: UTC
     volumes:
       - system-db-data:/var/lib/postgresql/data
     healthcheck:
