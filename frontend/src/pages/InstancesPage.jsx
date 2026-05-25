@@ -140,7 +140,7 @@ export function InstancesPage() {
     <AppShell onDeploy={() => setShowModal(true)} onRefresh={load}>
 
       {/* ── Page header ── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 animate-fade-up">
         <div>
           <h1 className="text-xl font-semibold text-white">Instances</h1>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -169,12 +169,12 @@ export function InstancesPage() {
 
       {/* ── Overview stats ── */}
       {statCards.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-8 animate-fade-up delay-100">
           <p className="section-label">Overview</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="flex flex-wrap gap-3 stagger-children">
             {statCards.map(s => (
-              <div key={s.label} className={`stat-card border ${s.border}`}>
-                <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
+              <div key={s.label} className={`stat-card border ${s.border} flex-1 min-w-[110px] animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group`}>
+                <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center ${s.color} transition-transform duration-200 group-hover:scale-110`}>
                   {s.icon}
                 </div>
                 <div>
@@ -190,7 +190,7 @@ export function InstancesPage() {
       )}
 
       {/* ── Search + status filter ── */}
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
+      <div className="flex items-center gap-3 mb-6 flex-wrap animate-fade-up delay-150">
         <div className="relative flex-1 min-w-52">
           <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
@@ -229,9 +229,9 @@ export function InstancesPage() {
       ) : filtered.length === 0 ? (
         <EmptyState onDeploy={() => setShowModal(true)} hasInstances={true} />
       ) : (
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${showingRemoved ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children animate-fade-up delay-200 ${showingRemoved ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}>
           {filtered.map(instance => (
-            <InstanceCard key={instance.id} instance={instance} onRefresh={load} />
+            <InstanceCard key={instance.id} instance={instance} onRefresh={load} className="animate-fade-up" />
           ))}
         </div>
       )}
@@ -259,7 +259,7 @@ export function InstancesPage() {
             filteredRemoved.length === 0 ? (
               <p className="text-xs text-gray-600 pl-1">No removed instances match the current search.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 opacity-60 hover:opacity-80 transition-opacity">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 opacity-60 hover:opacity-80 transition-opacity">
                 {filteredRemoved.map(instance => (
                   <InstanceCard key={instance.id} instance={instance} onRefresh={load} />
                 ))}
@@ -281,7 +281,7 @@ export function InstancesPage() {
 
 function EmptyState({ onDeploy, hasInstances }) {
   return (
-    <div className="card p-16 text-center">
+    <div className="card p-16 text-center animate-scale-in">
       <div className="text-5xl mb-4">{hasInstances ? '🔍' : '🗄️'}</div>
       <h2 className="text-lg font-semibold text-white mb-2">
         {hasInstances ? 'No matches found' : 'No databases yet'}

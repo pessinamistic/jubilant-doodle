@@ -1,23 +1,91 @@
 @import "tailwindcss";
 
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Animation utility classes (Tailwind v4 @utility) ───────────────────── */
+
+@utility animate-fade-up {
+  animation: fade-up 0.35s cubic-bezier(0.16,1,0.3,1) both;
+}
+@utility animate-fade-in {
+  animation: fade-in 0.25s ease both;
+}
+@utility animate-scale-in {
+  animation: scale-in 0.25s cubic-bezier(0.16,1,0.3,1) both;
+}
+@utility animate-slide-down {
+  animation: slide-down 0.25s cubic-bezier(0.16,1,0.3,1) both;
+}
+@utility animate-slide-right {
+  animation: slide-right 0.3s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* Stagger helpers — apply to list children */
+@utility stagger-children {
+  & > *:nth-child(1)   { animation-delay: 0ms; }
+  & > *:nth-child(2)   { animation-delay: 50ms; }
+  & > *:nth-child(3)   { animation-delay: 100ms; }
+  & > *:nth-child(4)   { animation-delay: 150ms; }
+  & > *:nth-child(5)   { animation-delay: 200ms; }
+  & > *:nth-child(6)   { animation-delay: 250ms; }
+  & > *:nth-child(7)   { animation-delay: 300ms; }
+  & > *:nth-child(8)   { animation-delay: 350ms; }
+  & > *:nth-child(n+9) { animation-delay: 400ms; }
+}
+
+/* Delay helpers */
+@utility delay-0   { animation-delay: 0ms; }
+@utility delay-50  { animation-delay: 50ms; }
+@utility delay-100 { animation-delay: 100ms; }
+@utility delay-150 { animation-delay: 150ms; }
+@utility delay-200 { animation-delay: 200ms; }
+@utility delay-300 { animation-delay: 300ms; }
+@utility delay-400 { animation-delay: 400ms; }
+@utility delay-500 { animation-delay: 500ms; }
+
 @layer components {
   /* ── Buttons ── */
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-blue-500/20;
+    @apply bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-px active:translate-y-0;
   }
   .btn-secondary {
-    @apply bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] text-gray-300 hover:text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors;
+    @apply bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] text-gray-300 hover:text-white text-sm font-medium px-4 py-2 rounded-lg transition-all hover:-translate-y-px active:translate-y-0;
   }
   .btn-ghost {
     @apply text-gray-400 hover:text-white hover:bg-white/[0.06] text-sm px-3 py-1.5 rounded-lg transition-colors;
   }
   .btn-danger {
-    @apply bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 hover:text-red-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors;
+    @apply bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 hover:text-red-300 text-sm font-medium px-4 py-2 rounded-lg transition-all;
   }
 
   /* ── Inputs (dark) ── */
   .input {
-    @apply bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 w-full transition-colors;
+    @apply bg-white/[0.05] border border-white/[0.10] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 w-full transition-all;
   }
   .input-light {
     @apply border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent w-full bg-white;
@@ -28,12 +96,12 @@
     @apply bg-[#161b27] border border-white/[0.06] rounded-2xl;
   }
   .card-hover {
-    @apply bg-[#161b27] border border-white/[0.06] rounded-2xl hover:border-white/[0.12] hover:bg-[#1c2333] transition-all cursor-pointer;
+    @apply bg-[#161b27] border border-white/[0.06] rounded-2xl hover:border-white/[0.12] hover:bg-[#1c2333] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/20 transition-all duration-200 cursor-pointer;
   }
 
   /* ── Stat card ── */
   .stat-card {
-    @apply bg-[#161b27] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-2;
+    @apply bg-[#161b27] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-2 transition-all duration-200;
   }
 
   /* ── Tabs ── */
@@ -41,10 +109,10 @@
     @apply flex gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/[0.06];
   }
   .tab-item {
-    @apply flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150;
   }
   .tab-active {
-    @apply bg-white/[0.10] text-white;
+    @apply bg-white/[0.10] text-white shadow-sm;
   }
   .tab-inactive {
     @apply text-gray-400 hover:text-white hover:bg-white/[0.05];

@@ -89,7 +89,7 @@ export function InstanceDetailPage() {
   return (
     <AppShell onRefresh={load}>
       {/* ── Breadcrumb ── */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 animate-slide-down">
         <Link to="/instances" className="hover:text-white transition-colors flex items-center gap-1">
           <ArrowLeftIcon className="w-3.5 h-3.5" />
           Instances
@@ -99,7 +99,7 @@ export function InstanceDetailPage() {
       </div>
 
       {/* ── Instance header ── */}
-      <div className="card px-6 py-5 mb-6">
+      <div className="card px-6 py-5 mb-6 animate-fade-up">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <div className="text-4xl">{instance.icon}</div>
@@ -186,7 +186,7 @@ export function InstanceDetailPage() {
       </div>
 
       {/* ── Tab bar ── */}
-      <div className="tab-bar mb-6 w-fit">
+      <div className="tab-bar mb-6 w-fit animate-fade-up delay-100">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={`tab-item ${activeTab === t.id ? 'tab-active' : 'tab-inactive'}`}>
@@ -197,10 +197,12 @@ export function InstanceDetailPage() {
       </div>
 
       {/* ── Tab content ── */}
-      {activeTab === 'overview'      && <OverviewTab      instance={instance} />}
-      {activeTab === 'pipeline'      && <PipelineTab      instanceId={id} instance={instance} />}
-      {activeTab === 'configuration' && <ConfigurationTab instance={instance} />}
-      {activeTab === 'logs'          && <LogsTab          instanceId={id} isRunning={isRunning} />}
+      <div key={activeTab} className="animate-fade-up">
+        {activeTab === 'overview'      && <OverviewTab      instance={instance} />}
+        {activeTab === 'pipeline'      && <PipelineTab      instanceId={id} instance={instance} />}
+        {activeTab === 'configuration' && <ConfigurationTab instance={instance} />}
+        {activeTab === 'logs'          && <LogsTab          instanceId={id} isRunning={isRunning} />}
+      </div>
 
       {showReImport && (
         <ImportModal
@@ -275,9 +277,9 @@ function OverviewTab({ instance }) {
       {/* Stat cards */}
       <div>
         <p className="section-label">Stats</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 stagger-children">
           {statCards.map(s => (
-            <div key={s.label} className="stat-card">
+            <div key={s.label} className="stat-card animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 transition-all duration-200">
               <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
                 {s.icon}
               </div>
@@ -412,9 +414,9 @@ function ConfigurationTab({ instance }) {
       )}
 
       {/* Detail sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 stagger-children">
         {sections.map(sec => sec.rows.length > 0 && (
-          <div key={sec.title} className="card p-5">
+          <div key={sec.title} className="card p-5 animate-fade-up">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-gray-400">{sec.icon}</span>
               <p className="section-label mb-0">{sec.title}</p>
