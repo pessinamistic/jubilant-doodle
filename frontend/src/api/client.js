@@ -22,3 +22,4 @@ export const getPipeline         = (id)           => api.get(`/instances/${id}/p
 export const getSystemStats      = ()             => api.get('/system/stats').then(r => r.data)
 export const getMetricsHistory   = ()             => api.get('/system/metrics/history').then(r => r.data)
 export const getDeploymentActivity = ()           => api.get('/system/metrics/activity').then(r => r.data)
+export const getContainerMetrics = (id)           => api.get(`/instances/${id}/container-metrics`).then(r => r.data)

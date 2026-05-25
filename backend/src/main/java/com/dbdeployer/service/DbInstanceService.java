@@ -104,6 +104,16 @@ public class DbInstanceService {
                 .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
     }
 
+    /** Live Docker container metrics snapshot for a non-system instance. */
+    public com.dbdeployer.api.dto.ContainerMetricsResponse getContainerMetrics(String configId) {
+        DeploymentConfig config = getById(configId);
+        DeployedContainer container = config.getContainer();
+        if (container == null || container.getContainerId() == null) {
+            return com.dbdeployer.api.dto.ContainerMetricsResponse.unavailable();
+        }
+        return docker.getContainerMetrics(container.getContainerId(), config.getHostPort());
+    }
+
     /** Returns the most recent pipeline for an instance (or null if none exists). */
     public com.dbdeployer.api.dto.PipelineResponse getLatestPipeline(String configId) {
         return pipelineRepo.findTopByConfigIdOrderByCreatedAtDesc(configId)

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline,
-  getSystemStats, getMetricsHistory, getDeploymentActivity,
+  getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
@@ -687,15 +687,46 @@ function SystemInternalsTab() {
 /*  Instance Metrics Tab  (non-system instances only)                          */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function InstanceMetricsTab({ instanceId, instance }) {
-  const [pipeline, setPipeline] = useState(null)
+  const [pipeline, setPipeline]         = useState(null)
   const [pipelineLoading, setPipelineLoading] = useState(true)
+  const [liveMetrics, setLiveMetrics]   = useState(null)
+  const [liveLoading, setLiveLoading]   = useState(true)
+  // Rolling history for sparklines — last 20 samples (~1m40s at 5s poll)
+  const historyRef = useRef([])
+  const [history, setHistory]           = useState([])
 
+  const isRunning = instance.status === 'RUNNING'
+
+  // Fetch pipeline once
   useEffect(() => {
     getPipeline(instanceId)
       .then(d => setPipeline(d))
       .catch(() => setPipeline(null))
       .finally(() => setPipelineLoading(false))
   }, [instanceId])
+
+  // Poll container metrics every 5 s when running (single shot when stopped)
+  useEffect(() => {
+    let cancelled = false
+    const fetch = () => {
+      getContainerMetrics(instanceId)
+        .then(data => {
+          if (cancelled) return
+          setLiveMetrics(data)
+          setLiveLoading(false)
+          if (data.available) {
+            const sample = { t: Date.now(), cpu: data.cpuPercent, mem: data.memUsageBytes / 1_048_576 }
+            const next = [...historyRef.current.slice(-19), sample]
+            historyRef.current = next
+            setHistory([...next])
+          }
+        })
+        .catch(() => { if (!cancelled) setLiveLoading(false) })
+    }
+    fetch()
+    const id = isRunning ? setInterval(fetch, 5000) : null
+    return () => { cancelled = true; if (id) clearInterval(id) }
+  }, [instanceId, isRunning])
 
   const now = Date.now()
 
@@ -708,9 +739,7 @@ function InstanceMetricsTab({ instanceId, instance }) {
     if (h > 0) return `${h}h ${m}m`
     return `${m}m`
   }
-
   const fmtTs = (iso) => iso ? new Date(iso).toLocaleString() : '—'
-  const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString() : '—'
   const durMs = (a, b) => a && b ? new Date(b) - new Date(a) : null
   const fmtMs = (ms) => {
     if (ms === null || ms === undefined) return '—'
@@ -718,65 +747,244 @@ function InstanceMetricsTab({ instanceId, instance }) {
     if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
     return `${(ms / 60_000).toFixed(1)}m`
   }
+  const fmtBytes = (b) => {
+    if (b == null) return '—'
+    if (b < 1024)            return `${b} B`
+    if (b < 1_048_576)       return `${(b/1024).toFixed(1)} KB`
+    if (b < 1_073_741_824)   return `${(b/1_048_576).toFixed(1)} MB`
+    return `${(b/1_073_741_824).toFixed(2)} GB`
+  }
 
-  const isRunning = instance.status === 'RUNNING'
   const instanceAge = now - new Date(instance.createdAt).getTime()
   const uptimeMs = isRunning && instance.startedAt ? now - new Date(instance.startedAt).getTime() : null
 
-  /* ── Step timing bar-chart data from pipeline ── */
   const STEP_DISPLAY = {
-    IMAGE_PULL:        'Pull Image',
-    PULL_IMAGE:        'Pull Image',
-    CONTAINER_CREATE:  'Create Container',
-    CONTAINER_START:   'Start Container',
-    START_CONTAINER:   'Start Container',
-    FINALISE:          'Finalise',
+    IMAGE_PULL: 'Pull Image', PULL_IMAGE: 'Pull Image',
+    CONTAINER_CREATE: 'Create Container', CONTAINER_START: 'Start Container',
+    START_CONTAINER: 'Start Container', FINALISE: 'Finalise',
   }
-  const STEP_COLORS = {
-    SUCCESS: '#22c55e',
-    FAILED:  '#ef4444',
-    RUNNING: '#3b82f6',
-    PENDING: '#9ca3af',
-    SKIPPED: '#a855f7',
-  }
+  const STEP_COLORS = { SUCCESS:'#22c55e', FAILED:'#ef4444', RUNNING:'#3b82f6', PENDING:'#9ca3af', SKIPPED:'#a855f7' }
 
   const stepTimings = pipeline?.steps
     ?.filter(s => s.startedAt && s.completedAt)
-    .map(s => ({
-      name:     STEP_DISPLAY[s.stepType] ?? s.stepType,
-      durationMs: durMs(s.startedAt, s.completedAt),
-      status:   s.status,
-      fill:     STEP_COLORS[s.status] ?? '#9ca3af',
-    })) ?? []
+    .map(s => ({ name: STEP_DISPLAY[s.stepType] ?? s.stepType, durationMs: durMs(s.startedAt, s.completedAt), status: s.status, fill: STEP_COLORS[s.status] ?? '#9ca3af' })) ?? []
+  const totalDeployMs = pipeline?.startedAt && pipeline?.completedAt ? durMs(pipeline.startedAt, pipeline.completedAt) : null
 
-  const totalDeployMs = pipeline?.startedAt && pipeline?.completedAt
-    ? durMs(pipeline.startedAt, pipeline.completedAt)
-    : null
-
-  /* ── Lifecycle timeline points ── */
   const timelinePoints = [
-    { label: 'Registered', ts: instance.createdAt, active: true },
+    { label: 'Registered',   ts: instance.createdAt, active: true },
     { label: 'Last Started', ts: instance.startedAt, active: !!instance.startedAt },
     { label: 'Last Updated', ts: instance.updatedAt, active: !!instance.updatedAt },
   ]
 
+  // Gauge bar component (inline)
+  const GaugeBar = ({ pct, color }) => (
+    <div className="w-full h-2 rounded-full bg-[var(--bg-surface-3)] overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-700"
+        style={{ width: `${Math.min(100, pct ?? 0)}%`, background: color }}
+      />
+    </div>
+  )
+
+  const memLimitMb = liveMetrics ? liveMetrics.memLimitBytes / 1_048_576 : 0
+  const memUsageMb = liveMetrics ? liveMetrics.memUsageBytes / 1_048_576 : 0
+
   return (
     <div className="space-y-8">
 
-      {/* ── Section 1: Lifetime Stats ── */}
+      {/* ═══ Section 0: Live Container Stats ══════════════════════════════════ */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="section-label mb-0">Live Container Stats</p>
+          {isRunning && (
+            <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live · refreshes every 5s
+            </div>
+          )}
+        </div>
+
+        {liveLoading ? (
+          <div className="card p-8 flex items-center justify-center gap-2 text-[var(--text-muted)] text-sm">
+            <div className="w-4 h-4 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin" />
+            Fetching container stats…
+          </div>
+        ) : !liveMetrics?.available ? (
+          <div className="card p-6 text-center">
+            <Server className="w-8 h-8 text-[var(--text-quiet)] mx-auto mb-2" />
+            <p className="text-sm text-[var(--text-muted)]">Container is not running — live stats unavailable.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Port + restart badges */}
+            <div className="flex flex-wrap gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border
+                ${liveMetrics.portReachable
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                  : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                <div className={`w-2 h-2 rounded-full ${liveMetrics.portReachable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                Port {instance.hostPort} — {liveMetrics.portReachable ? `Reachable (${liveMetrics.portLatencyMs}ms)` : 'Not reachable'}
+              </div>
+              {liveMetrics.restartCount > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-orange-500/10 border-orange-500/30 text-orange-400">
+                  ↺ Restarted {liveMetrics.restartCount}×
+                </div>
+              )}
+              {liveMetrics.pids > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-secondary)]">
+                  <Hash className="w-3.5 h-3.5" /> {liveMetrics.pids} PIDs
+                </div>
+              )}
+              {liveMetrics.cpuCores > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-secondary)]">
+                  <Cpu className="w-3.5 h-3.5" /> {liveMetrics.cpuCores} vCPU{liveMetrics.cpuCores !== 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+
+            {/* CPU + Memory gauges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* CPU */}
+              <div className="card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5" /> CPU Usage
+                  </span>
+                  <span className="text-2xl font-black font-mono text-green-400">
+                    {liveMetrics.cpuPercent.toFixed(1)}%
+                  </span>
+                </div>
+                <GaugeBar pct={liveMetrics.cpuPercent} color={
+                  liveMetrics.cpuPercent > 80 ? '#ef4444'
+                  : liveMetrics.cpuPercent > 50 ? '#f59e0b'
+                  : '#22c55e'
+                } />
+                <div className="flex justify-between text-[10px] text-[var(--text-quiet)] mt-1">
+                  <span>0%</span>
+                  <span>across {liveMetrics.cpuCores} core{liveMetrics.cpuCores !== 1 ? 's' : ''}</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Memory */}
+              <div className="card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                    <HardDrive className="w-3.5 h-3.5" /> Memory Usage
+                  </span>
+                  <span className="text-2xl font-black font-mono text-violet-400">
+                    {liveMetrics.memPercent.toFixed(1)}%
+                  </span>
+                </div>
+                <GaugeBar pct={liveMetrics.memPercent} color={
+                  liveMetrics.memPercent > 85 ? '#ef4444'
+                  : liveMetrics.memPercent > 65 ? '#f59e0b'
+                  : '#a855f7'
+                } />
+                <div className="flex justify-between text-[10px] text-[var(--text-quiet)] mt-1">
+                  <span>{fmtBytes(liveMetrics.memUsageBytes)}</span>
+                  <span>of</span>
+                  <span>{fmtBytes(liveMetrics.memLimitBytes)} limit</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Network + Block I/O */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: <TrendingUp className="w-4 h-4" />,   label: 'Net Received', value: fmtBytes(liveMetrics.netRxBytes),    sub: `${liveMetrics.netRxPackets.toLocaleString()} pkts`, color: 'text-blue-400',  bg: 'bg-blue-500/10' },
+                { icon: <Activity   className="w-4 h-4" />,   label: 'Net Sent',     value: fmtBytes(liveMetrics.netTxBytes),    sub: `${liveMetrics.netTxPackets.toLocaleString()} pkts`, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+                { icon: <HardDrive  className="w-4 h-4" />,   label: 'Disk Read',    value: fmtBytes(liveMetrics.blockReadBytes), sub: 'cumulative',                                        color: 'text-cyan-400',  bg: 'bg-cyan-500/10' },
+                { icon: <Zap        className="w-4 h-4" />,   label: 'Disk Written', value: fmtBytes(liveMetrics.blockWriteBytes), sub: 'cumulative',                                       color: 'text-amber-400', bg: 'bg-amber-500/10' },
+              ].map(s => (
+                <div key={s.label} className="card p-4 flex flex-col gap-1">
+                  <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
+                  <div className="text-lg font-bold font-mono text-[var(--text-primary)] mt-1">{s.value}</div>
+                  <div className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide">{s.label}</div>
+                  <div className="text-[10px] text-[var(--text-quiet)]">{s.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Section 0b: CPU + Memory Sparklines ══════════════════════════════ */}
+      {history.length >= 2 && (
+        <div>
+          <p className="section-label">Resource History <span className="text-[var(--text-quiet)] font-normal normal-case tracking-normal">· last {history.length} samples</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* CPU sparkline */}
+            <div className="card p-4">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-green-400" /> CPU %
+              </p>
+              <ResponsiveContainer width="100%" height={80}>
+                <AreaChart data={history} margin={{ top: 2, right: 4, left: -28, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
+                  <XAxis dataKey="t" hide />
+                  <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-quiet)', fontSize: 10 }} tickFormatter={v => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border-soft)', borderRadius: 4, fontSize: 11 }}
+                    labelFormatter={() => ''}
+                    formatter={v => [`${v.toFixed(1)}%`, 'CPU']}
+                  />
+                  <Area type="monotone" dataKey="cpu" stroke="#22c55e" fill="url(#cpuGrad)" strokeWidth={2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Memory sparkline */}
+            <div className="card p-4">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <HardDrive className="w-3.5 h-3.5 text-violet-400" /> Memory (MB)
+              </p>
+              <ResponsiveContainer width="100%" height={80}>
+                <AreaChart data={history} margin={{ top: 2, right: 4, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#a855f7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
+                  <XAxis dataKey="t" hide />
+                  <YAxis domain={[0, memLimitMb > 0 ? Math.ceil(memLimitMb) : 'auto']}
+                         tick={{ fill: 'var(--text-quiet)', fontSize: 10 }}
+                         tickFormatter={v => `${Math.round(v)}`} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border-soft)', borderRadius: 4, fontSize: 11 }}
+                    labelFormatter={() => ''}
+                    formatter={v => [`${v.toFixed(0)} MB`, 'Memory']}
+                  />
+                  {memLimitMb > 0 && <ReferenceLine y={memLimitMb} stroke="#ef4444" strokeDasharray="4 2" strokeOpacity={0.5} />}
+                  <Area type="monotone" dataKey="mem" stroke="#a855f7" fill="url(#memGrad)" strokeWidth={2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+              {memLimitMb > 0 && <p className="text-[10px] text-[var(--text-quiet)] text-right mt-1">— limit: {Math.round(memLimitMb)} MB</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Section 1: Lifetime Stats ════════════════════════════════════════ */}
       <div>
         <p className="section-label">Lifetime</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { icon: <TrendingUp className="w-5 h-5" />, label: 'Instance Age',    value: fmtAge(instanceAge),  color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { icon: <Clock3     className="w-5 h-5" />, label: 'Current Uptime',  value: uptimeMs ? fmtAge(uptimeMs) : isRunning ? '< 1m' : '—', color: isRunning ? 'text-green-400' : 'text-gray-400', bg: isRunning ? 'bg-green-500/10' : 'bg-gray-500/10' },
-            { icon: <Globe      className="w-5 h-5" />, label: 'Host Port',       value: instance.hostPort,    color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-            { icon: <Database   className="w-5 h-5" />, label: 'DB Type',         value: instance.dbTypeDisplay, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+            { icon: <TrendingUp className="w-5 h-5" />, label: 'Instance Age',   value: fmtAge(instanceAge), color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { icon: <Clock3     className="w-5 h-5" />, label: 'Current Uptime', value: uptimeMs ? fmtAge(uptimeMs) : isRunning ? '< 1m' : '—', color: isRunning ? 'text-green-400' : 'text-gray-400', bg: isRunning ? 'bg-green-500/10' : 'bg-gray-500/10' },
+            { icon: <Globe      className="w-5 h-5" />, label: 'Host Port',      value: instance.hostPort,   color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { icon: <Database   className="w-5 h-5" />, label: 'DB Type',        value: instance.dbTypeDisplay, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
           ].map(s => (
-            <div key={s.label} className="stat-card animate-fade-up">
-              <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
-                {s.icon}
-              </div>
+            <div key={s.label} className="stat-card">
+              <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
               <div>
                 <div className="text-base font-bold text-[var(--text-primary)] font-mono">{s.value}</div>
                 <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
@@ -786,30 +994,22 @@ function InstanceMetricsTab({ instanceId, instance }) {
         </div>
       </div>
 
-      {/* ── Section 2: Lifecycle Timeline ── */}
+      {/* ═══ Section 2: Lifecycle Timeline ═══════════════════════════════════ */}
       <div>
         <p className="section-label">Lifecycle Timeline</p>
         <div className="card p-6">
-          {/* Timeline bar */}
           <div className="flex items-center gap-0 mb-6 relative">
             {timelinePoints.map((pt, i) => (
               <div key={pt.label} className="flex items-center flex-1">
                 <div className="flex flex-col items-center gap-1.5">
-                  <div className={`w-3 h-3 rounded-full border-2 ${
-                    pt.active
-                      ? 'bg-[var(--accent)] border-[var(--accent)]'
-                      : 'bg-[var(--bg-surface-3)] border-[var(--border-soft)]'
-                  }`} />
+                  <div className={`w-3 h-3 rounded-full border-2 ${pt.active ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg-surface-3)] border-[var(--border-soft)]'}`} />
                   <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide whitespace-nowrap">{pt.label}</span>
                   <span className="text-[10px] font-mono text-[var(--text-secondary)]">{pt.ts ? new Date(pt.ts).toLocaleDateString() : '—'}</span>
                   <span className="text-[10px] font-mono text-[var(--text-quiet)]">{pt.ts ? new Date(pt.ts).toLocaleTimeString() : ''}</span>
                 </div>
-                {i < timelinePoints.length - 1 && (
-                  <div className="flex-1 h-px bg-[var(--border-soft)] mx-2 -mt-8" />
-                )}
+                {i < timelinePoints.length - 1 && <div className="flex-1 h-px bg-[var(--border-soft)] mx-2 -mt-8" />}
               </div>
             ))}
-            {/* "Now" marker */}
             <div className="flex flex-col items-center gap-1.5 ml-2">
               <div className={`w-3 h-3 rounded-full border-2 ${isRunning ? 'bg-green-500 border-green-500 animate-pulse' : 'bg-gray-500/40 border-gray-500/40'}`} />
               <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide">Now</span>
@@ -819,10 +1019,9 @@ function InstanceMetricsTab({ instanceId, instance }) {
         </div>
       </div>
 
-      {/* ── Section 3: Last Deploy Performance ── */}
+      {/* ═══ Section 3: Last Deploy Performance ══════════════════════════════ */}
       <div>
         <p className="section-label">Last Deploy Performance</p>
-
         {pipelineLoading ? (
           <div className="card p-8 flex items-center justify-center gap-2 text-[var(--text-muted)] text-sm">
             <div className="w-4 h-4 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin" />
@@ -835,42 +1034,15 @@ function InstanceMetricsTab({ instanceId, instance }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* KPI cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                {
-                  icon: <Timer className="w-5 h-5" />,
-                  label: 'Total Deploy Time',
-                  value: fmtMs(totalDeployMs),
-                  color: 'text-orange-400', bg: 'bg-orange-500/10',
-                },
-                {
-                  icon: <Zap className="w-5 h-5" />,
-                  label: 'Image Pull',
-                  value: fmtMs(durMs(
-                    pipeline.steps?.find(s => s.stepType === 'PULL_IMAGE' || s.stepType === 'IMAGE_PULL')?.startedAt,
-                    pipeline.steps?.find(s => s.stepType === 'PULL_IMAGE' || s.stepType === 'IMAGE_PULL')?.completedAt,
-                  )),
-                  color: 'text-yellow-400', bg: 'bg-yellow-500/10',
-                },
-                {
-                  icon: <Layers className="w-5 h-5" />,
-                  label: 'Steps Completed',
-                  value: `${pipeline.steps?.filter(s => s.status === 'SUCCESS').length ?? 0} / ${pipeline.steps?.length ?? 0}`,
-                  color: 'text-blue-400', bg: 'bg-blue-500/10',
-                },
-                {
-                  icon: <Activity className="w-5 h-5" />,
-                  label: 'Outcome',
-                  value: pipeline.status,
-                  color: pipeline.status === 'SUCCESS' ? 'text-green-400' : pipeline.status === 'FAILED' ? 'text-red-400' : 'text-yellow-400',
-                  bg: pipeline.status === 'SUCCESS' ? 'bg-green-500/10' : pipeline.status === 'FAILED' ? 'bg-red-500/10' : 'bg-yellow-500/10',
-                },
+                { icon: <Timer    className="w-5 h-5" />, label: 'Total Deploy Time', value: fmtMs(totalDeployMs), color: 'text-orange-400', bg: 'bg-orange-500/10' },
+                { icon: <Zap      className="w-5 h-5" />, label: 'Image Pull', value: fmtMs(durMs(pipeline.steps?.find(s => s.stepType === 'PULL_IMAGE' || s.stepType === 'IMAGE_PULL')?.startedAt, pipeline.steps?.find(s => s.stepType === 'PULL_IMAGE' || s.stepType === 'IMAGE_PULL')?.completedAt)), color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                { icon: <Layers   className="w-5 h-5" />, label: 'Steps Completed', value: `${pipeline.steps?.filter(s => s.status === 'SUCCESS').length ?? 0} / ${pipeline.steps?.length ?? 0}`, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+                { icon: <Activity className="w-5 h-5" />, label: 'Outcome', value: pipeline.status, color: pipeline.status === 'SUCCESS' ? 'text-green-400' : pipeline.status === 'FAILED' ? 'text-red-400' : 'text-yellow-400', bg: pipeline.status === 'SUCCESS' ? 'bg-green-500/10' : pipeline.status === 'FAILED' ? 'bg-red-500/10' : 'bg-yellow-500/10' },
               ].map(s => (
                 <div key={s.label} className="stat-card">
-                  <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
-                    {s.icon}
-                  </div>
+                  <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
                   <div>
                     <div className="text-base font-bold text-[var(--text-primary)] font-mono">{s.value}</div>
                     <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
@@ -879,76 +1051,42 @@ function InstanceMetricsTab({ instanceId, instance }) {
               ))}
             </div>
 
-            {/* Step timing Gantt bar chart */}
             {stepTimings.length > 0 && (
               <div className="card p-5">
                 <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Step Timing Breakdown
+                  <BarChart3 className="w-4 h-4" /> Step Timing Breakdown
                 </p>
                 <ResponsiveContainer width="100%" height={stepTimings.length * 48 + 32}>
-                  <BarChart
-                    layout="vertical"
-                    data={stepTimings}
-                    margin={{ top: 0, right: 60, left: 16, bottom: 0 }}
-                    barSize={18}
-                  >
+                  <BarChart layout="vertical" data={stepTimings} margin={{ top: 0, right: 60, left: 16, bottom: 0 }} barSize={18}>
                     <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                    <XAxis
-                      type="number"
-                      tickFormatter={v => v < 1000 ? `${v}ms` : `${(v/1000).toFixed(1)}s`}
-                      tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-                      axisLine={{ stroke: 'var(--border-soft)' }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={110}
-                      tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--bg-surface-2)', border: '2px solid var(--border-strong)', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}
-                      labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
-                      itemStyle={{ color: 'var(--text-secondary)' }}
-                      cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                      formatter={(v) => [v < 1000 ? `${v}ms` : `${(v/1000).toFixed(2)}s`, 'Duration']}
-                    />
+                    <XAxis type="number" tickFormatter={v => v < 1000 ? `${v}ms` : `${(v/1000).toFixed(1)}s`} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-soft)' }} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={110} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-surface-2)', border: '2px solid var(--border-strong)', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} itemStyle={{ color: 'var(--text-secondary)' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} formatter={(v) => [v < 1000 ? `${v}ms` : `${(v/1000).toFixed(2)}s`, 'Duration']} />
                     <Bar dataKey="durationMs" radius={[0, 3, 3, 0]} label={{ position: 'right', formatter: v => v < 1000 ? `${v}ms` : `${(v/1000).toFixed(1)}s`, fill: 'var(--text-muted)', fontSize: 11 }}>
-                      {stepTimings.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} fillOpacity={0.85} />
-                      ))}
+                      {stepTimings.map((entry, i) => <Cell key={i} fill={entry.fill} fillOpacity={0.85} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
 
-            {/* Error detail */}
             {pipeline.status === 'FAILED' && pipeline.errorCode && (
               <div className="card p-4 border border-red-500/20 bg-red-500/5">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-bold text-red-400 uppercase tracking-wide">Deploy Failed</span>
-                  <span className="font-mono text-xs text-red-300 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-                    {pipeline.errorCode}
-                  </span>
+                  <span className="font-mono text-xs text-red-300 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">{pipeline.errorCode}</span>
                 </div>
-                {pipeline.errorMessage && (
-                  <p className="text-xs text-red-400/80 font-mono leading-relaxed">{pipeline.errorMessage}</p>
-                )}
+                {pipeline.errorMessage && <p className="text-xs text-red-400/80 font-mono leading-relaxed">{pipeline.errorMessage}</p>}
               </div>
             )}
 
-            {/* Pipeline meta */}
             <div className="card p-4">
               <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Pipeline Details</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
-                  { label: 'Pipeline ID',  value: pipeline.id?.slice(-12) },
-                  { label: 'Started',      value: fmtTs(pipeline.startedAt) },
-                  { label: 'Completed',    value: fmtTs(pipeline.completedAt) },
+                  { label: 'Pipeline ID', value: pipeline.id?.slice(-12) },
+                  { label: 'Started',     value: fmtTs(pipeline.startedAt) },
+                  { label: 'Completed',   value: fmtTs(pipeline.completedAt) },
                 ].map(row => (
                   <div key={row.label} className="bg-[var(--bg-surface-2)] rounded p-3">
                     <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mb-1">{row.label}</div>
@@ -961,16 +1099,18 @@ function InstanceMetricsTab({ instanceId, instance }) {
         )}
       </div>
 
-      {/* ── Section 4: Container Identity ── */}
+      {/* ═══ Section 4: Container Identity ═══════════════════════════════════ */}
       <div>
         <p className="section-label">Container Identity</p>
         <div className="card p-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              instance.containerName && { label: 'Container Name', value: instance.containerName,         mono: true },
+              instance.containerName && { label: 'Container Name', value: instance.containerName, mono: true },
               instance.containerId   && { label: 'Container ID',   value: instance.containerId.slice(0,12), mono: true },
+              liveMetrics?.image     && { label: 'Image (full)',    value: liveMetrics.image, mono: true, small: true },
               { label: 'Image Version',  value: `${instance.dbTypeDisplay} ${instance.version}` },
               { label: 'Deploy Method',  value: instance.deployMethod },
+              { label: 'Container State', value: liveMetrics?.containerState ?? instance.status, mono: true },
               { label: 'Origin',         value: instance.isImported ? 'Imported (unmanaged)' : 'Deployed by Port Wrangler' },
               instance.dataDirectory && { label: 'Data Volume', value: instance.dataDirectory, mono: true, small: true },
               { label: 'Registered',     value: fmtTs(instance.createdAt) },
@@ -978,9 +1118,7 @@ function InstanceMetricsTab({ instanceId, instance }) {
             ].filter(Boolean).map(row => (
               <div key={row.label} className="flex items-start justify-between gap-3 py-2 border-b border-[var(--border-soft)]/30 last:border-0">
                 <span className="text-xs text-[var(--text-muted)] shrink-0 w-32">{row.label}</span>
-                <span className={`text-right flex-1 min-w-0 truncate ${row.mono ? 'font-mono text-xs' : 'text-sm'} text-[var(--text-secondary)]`}>
-                  {row.value}
-                </span>
+                <span className={`text-right flex-1 min-w-0 truncate ${row.mono ? 'font-mono text-xs' : 'text-sm'} text-[var(--text-secondary)]`}>{row.value}</span>
               </div>
             ))}
           </div>
@@ -990,6 +1128,7 @@ function InstanceMetricsTab({ instanceId, instance }) {
     </div>
   )
 }
+
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Overview Tab                                                               */

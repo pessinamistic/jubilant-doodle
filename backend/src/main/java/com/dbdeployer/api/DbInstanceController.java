@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.api.dto.ImportRequest;
@@ -107,6 +108,12 @@ public class DbInstanceController {
     public Map<String, String> logs(@PathVariable String id,
                                     @RequestParam(defaultValue = "100") int tail) throws InterruptedException {
         return Map.of("logs", service.getLogs(id, tail));
+    }
+
+    /** Live container metrics — CPU, memory, network/block I/O, port probe */
+    @GetMapping("/instances/{id}/container-metrics")
+    public ContainerMetricsResponse containerMetrics(@PathVariable String id) {
+        return service.getContainerMetrics(id);
     }
 
     /** Get the latest deploy pipeline for an instance */

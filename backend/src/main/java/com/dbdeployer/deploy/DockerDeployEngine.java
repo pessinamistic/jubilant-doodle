@@ -1,15 +1,23 @@
 package com.dbdeployer.deploy;
 
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.model.*;
 import com.dbdeployer.config.DockerSocketResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.*;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
@@ -419,5 +427,152 @@ public class DockerDeployEngine {
         }
 
         return env;
+    }
+
+    // ── Container metrics ──────────────────────────────────────────────────────
+
+    /**
+     * Collects a single-shot live metrics snapshot for a running container.
+     * Returns {@link ContainerMetricsResponse#unavailable()} if the container
+     * is stopped, not found, or Docker is unreachable.
+     */
+    public ContainerMetricsResponse getContainerMetrics(String containerId, int hostPort) {
+        if (containerId == null) return ContainerMetricsResponse.unavailable();
+
+        // ── 1. Docker stats (no-stream = single sample) ──────────────────────
+        var statsRef = new AtomicReference<Statistics>();
+        try {
+            docker.statsCmd(containerId)
+                    .withNoStream(true)
+                    .exec(new ResultCallback.Adapter<>() {
+                        @Override public void onNext(Statistics s) { statsRef.set(s); }
+                    })
+                    .awaitCompletion(6, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.debug("Stats unavailable for {}: {}", containerId, e.getMessage());
+            return ContainerMetricsResponse.unavailable();
+        }
+
+        Statistics stats = statsRef.get();
+        if (stats == null) return ContainerMetricsResponse.unavailable();
+
+        // ── 2. CPU % ─────────────────────────────────────────────────────────
+        double cpuPercent = 0.0;
+        int cpuCores = 0;
+        try {
+            CpuStatsConfig    curr    = stats.getCpuStats();
+            CpuStatsConfig    prev    = stats.getPreCpuStats();
+            CpuUsageConfig    cu      = curr.getCpuUsage();
+            CpuUsageConfig    pu      = prev.getCpuUsage();
+            long cpuDelta    = cu.getTotalUsage()       - pu.getTotalUsage();
+            long systemDelta = curr.getSystemCpuUsage() - prev.getSystemCpuUsage();
+            Long cores       = curr.getOnlineCpus();
+            cpuCores         = (cores != null && cores > 0) ? cores.intValue()
+                             : (cu.getPercpuUsage() != null ? cu.getPercpuUsage().size() : 1);
+            if (systemDelta > 0 && cpuDelta >= 0) {
+                cpuPercent = ((double) cpuDelta / systemDelta) * cpuCores * 100.0;
+                cpuPercent = Math.min(cpuPercent, 100.0 * cpuCores); // clamp
+            }
+        } catch (Exception e) {
+            log.debug("CPU calc failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 3. Memory ────────────────────────────────────────────────────────
+        long memUsage = 0, memLimit = 0;
+        double memPercent = 0.0;
+        try {
+            MemoryStatsConfig mem = stats.getMemoryStats();
+            memLimit = mem.getLimit() != null ? mem.getLimit() : 0;
+            long rawUsage = mem.getUsage() != null ? mem.getUsage() : 0;
+            // subtract page cache (Linux); Docker Desktop on macOS may not have cache stats
+            long cache = 0L;
+            try {
+                if (mem.getStats() != null && mem.getStats().getCache() != null) {
+                    cache = mem.getStats().getCache();
+                }
+            } catch (Exception ignored) {}
+            memUsage = rawUsage - cache;
+            if (memLimit > 0) memPercent = (double) memUsage / memLimit * 100.0;
+        } catch (Exception e) {
+            log.debug("Memory calc failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 4. Network I/O ───────────────────────────────────────────────────
+        long netRx = 0, netTx = 0, netRxPkts = 0, netTxPkts = 0;
+        try {
+            Map<String, StatisticNetworksConfig> nets = stats.getNetworks();
+            if (nets != null) {
+                for (StatisticNetworksConfig n : nets.values()) {
+                    netRx    += n.getRxBytes()   != null ? n.getRxBytes()   : 0;
+                    netTx    += n.getTxBytes()   != null ? n.getTxBytes()   : 0;
+                    netRxPkts += n.getRxPackets() != null ? n.getRxPackets() : 0;
+                    netTxPkts += n.getTxPackets() != null ? n.getTxPackets() : 0;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Network stats failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 5. Block I/O ─────────────────────────────────────────────────────
+        long blkRead = 0, blkWrite = 0;
+        try {
+            BlkioStatsConfig blkio = stats.getBlkioStats();
+            if (blkio != null && blkio.getIoServiceBytesRecursive() != null) {
+                for (BlkioStatEntry e : blkio.getIoServiceBytesRecursive()) {
+                    if (e.getValue() == null) continue;
+                    if ("Read".equalsIgnoreCase(e.getOp()))  blkRead  += e.getValue();
+                    if ("Write".equalsIgnoreCase(e.getOp())) blkWrite += e.getValue();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Blkio stats failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 6. PIDs ──────────────────────────────────────────────────────────
+        long pids = 0;
+        try {
+            if (stats.getPidsStats() != null && stats.getPidsStats().getCurrent() != null) {
+                pids = stats.getPidsStats().getCurrent();
+            }
+        } catch (Exception ignored) {}
+
+        // ── 7. Inspect (restart count + image + state) ───────────────────────
+        int    restartCount = 0;
+        String image        = null;
+        String containerState = "unknown";
+        try {
+            InspectContainerResponse inspect = docker.inspectContainerCmd(containerId).exec();
+            restartCount   = inspect.getRestartCount() != null ? inspect.getRestartCount() : 0;
+            image          = inspect.getConfig() != null ? inspect.getConfig().getImage() : null;
+            containerState = inspect.getState() != null && inspect.getState().getStatus() != null
+                    ? inspect.getState().getStatus() : "unknown";
+        } catch (Exception e) {
+            log.debug("Inspect failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 8. Port probe ────────────────────────────────────────────────────
+        boolean portReachable = false;
+        long    portLatencyMs = -1;
+        if (hostPort > 0) {
+            long t0 = System.currentTimeMillis();
+            try (Socket sock = new Socket()) {
+                sock.connect(new InetSocketAddress("localhost", hostPort), 800);
+                portReachable = true;
+                portLatencyMs = System.currentTimeMillis() - t0;
+            } catch (IOException ignored) {}
+        }
+
+        return new ContainerMetricsResponse(
+                true,
+                Math.round(cpuPercent * 100.0) / 100.0,
+                cpuCores,
+                memUsage, memLimit,
+                Math.round(memPercent * 100.0) / 100.0,
+                netRx, netTx, netRxPkts, netTxPkts,
+                blkRead, blkWrite,
+                pids,
+                restartCount, image, containerState,
+                portReachable, portLatencyMs
+        );
     }
 }
