@@ -246,6 +246,50 @@ public class DatabaseCatalog {
                 null,
                 false, false, false
         ));
+
+        CATALOG.put(DbType.RABBITMQ, new DbDefinition(
+                DbType.RABBITMQ,
+                "RabbitMQ",
+                "Open-source message broker supporting AMQP, MQTT, and STOMP protocols",
+                "🐇",
+                "rabbitmq",
+                5672,
+                List.of("4.0-management", "3.13-management", "3.12-management", "management"),
+                List.of(
+                        new EnvVar("RABBITMQ_DEFAULT_USER", "Username", "guest", true,  EnvVarType.TEXT),
+                        new EnvVar("RABBITMQ_DEFAULT_PASS", "Password", "guest", true,  EnvVarType.PASSWORD)
+                ),
+                "amqp://{username}:{password}@localhost:{port}/",
+                "/var/lib/rabbitmq",
+                false, true, true
+        ));
+
+        CATALOG.put(DbType.KAFKA, new DbDefinition(
+                DbType.KAFKA,
+                "Apache Kafka",
+                "Distributed event streaming platform using KRaft mode (no Zookeeper required)",
+                "📨",
+                "apache/kafka",
+                9092,
+                List.of("3.9.0", "3.8.1", "3.7.2", "latest"),
+                List.of(
+                        new EnvVar("KAFKA_NODE_ID",                                "Node ID",                "1",                              false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_PROCESS_ROLES",                          "Process Roles",          "broker,controller",              false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_LISTENERS",                              "Listeners",              "PLAINTEXT://:9092,CONTROLLER://:9093", false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_ADVERTISED_LISTENERS",                   "Advertised Listeners",   "PLAINTEXT://localhost:{port}",    false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_CONTROLLER_LISTENER_NAMES",              "Controller Listener",    "CONTROLLER",                     false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP",         "Listener Protocol Map",  "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT", false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_CONTROLLER_QUORUM_VOTERS",               "Quorum Voters",          "1@localhost:9093",               false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR",       "Offsets Replication",    "1",                              false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "Txn Log Replication", "1",                              false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR",          "Txn Log Min ISR",        "1",                              false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_LOG_DIRS",                               "Log Dirs",               "/var/lib/kafka/data",            false, EnvVarType.TEXT),
+                        new EnvVar("KAFKA_AUTO_CREATE_TOPICS_ENABLE",              "Auto Create Topics",     "true",                           false, EnvVarType.TEXT)
+                ),
+                "localhost:{port}",
+                "/var/lib/kafka/data",
+                false, false, false
+        ));
     }
 
     public static DbDefinition get(DbType type) {

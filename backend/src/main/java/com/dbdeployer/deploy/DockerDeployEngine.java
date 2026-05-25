@@ -49,6 +49,9 @@ public class DockerDeployEngine {
         IMAGE_DB_TYPE_MAP.put("mssql",           DbType.MSSQL);
         IMAGE_DB_TYPE_MAP.put("sqlserver",       DbType.MSSQL);
         IMAGE_DB_TYPE_MAP.put("dynamodb-local",  DbType.DYNAMODB_LOCAL);
+        IMAGE_DB_TYPE_MAP.put("rabbitmq",        DbType.RABBITMQ);
+        IMAGE_DB_TYPE_MAP.put("apache/kafka",    DbType.KAFKA);
+        IMAGE_DB_TYPE_MAP.put("kafka",           DbType.KAFKA);
     }
 
     public DockerDeployEngine() {
@@ -114,6 +117,11 @@ public class DockerDeployEngine {
             ExposedPort http = ExposedPort.tcp(8123);
             exposedPorts.add(http);
             portBindings.bind(http, Ports.Binding.bindPort(8123));
+        }
+        if (config.getDbType() == DbType.KAFKA) {
+            ExposedPort controller = ExposedPort.tcp(9093);
+            exposedPorts.add(controller);
+            portBindings.bind(controller, Ports.Binding.bindPort(9093));
         }
 
         CreateContainerResponse created = docker.createContainerCmd(image)
@@ -186,7 +194,7 @@ public class DockerDeployEngine {
             container.setDataDirectory(hostDataDir.toAbsolutePath().toString());
         }
 
-        // Extra exposed ports (Neo4j bolt, ClickHouse HTTP)
+        // Extra exposed ports (Neo4j bolt, ClickHouse HTTP, Kafka controller)
         List<ExposedPort> exposedPorts = new ArrayList<>();
         exposedPorts.add(exposed);
         if (config.getDbType() == DbType.NEO4J) {
@@ -198,6 +206,11 @@ public class DockerDeployEngine {
             ExposedPort http = ExposedPort.tcp(8123);
             exposedPorts.add(http);
             portBindings.bind(http, Ports.Binding.bindPort(8123));
+        }
+        if (config.getDbType() == DbType.KAFKA) {
+            ExposedPort controller = ExposedPort.tcp(9093);
+            exposedPorts.add(controller);
+            portBindings.bind(controller, Ports.Binding.bindPort(9093));
         }
 
         // Create container
@@ -398,6 +411,9 @@ public class DockerDeployEngine {
                     value = config.getUsername();
                 }
             }
+
+            // Substitute {port} placeholder — used by KAFKA_ADVERTISED_LISTENERS
+            value = value.replace("{port}", String.valueOf(config.getHostPort()));
 
             env.add(ev.name() + "=" + value);
         }

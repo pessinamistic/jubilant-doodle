@@ -12,5 +12,7 @@ public enum DbType {
     ELASTICSEARCH,
     COUCHDB,
     NEO4J,
-    DYNAMODB_LOCAL
+    DYNAMODB_LOCAL,
+    RABBITMQ,
+    KAFKA
 }
