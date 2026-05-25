@@ -1,6 +1,7 @@
 package com.dbdeployer.api.dto;
 
-import com.dbdeployer.model.DbInstance;
+import com.dbdeployer.model.DeployedContainer;
+import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.InstanceStatus;
@@ -22,42 +23,47 @@ public record InstanceResponse(
         InstanceStatus status,
         DeployMethod deployMethod,
         String dataDirectory,
-        String connectionString,       // real — for copying
-        String connectionStringMasked, // masked — for display
+        String connectionString,        // real — for copying
+        String connectionStringMasked,  // masked — for display
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        LocalDateTime startedAt,       // time the container was last started (for uptime)
-        boolean isSystem,              // true = system DB — hide stop/remove actions
-        boolean isImported             // true = imported container — remove only untracks, does not delete
+        LocalDateTime startedAt,        // time the container was last started (for uptime)
+        boolean isSystem,               // true = system DB — hide stop/remove actions
+        boolean isImported              // true = imported container — remove only untracks, does not delete
 ) {
-    public static InstanceResponse from(DbInstance i,
+    /**
+     * Build an {@link InstanceResponse} from the two-table model.
+     * {@code container} may be {@code null} while a deploy is being set up.
+     */
+    public static InstanceResponse from(DeploymentConfig config,
+                                        DeployedContainer container,
                                         String connectionString,
                                         String connectionStringMasked,
                                         String displayName,
                                         String icon) {
         return new InstanceResponse(
-                i.getId(),
-                i.getName(),
-                i.getDbType(),
+                config.getId(),
+                config.getName(),
+                config.getDbType(),
                 displayName,
                 icon,
-                i.getVersion(),
-                i.getHostPort(),
-                i.getUsername(),
-                i.getPassword(),
-                i.getDatabaseName(),
-                i.getContainerId(),
-                i.getContainerName(),
-                i.getStatus(),
-                i.getDeployMethod(),
-                i.getDataDirectory(),
+                config.getVersion(),
+                config.getHostPort(),
+                config.getUsername(),
+                config.getPassword(),
+                config.getDatabaseName(),
+                container != null ? container.getContainerId()   : null,
+                container != null ? container.getContainerName() : null,
+                container != null ? container.getStatus()        : InstanceStatus.DEPLOYING,
+                config.getDeployMethod(),
+                container != null ? container.getDataDirectory() : null,
                 connectionString,
                 connectionStringMasked,
-                i.getCreatedAt(),
-                i.getUpdatedAt(),
-                i.getStartedAt(),
-                i.isSystem(),
-                i.isImported()
+                config.getCreatedAt(),
+                config.getUpdatedAt(),
+                container != null ? container.getStartedAt()     : null,
+                config.isSystem(),
+                config.isImported()
         );
     }
 }

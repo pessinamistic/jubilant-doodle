@@ -3,7 +3,8 @@ package com.dbdeployer.service;
 import com.dbdeployer.api.dto.*;
 import com.dbdeployer.deploy.*;
 import com.dbdeployer.model.*;
-import com.dbdeployer.store.DbInstanceRepository;
+import com.dbdeployer.store.DeployedContainerRepository;
+import com.dbdeployer.store.DeploymentConfigRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,168 +22,146 @@ public class DbInstanceService {
 
     private static final Logger log = LoggerFactory.getLogger(DbInstanceService.class);
 
-    private final DbInstanceRepository repo;
-    private final DockerDeployEngine docker;
-    private final ConnectionStringBuilder connBuilder;
-    private final OsDetector osDetector;
-    private final AsyncDeployer asyncDeployer;
+    private final DeploymentConfigRepository    configRepo;
+    private final DeployedContainerRepository   containerRepo;
+    private final DockerDeployEngine            docker;
+    private final ConnectionStringBuilder       connBuilder;
+    private final OsDetector                    osDetector;
+    private final AsyncDeployer                 asyncDeployer;
 
-    public DbInstanceService(DbInstanceRepository repo,
+    public DbInstanceService(DeploymentConfigRepository configRepo,
+                             DeployedContainerRepository containerRepo,
                              DockerDeployEngine docker,
                              ConnectionStringBuilder connBuilder,
                              OsDetector osDetector,
                              AsyncDeployer asyncDeployer) {
-        this.repo          = repo;
+        this.configRepo    = configRepo;
+        this.containerRepo = containerRepo;
         this.docker        = docker;
         this.connBuilder   = connBuilder;
         this.osDetector    = osDetector;
         this.asyncDeployer = asyncDeployer;
     }
 
-    public List<DbInstance> listAll() {
-        return repo.findAll();
+    // ── Queries ────────────────────────────────────────────────────────────────
+
+    /** Returns all configs (including removed ones — frontend decides what to show). */
+    public List<DeploymentConfig> listAll() {
+        return configRepo.findAll();
     }
 
-    public DbInstance getById(String id) {
-        return repo.findById(id)
+    public DeploymentConfig getById(String id) {
+        return configRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
     }
 
+    // ── Deploy ─────────────────────────────────────────────────────────────────
+
     @Transactional
-    public DbInstance deploy(DeployRequest req) {
-        if (repo.existsByName(req.name())) {
+    public DeploymentConfig deploy(DeployRequest req) {
+        if (configRepo.existsByName(req.name())) {
             throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
         }
-        if (repo.existsByHostPort(req.hostPort())) {
+        if (configRepo.existsByHostPort(req.hostPort())) {
             throw new IllegalArgumentException("Port " + req.hostPort() + " is already in use");
         }
 
         var def = DatabaseCatalog.get(req.dbType());
-        if (def == null) {
-            throw new IllegalArgumentException("Unsupported database type: " + req.dbType());
-        }
+        if (def == null) throw new IllegalArgumentException("Unsupported database type: " + req.dbType());
 
         // Apply catalog defaults for any credentials the user left blank
         String username     = resolveCredential(req.username(),     def, DatabaseCatalog.EnvVarType.TEXT);
         String password     = resolveCredential(req.password(),     def, DatabaseCatalog.EnvVarType.PASSWORD);
         String databaseName = resolveCredential(req.databaseName(), def, DatabaseCatalog.EnvVarType.DATABASE);
 
-        DbInstance instance = new DbInstance();
-        instance.setId(UUID.randomUUID().toString());
-        instance.setName(req.name());
-        instance.setDbType(req.dbType());
-        instance.setVersion(req.version());
-        instance.setHostPort(req.hostPort());
-        instance.setContainerPort(def.defaultPort());
-        instance.setUsername(username);
-        instance.setPassword(password);
-        instance.setDatabaseName(databaseName);
-        instance.setStatus(InstanceStatus.DEPLOYING);
-        instance.setDeployMethod(DeployMethod.DOCKER);
-        instance.setExtraEnvJson(req.extraEnvJson());
+        // ── Config row ──
+        DeploymentConfig config = new DeploymentConfig();
+        config.setId(UUID.randomUUID().toString());
+        config.setName(req.name());
+        config.setDbType(req.dbType());
+        config.setVersion(req.version());
+        config.setHostPort(req.hostPort());
+        config.setContainerPort(def.defaultPort());
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setDatabaseName(databaseName);
+        config.setDeployMethod(DeployMethod.DOCKER);
+        config.setExtraEnvJson(req.extraEnvJson());
+        configRepo.save(config);
 
-        repo.save(instance);
-        asyncDeployer.deploy(instance.getId());   // runs on @Async thread — request returns immediately
-        return instance;
+        // ── Container row ── (starts as DEPLOYING; async thread transitions it)
+        DeployedContainer container = new DeployedContainer();
+        container.setId(UUID.randomUUID().toString());
+        container.setConfig(config);
+        container.setStatus(InstanceStatus.DEPLOYING);
+        containerRepo.save(container);
+
+        config.setContainer(container);
+
+        // Fire async — objects passed directly, no re-fetch race
+        asyncDeployer.deploy(config, container);
+        return config;
     }
 
-    /**
-     * Returns the user-supplied value if non-blank, otherwise falls back to the
-     * first catalog EnvVar placeholder matching the given type.
-     */
-    private String resolveCredential(String supplied, DatabaseCatalog.DbDefinition def,
-                                     DatabaseCatalog.EnvVarType type) {
-        if (supplied != null && !supplied.isBlank()) return supplied;
-        return def.credentialEnvVars().stream()
-                .filter(ev -> ev.type() == type)
-                .map(DatabaseCatalog.EnvVar::placeholder)
-                .findFirst()
-                .orElse(null);
+    // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+    @Transactional
+    public DeploymentConfig startInstance(String id) {
+        DeploymentConfig config    = getById(id);
+        DeployedContainer container = requireContainer(config);
+        requireNotSystem(config, "start");
+        docker.start(container);
+        container.setStatus(InstanceStatus.RUNNING);
+        container.setStartedAt(docker.getStartedAt(container.getContainerId()));
+        containerRepo.save(container);
+        return config;
     }
 
     @Transactional
-    public DbInstance startInstance(String id) {
-        DbInstance instance = getById(id);
-        requireNotSystem(instance, "start");
-        docker.start(instance);
-        instance.setStatus(InstanceStatus.RUNNING);
-        instance.setStartedAt(docker.getStartedAt(instance.getContainerId()));
-        return repo.save(instance);
-    }
-
-    @Transactional
-    public DbInstance stopInstance(String id) {
-        DbInstance instance = getById(id);
-        requireNotSystem(instance, "stop");
-        docker.stop(instance);
-        instance.setStatus(InstanceStatus.STOPPED);
-        return repo.save(instance);
+    public DeploymentConfig stopInstance(String id) {
+        DeploymentConfig config    = getById(id);
+        DeployedContainer container = requireContainer(config);
+        requireNotSystem(config, "stop");
+        docker.stop(container);
+        container.setStatus(InstanceStatus.STOPPED);
+        containerRepo.save(container);
+        return config;
     }
 
     @Transactional
     public void removeInstance(String id) {
-        DbInstance instance = getById(id);
-        requireNotSystem(instance, "remove");
-        instance.setStatus(InstanceStatus.REMOVING);
-        repo.save(instance);
-        if (instance.isImported()) {
-            // Imported containers are only untracked — the Docker container is left intact
-            log.info("Untracking imported instance {} — container left intact", id);
+        DeploymentConfig config    = getById(id);
+        DeployedContainer container = requireContainer(config);
+        requireNotSystem(config, "remove");
+
+        container.setStatus(InstanceStatus.REMOVING);
+        containerRepo.save(container);
+
+        if (config.isImported()) {
+            log.info("Untracking imported instance '{}' — Docker container left intact", config.getName());
         } else {
             try {
-                docker.remove(instance);
+                docker.remove(container);
             } catch (Exception e) {
-                log.warn("Docker remove failed (may already be gone): {}", e.getMessage());
+                log.warn("Docker remove failed for '{}' (may already be gone): {}",
+                        config.getName(), e.getMessage());
             }
         }
-        repo.deleteById(id);
+
+        // Mark container as REMOVED (retain for history) — do NOT delete the rows
+        container.setStatus(InstanceStatus.REMOVED);
+        container.setRemovedAt(LocalDateTime.now());
+        containerRepo.save(container);
     }
+
+    // ── Import ─────────────────────────────────────────────────────────────────
 
     @Transactional
-    public void syncStatuses() {
-        repo.findAll().forEach(instance -> {
-            if (instance.getContainerId() != null) {
-                InstanceStatus current = docker.getStatus(instance);
-                boolean changed = current != instance.getStatus();
-                if (changed) {
-                    instance.setStatus(current);
-                }
-                // Refresh startedAt when running
-                if (current == InstanceStatus.RUNNING && instance.getStartedAt() == null) {
-                    LocalDateTime sa = docker.getStartedAt(instance.getContainerId());
-                    if (sa != null) {
-                        instance.setStartedAt(sa);
-                        changed = true;
-                    }
-                }
-                if (changed) repo.save(instance);
-            }
-        });
-    }
-
-    /**
-     * Returns Docker containers that are running but not yet tracked in db_instances.
-     * Filters to DB-relevant images only.
-     */
-    public List<DiscoveredContainerDto> discoverContainers() {
-        List<DbInstance> tracked = repo.findAll();
-        Set<String> trackedIds   = tracked.stream().map(DbInstance::getContainerId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        Set<String> trackedNames = tracked.stream().map(DbInstance::getContainerName)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        return docker.discoverContainers(trackedIds, trackedNames);
-    }
-
-    /**
-     * Registers an existing Docker container as a managed db_instance row
-     * without creating or modifying the container itself.
-     */
-    @Transactional
-    public DbInstance importContainer(ImportRequest req) {
-        if (repo.existsByName(req.name())) {
+    public DeploymentConfig importContainer(ImportRequest req) {
+        if (configRepo.existsByName(req.name())) {
             throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
         }
-        if (repo.existsByContainerId(req.containerId())) {
+        if (containerRepo.existsByContainerId(req.containerId())) {
             throw new IllegalArgumentException("Container " + req.containerId().substring(0, 12) + " is already tracked");
         }
 
@@ -193,45 +172,84 @@ public class DbInstanceService {
             throw new IllegalArgumentException("Unknown database type: " + req.dbType());
         }
 
-        DbInstance instance = new DbInstance();
-        instance.setId(UUID.randomUUID().toString());
-        instance.setName(req.name());
-        instance.setDbType(dbType);
-        instance.setVersion(req.version() != null && !req.version().isBlank() ? req.version() : "unknown");
-        instance.setHostPort(req.hostPort());
-        instance.setContainerPort(req.containerPort());
-        instance.setUsername(req.username());
-        instance.setPassword(req.password());
-        instance.setDatabaseName(req.databaseName());
-        instance.setContainerId(req.containerId());
-        instance.setContainerName(req.containerName());
-        instance.setStatus(docker.getStatus(instance));
-        instance.setDeployMethod(DeployMethod.DOCKER);
-        instance.setStartedAt(docker.getStartedAt(req.containerId()));
-        instance.setImported(true);  // imported containers are only untracked on remove
+        // ── Config row ──
+        DeploymentConfig config = new DeploymentConfig();
+        config.setId(UUID.randomUUID().toString());
+        config.setName(req.name());
+        config.setDbType(dbType);
+        config.setVersion(req.version() != null && !req.version().isBlank() ? req.version() : "unknown");
+        config.setHostPort(req.hostPort());
+        config.setContainerPort(req.containerPort());
+        config.setUsername(req.username());
+        config.setPassword(req.password());
+        config.setDatabaseName(req.databaseName());
+        config.setDeployMethod(DeployMethod.DOCKER);
+        config.setImported(true);
+        configRepo.save(config);
 
-        return repo.save(instance);
+        // ── Container row ──
+        DeployedContainer container = new DeployedContainer();
+        container.setId(UUID.randomUUID().toString());
+        container.setConfig(config);
+        container.setContainerId(req.containerId());
+        container.setContainerName(req.containerName());
+        container.setStatus(getContainerStatus(req.containerId()));
+        container.setStartedAt(docker.getStartedAt(req.containerId()));
+        containerRepo.save(container);
+
+        config.setContainer(container);
+        return config;
     }
+
+    // ── Status sync ────────────────────────────────────────────────────────────
 
     @Transactional
-    public DbInstance rename(String id, String newName) {
-        if (newName == null || newName.isBlank()) {
-            throw new IllegalArgumentException("Name cannot be blank");
-        }
-        String trimmed = newName.trim();
-        DbInstance instance = getById(id);
-        if (!trimmed.equals(instance.getName()) && repo.existsByName(trimmed)) {
-            throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
-        }
-        instance.setName(trimmed);
-        return repo.save(instance);
+    public void syncStatuses() {
+        containerRepo.findByStatusNot(InstanceStatus.REMOVED).forEach(container -> {
+            if (container.getContainerId() == null) return;
+            InstanceStatus current = docker.getStatus(container);
+            boolean changed = current != container.getStatus();
+            if (changed) container.setStatus(current);
+            if (current == InstanceStatus.RUNNING && container.getStartedAt() == null) {
+                LocalDateTime sa = docker.getStartedAt(container.getContainerId());
+                if (sa != null) { container.setStartedAt(sa); changed = true; }
+            }
+            if (changed) containerRepo.save(container);
+        });
     }
 
-    public String getConnectionString(String id) {        return connBuilder.build(getById(id));
+    // ── Discovery ──────────────────────────────────────────────────────────────
+
+    public List<DiscoveredContainerDto> discoverContainers() {
+        List<DeployedContainer> tracked = containerRepo.findAll();
+        Set<String> trackedIds   = tracked.stream().map(DeployedContainer::getContainerId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<String> trackedNames = tracked.stream().map(DeployedContainer::getContainerName)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        return docker.discoverContainers(trackedIds, trackedNames);
+    }
+
+    // ── Misc ───────────────────────────────────────────────────────────────────
+
+    @Transactional
+    public DeploymentConfig rename(String id, String newName) {
+        if (newName == null || newName.isBlank()) throw new IllegalArgumentException("Name cannot be blank");
+        String trimmed = newName.trim();
+        DeploymentConfig config = getById(id);
+        if (!trimmed.equals(config.getName()) && configRepo.existsByName(trimmed)) {
+            throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
+        }
+        config.setName(trimmed);
+        return configRepo.save(config);
+    }
+
+    public String getConnectionString(String id) {
+        return connBuilder.build(getById(id));
     }
 
     public String getLogs(String id, int tail) throws InterruptedException {
-        return docker.getLogs(getById(id), tail);
+        DeployedContainer container = requireContainer(getById(id));
+        return docker.getLogs(container, tail);
     }
 
     public OsDetector.SystemInfo getSystemInfo() {
@@ -240,10 +258,34 @@ public class DbInstanceService {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private void requireNotSystem(DbInstance instance, String action) {
-        if (instance.isSystem()) {
+    private void requireNotSystem(DeploymentConfig config, String action) {
+        if (config.isSystem()) {
             throw new IllegalArgumentException(
-                "The system database cannot be " + action + "ped. It is managed automatically by DB Deployer.");
+                    "The system database cannot be " + action + "ped. It is managed automatically by DB Deployer.");
         }
+    }
+
+    private DeployedContainer requireContainer(DeploymentConfig config) {
+        DeployedContainer c = config.getContainer();
+        if (c == null) throw new IllegalStateException(
+                "No container record found for instance '" + config.getName() + "'");
+        return c;
+    }
+
+    private String resolveCredential(String supplied, DatabaseCatalog.DbDefinition def,
+                                     DatabaseCatalog.EnvVarType type) {
+        if (supplied != null && !supplied.isBlank()) return supplied;
+        return def.credentialEnvVars().stream()
+                .filter(ev -> ev.type() == type)
+                .map(DatabaseCatalog.EnvVar::placeholder)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private InstanceStatus getContainerStatus(String containerId) {
+        // Build a minimal DeployedContainer just for the status check
+        DeployedContainer tmp = new DeployedContainer();
+        tmp.setContainerId(containerId);
+        return docker.getStatus(tmp);
     }
 }

@@ -5,5 +5,7 @@ public enum InstanceStatus {
     RUNNING,
     STOPPED,
     ERROR,
-    REMOVING
+    REMOVING,
+    /** Container has been stopped and deleted from Docker. Config record is retained for history. */
+    REMOVED
 }

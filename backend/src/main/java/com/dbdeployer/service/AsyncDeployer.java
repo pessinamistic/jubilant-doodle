@@ -1,9 +1,10 @@
 package com.dbdeployer.service;
 
 import com.dbdeployer.deploy.DockerDeployEngine;
-import com.dbdeployer.model.DbInstance;
+import com.dbdeployer.model.DeployedContainer;
+import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
-import com.dbdeployer.store.DbInstanceRepository;
+import com.dbdeployer.store.DeployedContainerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -19,27 +20,34 @@ public class AsyncDeployer {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncDeployer.class);
 
-    private final DbInstanceRepository repo;
-    private final DockerDeployEngine   docker;
+    private final DeployedContainerRepository containerRepo;
+    private final DockerDeployEngine          docker;
 
-    public AsyncDeployer(DbInstanceRepository repo, DockerDeployEngine docker) {
-        this.repo   = repo;
-        this.docker = docker;
+    public AsyncDeployer(DeployedContainerRepository containerRepo, DockerDeployEngine docker) {
+        this.containerRepo = containerRepo;
+        this.docker        = docker;
     }
 
+    /**
+     * Pull image → create → start container.
+     * Both objects are passed directly (not re-fetched) to avoid a transaction
+     * timing race where the async thread queries the DB before the caller's
+     * transaction has committed.
+     */
     @Async
-    public void deploy(String instanceId) {
-        DbInstance instance = repo.findById(instanceId)
-                .orElseThrow(() -> new IllegalStateException("Instance not found: " + instanceId));
+    public void deploy(DeploymentConfig config, DeployedContainer container) {
         try {
-            log.info("Async deploy starting for instance {} ({})", instance.getName(), instanceId);
-            instance = docker.deploy(instance);
-            instance.setStatus(InstanceStatus.RUNNING);
-            log.info("Async deploy complete for instance {} ({})", instance.getName(), instanceId);
+            log.info("Async deploy starting for '{}' ({})", config.getName(), config.getId());
+            docker.deploy(config, container);   // mutates container in-place
+            // status + containerId + startedAt are set by DockerDeployEngine.deploy()
+            log.info("Async deploy complete for '{}' — container {}", config.getName(),
+                    container.getContainerId() != null
+                            ? container.getContainerId().substring(0, 12) : "?");
         } catch (Exception e) {
-            log.error("Async deploy failed for instance {} ({}): {}", instance.getName(), instanceId, e.getMessage(), e);
-            instance.setStatus(InstanceStatus.ERROR);
+            log.error("Async deploy failed for '{}' ({}): {}",
+                    config.getName(), config.getId(), e.getMessage(), e);
+            container.setStatus(InstanceStatus.ERROR);
         }
-        repo.save(instance);
+        containerRepo.save(container);
     }
 }

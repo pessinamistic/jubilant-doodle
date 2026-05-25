@@ -1,10 +1,8 @@
 package com.dbdeployer.deploy;
 
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
-import com.dbdeployer.model.DbInstance;
-import com.dbdeployer.model.DbType;
-import com.dbdeployer.model.DeployMethod;
-import com.dbdeployer.model.InstanceStatus;
+import com.dbdeployer.model.*;
+import com.dbdeployer.config.DockerSocketResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
@@ -12,7 +10,6 @@ import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.*;
-import com.dbdeployer.config.DockerSocketResolver;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
@@ -77,14 +74,17 @@ public class DockerDeployEngine {
         }
     }
 
-    /** Pull image + create + start container, return updated instance with containerId + startedAt */
-    public DbInstance deploy(DbInstance instance) throws Exception {
-        var def = DatabaseCatalog.get(instance.getDbType());
-        String image = def.dockerImage() + ":" + instance.getVersion();
-        String containerName = "dbdeployer-" + instance.getName().toLowerCase().replaceAll("[^a-z0-9]", "-");
+    /**
+     * Pull image → create → start container.
+     * Populates {@code container.containerId}, {@code containerName}, {@code dataDirectory},
+     * {@code startedAt} in-place. The caller is responsible for persisting the container.
+     */
+    public void deploy(DeploymentConfig config, DeployedContainer container) throws Exception {
+        var def = DatabaseCatalog.get(config.getDbType());
+        String image = def.dockerImage() + ":" + config.getVersion();
+        String containerName = "dbdeployer-" + config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-");
 
-        instance.setContainerName(containerName);
-        instance.setDeployMethod(DeployMethod.DOCKER);
+        container.setContainerName(containerName);
 
         // Pull image
         log.info("Pulling image: {}", image);
@@ -93,41 +93,40 @@ public class DockerDeployEngine {
                 .awaitCompletion();
 
         // Build env vars
-        List<String> envVars = buildEnvVars(instance, def);
+        List<String> envVars = buildEnvVars(config, def);
 
         // Port binding
-        ExposedPort containerPort = ExposedPort.tcp(instance.getContainerPort());
+        ExposedPort exposed = ExposedPort.tcp(config.getContainerPort());
         Ports portBindings = new Ports();
-        portBindings.bind(containerPort, Ports.Binding.bindPort(instance.getHostPort()));
+        portBindings.bind(exposed, Ports.Binding.bindPort(config.getHostPort()));
 
         // Volume binding for data persistence
         List<Bind> binds = new ArrayList<>();
         if (def.dataVolumePath() != null) {
             Path hostDataDir = Paths.get(System.getProperty("user.home"),
-                    ".db-deployer", "data", instance.getId());
+                    ".db-deployer", "data", config.getId());
             Files.createDirectories(hostDataDir);
             binds.add(new Bind(hostDataDir.toAbsolutePath().toString(),
                     new Volume(def.dataVolumePath())));
-            instance.setDataDirectory(hostDataDir.toAbsolutePath().toString());
+            container.setDataDirectory(hostDataDir.toAbsolutePath().toString());
         }
 
-        // Extra exposed port for Neo4j bolt
+        // Extra exposed ports (Neo4j bolt, ClickHouse HTTP)
         List<ExposedPort> exposedPorts = new ArrayList<>();
-        exposedPorts.add(containerPort);
-        if (instance.getDbType() == DbType.NEO4J) {
-            ExposedPort boltPort = ExposedPort.tcp(7687);
-            exposedPorts.add(boltPort);
-            portBindings.bind(boltPort, Ports.Binding.bindPort(7687));
+        exposedPorts.add(exposed);
+        if (config.getDbType() == DbType.NEO4J) {
+            ExposedPort bolt = ExposedPort.tcp(7687);
+            exposedPorts.add(bolt);
+            portBindings.bind(bolt, Ports.Binding.bindPort(7687));
         }
-        // ClickHouse HTTP port
-        if (instance.getDbType() == DbType.CLICKHOUSE) {
-            ExposedPort httpPort = ExposedPort.tcp(8123);
-            exposedPorts.add(httpPort);
-            portBindings.bind(httpPort, Ports.Binding.bindPort(8123));
+        if (config.getDbType() == DbType.CLICKHOUSE) {
+            ExposedPort http = ExposedPort.tcp(8123);
+            exposedPorts.add(http);
+            portBindings.bind(http, Ports.Binding.bindPort(8123));
         }
 
         // Create container
-        CreateContainerResponse container = docker.createContainerCmd(image)
+        CreateContainerResponse created = docker.createContainerCmd(image)
                 .withName(containerName)
                 .withEnv(envVars)
                 .withExposedPorts(exposedPorts)
@@ -137,42 +136,59 @@ public class DockerDeployEngine {
                         .withRestartPolicy(RestartPolicy.unlessStoppedRestart()))
                 .exec();
 
-        instance.setContainerId(container.getId());
+        container.setContainerId(created.getId());
 
         // Start container
-        docker.startContainerCmd(container.getId()).exec();
-        instance.setStatus(InstanceStatus.RUNNING);
-        instance.setStartedAt(getStartedAt(container.getId()));
+        docker.startContainerCmd(created.getId()).exec();
+        container.setStatus(InstanceStatus.RUNNING);
+        container.setStartedAt(getStartedAt(created.getId()));
 
-        log.info("Container started: {} ({})", containerName, container.getId());
-        return instance;
+        log.info("Container started: {} ({})", containerName, created.getId());
     }
 
-    public void start(DbInstance instance) {
-        docker.startContainerCmd(instance.getContainerId()).exec();
+    public void start(DeployedContainer container) {
+        docker.startContainerCmd(container.getContainerId()).exec();
     }
 
-    public void stop(DbInstance instance) {
-        docker.stopContainerCmd(instance.getContainerId()).withTimeout(15).exec();
+    public void stop(DeployedContainer container) {
+        docker.stopContainerCmd(container.getContainerId()).withTimeout(15).exec();
     }
 
-    public void remove(DbInstance instance) {
+    public void remove(DeployedContainer container) {
         try {
-            docker.stopContainerCmd(instance.getContainerId()).withTimeout(5).exec();
+            docker.stopContainerCmd(container.getContainerId()).withTimeout(5).exec();
         } catch (Exception ignored) {}
-        docker.removeContainerCmd(instance.getContainerId()).withForce(true).exec();
+        docker.removeContainerCmd(container.getContainerId()).withForce(true).exec();
     }
 
-    public InstanceStatus getStatus(DbInstance instance) {
+    public InstanceStatus getStatus(DeployedContainer container) {
+        if (container.getContainerId() == null) return InstanceStatus.ERROR;
         try {
-            InspectContainerResponse info = docker.inspectContainerCmd(instance.getContainerId()).exec();
+            InspectContainerResponse info = docker.inspectContainerCmd(container.getContainerId()).exec();
             InspectContainerResponse.ContainerState state = info.getState();
-            if (Boolean.TRUE.equals(state.getRunning()))  return InstanceStatus.RUNNING;
-            if (Boolean.TRUE.equals(state.getPaused()))   return InstanceStatus.STOPPED;
+            if (Boolean.TRUE.equals(state.getRunning())) return InstanceStatus.RUNNING;
+            if (Boolean.TRUE.equals(state.getPaused()))  return InstanceStatus.STOPPED;
             return InstanceStatus.STOPPED;
         } catch (NotFoundException e) {
             return InstanceStatus.ERROR;
         }
+    }
+
+    /** Fetch last N lines of container logs */
+    public String getLogs(DeployedContainer container, int tail) throws InterruptedException {
+        StringBuilder sb = new StringBuilder();
+        docker.logContainerCmd(container.getContainerId())
+                .withStdOut(true)
+                .withStdErr(true)
+                .withTail(tail)
+                .exec(new com.github.dockerjava.api.async.ResultCallback.Adapter<>() {
+                    @Override
+                    public void onNext(Frame item) {
+                        sb.append(new String(item.getPayload()));
+                    }
+                })
+                .awaitCompletion();
+        return sb.toString();
     }
 
     /** Returns the container ID for a named container, or null if not found. */
@@ -185,9 +201,8 @@ public class DockerDeployEngine {
     }
 
     /**
-     * Returns the UTC time the container was last started, parsed from Docker's
-     * ISO-8601 "StartedAt" field. Returns null if the container hasn't started
-     * or the timestamp is the Docker zero value (0001-01-01).
+     * Returns the UTC time the container was last started, or null if the container
+     * hasn't started or the timestamp is the Docker zero value (0001-01-01).
      */
     public LocalDateTime getStartedAt(String containerId) {
         try {
@@ -204,7 +219,7 @@ public class DockerDeployEngine {
 
     /**
      * Lists all running Docker containers whose images look like a database engine
-     * and whose IDs/names are not already tracked by DB Deployer.
+     * and whose IDs / names are not already tracked by DB Deployer.
      */
     public List<DiscoveredContainerDto> discoverContainers(Set<String> trackedIds,
                                                            Set<String> trackedNames) {
@@ -219,21 +234,16 @@ public class DockerDeployEngine {
         List<DiscoveredContainerDto> result = new ArrayList<>();
 
         for (Container c : running) {
-            // Strip the leading "/" Docker adds to names
             String name = c.getNames() != null && c.getNames().length > 0
                     ? c.getNames()[0].replaceFirst("^/", "")
                     : c.getId().substring(0, 12);
 
-            // Skip already-tracked containers
-            if (trackedIds.contains(c.getId())) continue;
-            if (trackedNames.contains(name))    continue;
+            if (trackedIds.contains(c.getId()))  continue;
+            if (trackedNames.contains(name))     continue;
 
-            // Detect DB type from image
-            String image = c.getImage();
-            DbType dbType = detectDbType(image);
-            if (dbType == null) continue; // not a recognised DB image
+            DbType dbType = detectDbType(c.getImage());
+            if (dbType == null) continue;
 
-            // Pick the first public (host) port mapping
             Integer hostPort = null;
             int containerPort = 0;
             ContainerPort[] ports = c.getPorts();
@@ -246,7 +256,6 @@ public class DockerDeployEngine {
                     }
                 }
             }
-            // Fallback: use catalog default port
             if (containerPort == 0) {
                 var def = DatabaseCatalog.get(dbType);
                 if (def != null) containerPort = def.defaultPort();
@@ -257,36 +266,12 @@ public class DockerDeployEngine {
             String icon        = def != null ? def.icon()        : "🗄️";
 
             result.add(new DiscoveredContainerDto(
-                    c.getId(),
-                    name,
-                    image,
-                    dbType,
-                    displayName,
-                    icon,
-                    hostPort,
-                    containerPort,
-                    c.getState()
+                    c.getId(), name, c.getImage(), dbType,
+                    displayName, icon, hostPort, containerPort, c.getState()
             ));
         }
 
         return result;
-    }
-
-    /** Fetch last N lines of container logs */
-    public String getLogs(DbInstance instance, int tail) throws InterruptedException {
-        StringBuilder sb = new StringBuilder();
-        docker.logContainerCmd(instance.getContainerId())
-                .withStdOut(true)
-                .withStdErr(true)
-                .withTail(tail)
-                .exec(new com.github.dockerjava.api.async.ResultCallback.Adapter<>() {
-                    @Override
-                    public void onNext(Frame item) {
-                        sb.append(new String(item.getPayload()));
-                    }
-                })
-                .awaitCompletion();
-        return sb.toString();
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────
@@ -300,13 +285,13 @@ public class DockerDeployEngine {
         return null;
     }
 
-    private List<String> buildEnvVars(DbInstance instance, DatabaseCatalog.DbDefinition def) throws IOException {
+    private List<String> buildEnvVars(DeploymentConfig config,
+                                      DatabaseCatalog.DbDefinition def) throws IOException {
         List<String> env = new ArrayList<>();
 
-        // Extra custom env vars stored as JSON
         Map<String, String> extra = new LinkedHashMap<>();
-        if (instance.getExtraEnvJson() != null && !instance.getExtraEnvJson().isBlank()) {
-            extra = objectMapper.readValue(instance.getExtraEnvJson(),
+        if (config.getExtraEnvJson() != null && !config.getExtraEnvJson().isBlank()) {
+            extra = objectMapper.readValue(config.getExtraEnvJson(),
                     new TypeReference<Map<String, String>>() {});
         }
 
@@ -317,25 +302,25 @@ public class DockerDeployEngine {
                     case "POSTGRES_PASSWORD", "MYSQL_PASSWORD", "MARIADB_PASSWORD",
                          "MONGO_INITDB_ROOT_PASSWORD", "REDIS_PASSWORD",
                          "CASSANDRA_PASSWORD", "COUCHDB_PASSWORD",
-                         "CLICKHOUSE_PASSWORD", "ELASTIC_PASSWORD" -> instance.getPassword() != null && !instance.getPassword().isBlank()
-                            ? instance.getPassword() : ev.placeholder();
+                         "CLICKHOUSE_PASSWORD", "ELASTIC_PASSWORD" ->
+                            config.getPassword() != null && !config.getPassword().isBlank()
+                                    ? config.getPassword() : ev.placeholder();
                     case "MYSQL_ROOT_PASSWORD", "MARIADB_ROOT_PASSWORD", "SA_PASSWORD" ->
                             extra.getOrDefault(ev.name(), ev.placeholder());
                     default -> extra.getOrDefault(ev.name(), ev.placeholder());
                 };
-                case DATABASE -> instance.getDatabaseName() != null && !instance.getDatabaseName().isBlank()
-                        ? instance.getDatabaseName() : ev.placeholder();
+                case DATABASE -> config.getDatabaseName() != null && !config.getDatabaseName().isBlank()
+                        ? config.getDatabaseName() : ev.placeholder();
             };
 
-            // Username handling — covers both standard USER vars and DB-specific root username vars
             if (ev.type() == DatabaseCatalog.EnvVarType.TEXT) {
                 boolean isUsernameVar = ev.name().equals("MONGO_INITDB_ROOT_USERNAME")
                         || ev.name().equals("COUCHDB_USER")
                         || ev.name().equals("CLICKHOUSE_USER")
                         || ev.name().equals("ELASTIC_USERNAME")
                         || (ev.name().contains("USER") && !ev.name().contains("ROOT"));
-                if (isUsernameVar && instance.getUsername() != null && !instance.getUsername().isBlank()) {
-                    value = instance.getUsername();
+                if (isUsernameVar && config.getUsername() != null && !config.getUsername().isBlank()) {
+                    value = config.getUsername();
                 }
             }
 

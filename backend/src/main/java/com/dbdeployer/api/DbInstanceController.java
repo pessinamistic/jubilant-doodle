@@ -3,7 +3,7 @@ package com.dbdeployer.api;
 import com.dbdeployer.api.dto.*;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
-import com.dbdeployer.model.DbInstance;
+import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.service.DbInstanceService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import java.util.Map;
 @RequestMapping("/api")
 public class DbInstanceController {
 
-    private final DbInstanceService service;
+    private final DbInstanceService       service;
     private final ConnectionStringBuilder connBuilder;
 
     public DbInstanceController(DbInstanceService service, ConnectionStringBuilder connBuilder) {
@@ -42,16 +42,15 @@ public class DbInstanceController {
     /** Deploy a new database instance */
     @PostMapping("/instances")
     public ResponseEntity<InstanceResponse> deploy(@Valid @RequestBody DeployRequest req) {
-        DbInstance instance = service.deploy(req);
-        return ResponseEntity.accepted().body(toResponse(instance));
+        DeploymentConfig config = service.deploy(req);
+        return ResponseEntity.accepted().body(toResponse(config));
     }
 
     /** Rename an instance */
     @PatchMapping("/instances/{id}")
     public InstanceResponse rename(@PathVariable String id,
-                                   @RequestBody java.util.Map<String, String> body) {
-        String newName = body.get("name");
-        return toResponse(service.rename(id, newName));
+                                   @RequestBody Map<String, String> body) {
+        return toResponse(service.rename(id, body.get("name")));
     }
 
     /** Start a stopped instance */
@@ -66,7 +65,7 @@ public class DbInstanceController {
         return toResponse(service.stopInstance(id));
     }
 
-    /** Remove an instance (stop + delete container + remove from DB) */
+    /** Remove an instance (stop + delete container; keeps config + container rows in DB) */
     @DeleteMapping("/instances/{id}")
     public ResponseEntity<Void> remove(@PathVariable String id) {
         service.removeInstance(id);
@@ -83,16 +82,16 @@ public class DbInstanceController {
     /** Get connection string for an instance */
     @GetMapping("/instances/{id}/connection-string")
     public Map<String, String> connectionString(@PathVariable String id) {
-        DbInstance instance = service.getById(id);
+        DeploymentConfig config = service.getById(id);
         return Map.of(
-                "connectionString", connBuilder.build(instance),
-                "masked",           connBuilder.buildMasked(instance)
+                "connectionString", connBuilder.build(config),
+                "masked",           connBuilder.buildMasked(config)
         );
     }
 
     /**
      * Discover running Docker containers that look like databases but are not
-     * yet tracked in db_instances.
+     * yet tracked.
      */
     @GetMapping("/instances/discover")
     public List<DiscoveredContainerDto> discover() {
@@ -100,13 +99,13 @@ public class DbInstanceController {
     }
 
     /**
-     * Register a pre-existing Docker container as a managed db_instance row
-     * without touching the container itself.
+     * Register a pre-existing Docker container as a managed instance without
+     * touching the container itself.
      */
     @PostMapping("/instances/import")
     public ResponseEntity<InstanceResponse> importContainer(@RequestBody ImportRequest req) {
-        DbInstance imported = service.importContainer(req);
-        return ResponseEntity.ok(toResponse(imported));
+        DeploymentConfig config = service.importContainer(req);
+        return ResponseEntity.ok(toResponse(config));
     }
 
     /** List all supported database types with their catalog info */
@@ -137,12 +136,12 @@ public class DbInstanceController {
 
     // ── Helper ─────────────────────────────────────────────────────────────────
 
-    private InstanceResponse toResponse(DbInstance instance) {
-        var def    = DatabaseCatalog.get(instance.getDbType());
-        String displayName = def != null ? def.displayName() : instance.getDbType().name();
-        String icon        = def != null ? def.icon()        : "🗄️";
-        String conn        = connBuilder.build(instance);
-        String masked      = connBuilder.buildMasked(instance);
-        return InstanceResponse.from(instance, conn, masked, displayName, icon);
+    private InstanceResponse toResponse(DeploymentConfig config) {
+        var def       = DatabaseCatalog.get(config.getDbType());
+        String display = def != null ? def.displayName() : config.getDbType().name();
+        String icon    = def != null ? def.icon()        : "🗄️";
+        String conn    = connBuilder.build(config);
+        String masked  = connBuilder.buildMasked(config);
+        return InstanceResponse.from(config, config.getContainer(), conn, masked, display, icon);
     }
 }
