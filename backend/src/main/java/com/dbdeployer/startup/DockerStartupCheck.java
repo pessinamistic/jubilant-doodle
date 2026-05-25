@@ -1,0 +1,107 @@
+package com.dbdeployer.startup;
+
+import java.awt.Desktop;
+import java.awt.GraphicsEnvironment;
+import java.io.IOException;
+import java.net.URI;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+import com.dbdeployer.config.DockerHealthChecker;
+import com.dbdeployer.config.DockerHealthChecker.DockerStatus;
+import com.dbdeployer.deploy.OsDetector;
+
+/**
+ * Runs immediately after the Spring context starts.
+ *
+ * <ol>
+ *   <li>Probes the Docker daemon via a real socket ping.</li>
+ *   <li>If Docker is unreachable, logs an OS-specific remediation message
+ *       and exits with code 1 (fail-fast — Port Wrangler requires Docker).</li>
+ *   <li>If Docker is reachable, attempts to open the UI in the default browser
+ *       (only when running as a desktop app, i.e.\ a non-headless environment).</li>
+ * </ol>
+ */
+@Component
+public class DockerStartupCheck implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DockerStartupCheck.class);
+
+    private static final String SEPARATOR = "=".repeat(72);
+    private static final String UI_URL    = "http://localhost:8080";
+
+    private final DockerHealthChecker dockerHealthChecker;
+    private final OsDetector          osDetector;
+
+    public DockerStartupCheck(DockerHealthChecker dockerHealthChecker, OsDetector osDetector) {
+        this.dockerHealthChecker = dockerHealthChecker;
+        this.osDetector          = osDetector;
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        DockerStatus status = dockerHealthChecker.check();
+
+        if (!status.available()) {
+            printDockerMissingBanner(status);
+            System.exit(1);
+        }
+
+        log.info("Docker daemon is reachable at {}", status.dockerHost());
+        tryOpenBrowser();
+    }
+
+    // ── private helpers ───────────────────────────────────────────────────────
+
+    private void printDockerMissingBanner(DockerStatus status) {
+        String fix = remediation();
+        System.err.println();
+        System.err.println(SEPARATOR);
+        System.err.println("  PORT WRANGLER — DOCKER DAEMON NOT FOUND");
+        System.err.println(SEPARATOR);
+        System.err.println();
+        System.err.println("  Port Wrangler requires Docker to deploy and manage database");
+        System.err.println("  containers. The Docker daemon was not reachable at:");
+        System.err.println();
+        System.err.println("      " + status.dockerHost());
+        System.err.println();
+        if (status.errorMessage() != null) {
+            System.err.println("  Error: " + status.errorMessage());
+            System.err.println();
+        }
+        System.err.println("  How to fix (" + osDetector.detectOs().name() + "):");
+        System.err.println();
+        System.err.println("      " + fix);
+        System.err.println();
+        System.err.println(SEPARATOR);
+        System.err.println();
+    }
+
+    private String remediation() {
+        return switch (osDetector.detectOs()) {
+            case MACOS   -> "Start Docker Desktop, or run: colima start";
+            case LINUX   -> "Run: sudo systemctl start docker";
+            case WINDOWS -> "Open Docker Desktop from the Start Menu or system tray";
+            default      -> "Start the Docker daemon for your platform";
+        };
+    }
+
+    private void tryOpenBrowser() {
+        if (GraphicsEnvironment.isHeadless()) return;
+        if (!Desktop.isDesktopSupported())    return;
+
+        Desktop desktop = Desktop.getDesktop();
+        if (!desktop.isSupported(Desktop.Action.BROWSE)) return;
+
+        try {
+            desktop.browse(URI.create(UI_URL));
+            log.info("Opened Port Wrangler in the default browser: {}", UI_URL);
+        } catch (IOException e) {
+            log.debug("Could not open browser automatically: {}", e.getMessage());
+        }
+    }
+}
