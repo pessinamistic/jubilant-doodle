@@ -22,6 +22,7 @@ import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.api.dto.ImportRequest;
 import com.dbdeployer.api.dto.InstanceStatsResponse;
 import com.dbdeployer.api.dto.ReImportRequest;
+import com.dbdeployer.deploy.BrewDeployEngine;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
@@ -45,6 +46,7 @@ public class DbInstanceService {
     private final DeploymentConfigRepository    configRepo;
     private final DeployedContainerRepository   containerRepo;
     private final DockerDeployEngine            docker;
+    private final BrewDeployEngine              brew;
     private final ConnectionStringBuilder       connBuilder;
     private final OsDetector                    osDetector;
     private final PipelineOrchestrator          orchestrator;
@@ -54,6 +56,7 @@ public class DbInstanceService {
     public DbInstanceService(DeploymentConfigRepository configRepo,
                              DeployedContainerRepository containerRepo,
                              DockerDeployEngine docker,
+                             BrewDeployEngine brew,
                              ConnectionStringBuilder connBuilder,
                              OsDetector osDetector,
                              PipelineOrchestrator orchestrator,
@@ -62,6 +65,7 @@ public class DbInstanceService {
         this.configRepo    = configRepo;
         this.containerRepo = containerRepo;
         this.docker        = docker;
+        this.brew          = brew;
         this.connBuilder   = connBuilder;
         this.osDetector    = osDetector;
         this.orchestrator  = orchestrator;
@@ -170,9 +174,17 @@ public class DbInstanceService {
         DeploymentConfig config    = getById(id);
         DeployedContainer container = requireContainer(config);
         requireNotSystem(config, "start");
-        docker.start(container);
+        if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+            brew.startServiceByContainerId(container.getContainerId(), container.getContainerName());
+        } else {
+            docker.start(container);
+        }
         container.setStatus(InstanceStatus.RUNNING);
-        container.setStartedAt(docker.getStartedAt(container.getContainerId()));
+        if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+            container.setStartedAt(LocalDateTime.now());
+        } else {
+            container.setStartedAt(docker.getStartedAt(container.getContainerId()));
+        }
         containerRepo.save(container);
         return config;
     }
@@ -182,7 +194,11 @@ public class DbInstanceService {
         DeploymentConfig config    = getById(id);
         DeployedContainer container = requireContainer(config);
         requireNotSystem(config, "stop");
-        docker.stop(container);
+        if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+            brew.stopServiceByContainerId(container.getContainerId(), container.getContainerName());
+        } else {
+            docker.stop(container);
+        }
         container.setStatus(InstanceStatus.STOPPED);
         containerRepo.save(container);
         return config;
@@ -199,6 +215,8 @@ public class DbInstanceService {
 
         if (config.isImported()) {
             log.info("Untracking imported instance '{}' — Docker container left intact", config.getName());
+        } else if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+            log.info("Untracking Homebrew instance '{}' — Homebrew service left intact", config.getName());
         } else {
             try {
                 docker.remove(container);
@@ -253,12 +271,16 @@ public class DbInstanceService {
         });
 
         // Reuse the existing REMOVED row — update it in-place
+        DeployMethod importMethod = detectImportMethod(req.containerId());
+        config.setDeployMethod(importMethod);
+
         existing.setContainerId(req.containerId());
         existing.setContainerName(req.containerName());
-        existing.setStatus(getContainerStatus(req.containerId()));
-        existing.setStartedAt(docker.getStartedAt(req.containerId()));
+        existing.setStatus(getImportedStatus(req.containerId(), req.containerName(), importMethod));
+        existing.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
         existing.setLatestPipelineId(null);
         containerRepo.save(existing);
+        configRepo.save(config);
 
         log.info("Re-imported instance '{}' → container {}", config.getName(), req.containerId().substring(0, 12));
         return config;
@@ -280,6 +302,8 @@ public class DbInstanceService {
             throw new IllegalArgumentException("Unknown database type: " + req.dbType());
         }
 
+        DeployMethod importMethod = detectImportMethod(req.containerId());
+
         // ── Config row ──
         DeploymentConfig config = new DeploymentConfig();
         config.setId(UUID.randomUUID().toString());
@@ -291,7 +315,7 @@ public class DbInstanceService {
         config.setUsername(req.username());
         config.setPassword(req.password());
         config.setDatabaseName(req.databaseName());
-        config.setDeployMethod(DeployMethod.DOCKER);
+        config.setDeployMethod(importMethod);
         config.setImported(true);
         configRepo.save(config);
 
@@ -301,8 +325,8 @@ public class DbInstanceService {
         container.setConfig(config);
         container.setContainerId(req.containerId());
         container.setContainerName(req.containerName());
-        container.setStatus(getContainerStatus(req.containerId()));
-        container.setStartedAt(docker.getStartedAt(req.containerId()));
+        container.setStatus(getImportedStatus(req.containerId(), req.containerName(), importMethod));
+        container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
         containerRepo.save(container);
 
         config.setContainer(container);
@@ -316,10 +340,17 @@ public class DbInstanceService {
         containerRepo.findByStatusNot(InstanceStatus.REMOVED).forEach(container -> {
             // Skip containers still deploying with no containerId — DeploymentRecovery handles those on boot
             if (container.getContainerId() == null) return;
-            InstanceStatus current = docker.getStatus(container);
+            DeployMethod method = container.getConfig() != null
+                    ? container.getConfig().getDeployMethod()
+                    : DeployMethod.DOCKER;
+
+            InstanceStatus current = method == DeployMethod.HOMEBREW
+                    ? brew.getServiceStatusByContainerId(container.getContainerId(), container.getContainerName())
+                    : docker.getStatus(container);
+
             boolean changed = current != container.getStatus();
             if (changed) container.setStatus(current);
-            if (current == InstanceStatus.RUNNING && container.getStartedAt() == null) {
+            if (current == InstanceStatus.RUNNING && container.getStartedAt() == null && method != DeployMethod.HOMEBREW) {
                 LocalDateTime sa = docker.getStartedAt(container.getContainerId());
                 if (sa != null) { container.setStartedAt(sa); changed = true; }
             }
@@ -335,7 +366,12 @@ public class DbInstanceService {
                 .filter(Objects::nonNull).collect(Collectors.toSet());
         Set<String> trackedNames = tracked.stream().map(DeployedContainer::getContainerName)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
-        return docker.discoverContainers(trackedIds, trackedNames);
+
+        List<DiscoveredContainerDto> discovered = new java.util.ArrayList<>(
+                docker.discoverContainers(trackedIds, trackedNames)
+        );
+        discovered.addAll(brew.discoverServices(trackedIds, trackedNames));
+        return discovered;
     }
 
     // ── Misc ───────────────────────────────────────────────────────────────────
@@ -357,7 +393,12 @@ public class DbInstanceService {
     }
 
     public String getLogs(String id, int tail) throws InterruptedException {
-        DeployedContainer container = requireContainer(getById(id));
+        DeploymentConfig config = getById(id);
+        DeployedContainer container = requireContainer(config);
+        if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+            return "Logs are not available for Homebrew-managed services in this view. Use: brew services log "
+                    + (container.getContainerName() != null ? container.getContainerName() : "<service>");
+        }
         return docker.getLogs(container, tail);
     }
 
@@ -395,6 +436,26 @@ public class DbInstanceService {
         DeployedContainer tmp = new DeployedContainer();
         tmp.setContainerId(containerId);
         return docker.getStatus(tmp);
+    }
+
+    private DeployMethod detectImportMethod(String containerId) {
+        if (containerId != null && containerId.startsWith("brew:")) {
+            return DeployMethod.HOMEBREW;
+        }
+        return DeployMethod.DOCKER;
+    }
+
+    private InstanceStatus getImportedStatus(String containerId, String containerName, DeployMethod method) {
+        return method == DeployMethod.HOMEBREW
+                ? brew.getServiceStatusByContainerId(containerId, containerName)
+                : getContainerStatus(containerId);
+    }
+
+    private LocalDateTime getImportedStartedAt(String containerId, String containerName, DeployMethod method) {
+        if (method == DeployMethod.HOMEBREW) {
+            return null;
+        }
+        return docker.getStartedAt(containerId);
     }
 
     private void deleteDirectoryRecursive(Path path) throws IOException {
