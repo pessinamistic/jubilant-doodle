@@ -12,7 +12,7 @@ import {
   ServerIcon, ClockIcon, HashtagIcon, CircleStackIcon,
   FolderIcon, KeyIcon, UserIcon, GlobeAltIcon,
   EyeIcon, EyeSlashIcon, ClipboardDocumentIcon, ClipboardDocumentCheckIcon,
-  RocketLaunchIcon,
+  RocketLaunchIcon, LinkSlashIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -51,6 +51,7 @@ export function InstanceDetailPage() {
   }, [load])
 
   const handle = (fn, label, redirectAfter = false) => async () => {
+    const verb = label.toLowerCase()
     if (!confirm(`${label} "${instance?.name}"?`)) return
     setBusy(true)
     try {
@@ -155,10 +156,17 @@ export function InstanceDetailPage() {
             )}
             {!instance.isSystem && (
               <button
-                onClick={handle(removeInstance, 'Remove', true)}
+                onClick={handle(removeInstance, instance.isImported ? 'Untrack' : 'Remove', true)}
                 disabled={isBusy}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40">
-                <TrashIcon className="w-4 h-4" /> Remove
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 ${
+                  instance.isImported
+                    ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
+                    : 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20'
+                }`}>
+                {instance.isImported
+                  ? <><LinkSlashIcon className="w-4 h-4" /> Untrack</>
+                  : <><TrashIcon className="w-4 h-4" /> Remove</>
+                }
               </button>
             )}
           </div>

@@ -7,7 +7,8 @@ import { ImportModal } from '../components/ImportModal'
 import {
   PlusIcon, MagnifyingGlassIcon, CloudArrowDownIcon,
   CircleStackIcon, PlayIcon, StopCircleIcon,
-  ArrowPathIcon, ExclamationTriangleIcon,
+  ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -20,6 +21,7 @@ export function InstancesPage() {
   const [showImport, setShowImport]     = useState(false)
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [showRemoved, setShowRemoved]   = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -53,12 +55,16 @@ export function InstancesPage() {
     load()
   }
 
-  // Derived stats
-  const total     = instances.length
-  const running   = instances.filter(i => i.status === 'RUNNING').length
-  const stopped   = instances.filter(i => i.status === 'STOPPED').length
-  const deploying = instances.filter(i => i.status === 'DEPLOYING').length
-  const errored   = instances.filter(i => i.status === 'ERROR').length
+  // Split active vs removed
+  const activeInstances  = instances.filter(i => i.status !== 'REMOVED')
+  const removedInstances = instances.filter(i => i.status === 'REMOVED')
+
+  // Derived stats (active only)
+  const total     = activeInstances.length
+  const running   = activeInstances.filter(i => i.status === 'RUNNING').length
+  const stopped   = activeInstances.filter(i => i.status === 'STOPPED').length
+  const deploying = activeInstances.filter(i => i.status === 'DEPLOYING').length
+  const errored   = activeInstances.filter(i => i.status === 'ERROR').length
 
   const stats = [
     {
@@ -104,11 +110,17 @@ export function InstancesPage() {
     },
   ]
 
-  const filtered = instances
+  const filtered = activeInstances
     .filter(i => statusFilter === 'ALL' || i.status === statusFilter)
     .filter(i => !search
       || i.name.toLowerCase().includes(search.toLowerCase())
       || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase()))
+
+  const filteredRemoved = removedInstances.filter(i =>
+    !search
+    || i.name.toLowerCase().includes(search.toLowerCase())
+    || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <AppShell onDeploy={() => setShowModal(true)} onRefresh={load}>
@@ -118,7 +130,8 @@ export function InstancesPage() {
         <div>
           <h1 className="text-xl font-semibold text-white">Instances</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {total} total &nbsp;·&nbsp; {running} running
+            {total} active &nbsp;·&nbsp; {running} running
+            {removedInstances.length > 0 && <> &nbsp;·&nbsp; {removedInstances.length} removed</>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -188,20 +201,55 @@ export function InstancesPage() {
         </div>
       </div>
 
-      {/* ── Card grid ── */}
+      {/* ── Active card grid ── */}
       {loading ? (
         <div className="flex items-center justify-center py-24 text-gray-500 gap-2">
           <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           Loading instances…
         </div>
+      ) : filtered.length === 0 && activeInstances.length === 0 ? (
+        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={false} />
       ) : filtered.length === 0 ? (
-        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={instances.length > 0} />
+        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={true} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(instance => (
             <InstanceCard key={instance.id} instance={instance} onRefresh={load} />
           ))}
         </div>
+      )}
+
+      {/* ── Removed section ── */}
+      {!loading && (filteredRemoved.length > 0 || removedInstances.length > 0) && (
+        <section className="mt-10">
+          <button
+            onClick={() => setShowRemoved(v => !v)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-3 group"
+          >
+            <div className="flex items-center justify-center w-5 h-5 rounded bg-gray-500/10 border border-gray-500/20">
+              <TrashIcon className="w-3 h-3" />
+            </div>
+            <span className="font-medium">Removed</span>
+            <span className="text-xs text-gray-600 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+              {removedInstances.length}
+            </span>
+            <ChevronDownIcon
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${showRemoved ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {showRemoved && (
+            filteredRemoved.length === 0 ? (
+              <p className="text-xs text-gray-600 pl-1">No removed instances match the current search.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 opacity-60 hover:opacity-80 transition-opacity">
+                {filteredRemoved.map(instance => (
+                  <InstanceCard key={instance.id} instance={instance} onRefresh={load} />
+                ))}
+              </div>
+            )
+          )}
+        </section>
       )}
 
       {showModal && (
