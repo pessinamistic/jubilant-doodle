@@ -49,12 +49,8 @@ tasks.withType<Test> {
 //   macOS:   ./gradlew jpackageInstaller -Pjpackage.type=dmg
 //   Windows: ./gradlew jpackageInstaller -Pjpackage.type=exe
 //
-// The task depends on bootJar so the fat JAR is always fresh before packaging.
+// Uses ProcessBuilder directly — Project.exec{} was removed in Gradle 9.
 // Output lands in build/dist/.
-//
-// NOTE: uses a plain task + exec {} (not the Exec task type) so that the
-// command can be built dynamically in doLast without triggering Gradle 9
-// configuration-time executable validation.
 
 val jpackageType: String = findProperty("jpackage.type")?.toString() ?: "dmg"
 
@@ -69,13 +65,12 @@ tasks.register("jpackageInstaller") {
             ?.firstOrNull { it.name.endsWith(".jar") && !it.name.endsWith("-plain.jar") }
             ?: error("bootJar output not found in ${jarsDir.absolutePath}")
 
-        // Prefer JAVA_HOME env (set by actions/setup-java) over the JRE
-        // that Gradle bootstrapped itself with (which may not have jpackage).
-        val javaHome   = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
-        val isWindows  = System.getProperty("os.name", "").lowercase().contains("win")
+        // Prefer JAVA_HOME env (set by actions/setup-java) over the JRE that
+        // Gradle bootstrapped itself with — that one may not have jpackage.
+        val javaHome    = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
+        val isWindows   = System.getProperty("os.name", "").lowercase().contains("win")
         val jpackageBin = "$javaHome/bin/jpackage${if (isWindows) ".exe" else ""}"
-
-        val appVersion = project.version.toString().replace("-SNAPSHOT", "")
+        val appVersion  = project.version.toString().replace("-SNAPSHOT", "")
 
         val cmd = mutableListOf(
             jpackageBin,
@@ -86,8 +81,7 @@ tasks.register("jpackageInstaller") {
             "--description",  "Manage and deploy local database instances",
             "--input",        jarsDir.absolutePath,
             "--main-jar",     mainJar.name,
-            // --main-class is intentionally omitted: jpackage reads Main-Class
-            // from the fat JAR's MANIFEST.MF (set by Spring Boot's bootJar).
+            // --main-class omitted: jpackage reads Main-Class from MANIFEST.MF
             "--dest",         distDir.absolutePath,
             "--java-options", "-Xmx256m",
         )
@@ -97,10 +91,12 @@ tasks.register("jpackageInstaller") {
             "exe" -> cmd += listOf("--win-dir-chooser", "--win-menu", "--win-shortcut")
         }
 
-        logger.lifecycle("jpackageInstaller: running {}", cmd.joinToString(" "))
+        logger.lifecycle("jpackageInstaller: {}", cmd.joinToString(" "))
 
-        exec {
-            commandLine(cmd)
-        }
+        val process = ProcessBuilder(cmd)
+            .inheritIO()
+            .start()
+        val exitCode = process.waitFor()
+        if (exitCode != 0) error("jpackage failed with exit code $exitCode")
     }
 }
