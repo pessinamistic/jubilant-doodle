@@ -213,21 +213,22 @@ public class DbInstanceService {
         if (existing.getStatus() != InstanceStatus.REMOVED) {
             throw new IllegalArgumentException("Instance '" + config.getName() + "' is not in REMOVED state");
         }
-        if (containerRepo.existsByContainerId(req.containerId())) {
-            throw new IllegalArgumentException("Container " + req.containerId().substring(0, 12) + " is already tracked");
-        }
 
-        DeployedContainer container = new DeployedContainer();
-        container.setId(java.util.UUID.randomUUID().toString());
-        container.setConfig(config);
-        container.setContainerId(req.containerId());
-        container.setContainerName(req.containerName());
-        container.setStatus(getContainerStatus(req.containerId()));
-        container.setStartedAt(docker.getStartedAt(req.containerId()));
-        containerRepo.save(container);
+        // Check if the container ID is already tracked by a *different* instance
+        containerRepo.findByContainerId(req.containerId()).ifPresent(other -> {
+            if (!other.getId().equals(existing.getId())) {
+                throw new IllegalArgumentException(
+                        "Container " + req.containerId().substring(0, 12) + " is already tracked by another instance");
+            }
+        });
 
-        config.setContainer(container);
-        configRepo.save(config);
+        // Reuse the existing REMOVED row — update it in-place
+        existing.setContainerId(req.containerId());
+        existing.setContainerName(req.containerName());
+        existing.setStatus(getContainerStatus(req.containerId()));
+        existing.setStartedAt(docker.getStartedAt(req.containerId()));
+        existing.setLatestPipelineId(null);
+        containerRepo.save(existing);
 
         log.info("Re-imported instance '{}' → container {}", config.getName(), req.containerId().substring(0, 12));
         return config;
