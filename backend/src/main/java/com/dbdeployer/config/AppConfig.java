@@ -1,5 +1,7 @@
 package com.dbdeployer.config;
 
+import com.dbdeployer.pipeline.PipelineProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -9,6 +11,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @EnableAsync
 @EnableScheduling
+@EnableConfigurationProperties(PipelineProperties.class)
 public class AppConfig implements WebMvcConfigurer {
 
     @Override

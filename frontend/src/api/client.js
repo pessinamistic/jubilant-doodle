@@ -16,3 +16,4 @@ export const getSystemInfo       = ()             => api.get('/system').then(r =
 export const discoverContainers  = ()             => api.get('/instances/discover').then(r => r.data)
 export const importContainer     = (data)         => api.post('/instances/import', data).then(r => r.data)
 export const renameInstance      = (id, name)     => api.patch(`/instances/${id}`, { name }).then(r => r.data)
+export const getPipeline         = (id)           => api.get(`/instances/${id}/pipeline`).then(r => r.data)

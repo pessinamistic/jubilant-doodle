@@ -37,6 +37,8 @@ dbdeployer:
     username: dbdeployer
     password: dbdeployer_internal
     database: dbdeployer
+  pipeline:
+    step-delay-ms: 1500
 
 logging:
   level:

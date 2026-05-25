@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getInstance, startInstance, stopInstance, removeInstance, getLogs,
+  getInstance, startInstance, stopInstance, removeInstance, getLogs, getPipeline,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
@@ -12,11 +12,13 @@ import {
   ServerIcon, ClockIcon, HashtagIcon, CircleStackIcon,
   FolderIcon, KeyIcon, UserIcon, GlobeAltIcon,
   EyeIcon, EyeSlashIcon, ClipboardDocumentIcon, ClipboardDocumentCheckIcon,
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
 const TABS = [
   { id: 'overview',       label: 'Overview',       icon: <ChartBarIcon className="w-4 h-4" /> },
+  { id: 'pipeline',       label: 'Pipeline',        icon: <RocketLaunchIcon className="w-4 h-4" /> },
   { id: 'configuration',  label: 'Configuration',  icon: <Cog6ToothIcon className="w-4 h-4" /> },
   { id: 'logs',           label: 'Logs',            icon: <DocumentTextIcon className="w-4 h-4" /> },
 ]
@@ -176,6 +178,7 @@ export function InstanceDetailPage() {
 
       {/* ── Tab content ── */}
       {activeTab === 'overview'      && <OverviewTab      instance={instance} />}
+      {activeTab === 'pipeline'      && <PipelineTab      instanceId={id} instance={instance} />}
       {activeTab === 'configuration' && <ConfigurationTab instance={instance} />}
       {activeTab === 'logs'          && <LogsTab          instanceId={id} isRunning={isRunning} />}
     </AppShell>
@@ -436,8 +439,221 @@ function ConfigRow({ row, showPassword, setShowPassword, copied, onCopy }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  Logs Tab                                                                   */
+/*  Pipeline Tab                                                               */
 /* ─────────────────────────────────────────────────────────────────────────── */
+const STEP_COLORS = {
+  PENDING:   { dot: '#6b7280', label: 'text-gray-400',  badge: 'bg-gray-500/10 border-gray-500/20 text-gray-400' },
+  RUNNING:   { dot: '#60a5fa', label: 'text-blue-400',  badge: 'bg-blue-500/10  border-blue-500/20  text-blue-400' },
+  SUCCESS:   { dot: '#22c55e', label: 'text-green-400', badge: 'bg-green-500/10 border-green-500/20 text-green-400' },
+  FAILED:    { dot: '#ef4444', label: 'text-red-400',   badge: 'bg-red-500/10   border-red-500/20   text-red-400' },
+  SKIPPED:   { dot: '#a78bfa', label: 'text-purple-400',badge: 'bg-purple-500/10 border-purple-500/20 text-purple-400' },
+}
+
+const PIPELINE_STATUS_BADGE = {
+  PENDING:    'bg-gray-500/10  border-gray-500/20  text-gray-400',
+  RUNNING:    'bg-blue-500/10  border-blue-500/20  text-blue-400',
+  SUCCESS:    'bg-green-500/10 border-green-500/20 text-green-400',
+  FAILED:     'bg-red-500/10   border-red-500/20   text-red-400',
+  CANCELLED:  'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+}
+
+const STEP_LABELS = {
+  IMAGE_PULL:        'Pull Image',
+  CONTAINER_CREATE:  'Create Container',
+  CONTAINER_START:   'Start Container',
+  FINALISE:          'Finalise',
+}
+
+function PipelineTab({ instanceId, instance }) {
+  const [pipeline, setPipeline] = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
+
+  const isActive = ['DEPLOYING', 'REMOVING'].includes(instance?.status)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await getPipeline(instanceId)
+      setPipeline(data)
+      setError(null)
+    } catch (e) {
+      if (e.response?.status === 404) {
+        setPipeline(null)
+        setError(null)
+      } else {
+        setError('Failed to load pipeline data')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [instanceId])
+
+  useEffect(() => { load() }, [load])
+
+  // Poll while instance is actively deploying
+  useEffect(() => {
+    if (!isActive) return
+    const t = setInterval(load, 2_000)
+    return () => clearInterval(t)
+  }, [isActive, load])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-12 text-gray-500 justify-center">
+        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        Loading pipeline…
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="card p-6 text-center text-red-400 text-sm">{error}</div>
+    )
+  }
+
+  if (!pipeline) {
+    return (
+      <div className="card p-10 text-center">
+        <RocketLaunchIcon className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+        <p className="text-gray-400 text-sm">No pipeline found for this instance.</p>
+        <p className="text-gray-600 text-xs mt-1">Pipeline data is recorded the first time this instance is deployed.</p>
+      </div>
+    )
+  }
+
+  const pipelineBadge = PIPELINE_STATUS_BADGE[pipeline.status] ?? PIPELINE_STATUS_BADGE.PENDING
+  const steps = pipeline.steps ?? []
+  const completedSteps = steps.filter(s => s.status === 'SUCCESS').length
+  const totalSteps = steps.length
+  const progressPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
+
+  const fmt = (iso) => iso ? new Date(iso).toLocaleTimeString() : '—'
+  const dur = (start, end) => {
+    if (!start) return null
+    const ms = (end ? new Date(end) : new Date()) - new Date(start)
+    if (ms < 1000) return `${ms}ms`
+    return `${(ms / 1000).toFixed(1)}s`
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Pipeline summary card */}
+      <div className="card p-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${pipelineBadge}`}>
+                {pipeline.status}
+              </span>
+              <span className="text-xs text-gray-500 font-mono">#{pipeline.id?.slice(-8)}</span>
+            </div>
+            <p className="text-white font-medium text-sm">Deploy Pipeline</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Started {fmt(pipeline.startedAt)}
+              {pipeline.completedAt && <> · Finished {fmt(pipeline.completedAt)}</>}
+              {pipeline.startedAt && (
+                <> · <span className="text-gray-400">{dur(pipeline.startedAt, pipeline.completedAt)}</span></>
+              )}
+            </p>
+          </div>
+          <button onClick={load} className="btn-ghost flex items-center gap-1.5 text-xs">
+            <ArrowPathIcon className="w-3.5 h-3.5" />
+            Refresh
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        {pipeline.status === 'RUNNING' && (
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+              <span>{completedSteps} / {totalSteps} steps</span>
+              <span>{progressPct}%</span>
+            </div>
+            <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+        {pipeline.status === 'SUCCESS' && (
+          <div className="mt-4 h-1.5 bg-green-500/30 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 rounded-full w-full" />
+          </div>
+        )}
+        {pipeline.status === 'FAILED' && pipeline.errorCode && (
+          <div className="mt-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 font-mono">
+            Error: {pipeline.errorCode}
+            {pipeline.errorMessage && <p className="mt-1 text-red-400/70">{pipeline.errorMessage}</p>}
+          </div>
+        )}
+      </div>
+
+      {/* Step list */}
+      <div className="card overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Steps</p>
+        </div>
+        <div className="divide-y divide-white/[0.04]">
+          {steps.length === 0 && (
+            <p className="text-xs text-gray-500 px-5 py-4">No steps recorded.</p>
+          )}
+          {steps.map((step, idx) => {
+            const c = STEP_COLORS[step.status] ?? STEP_COLORS.PENDING
+            const isRunning = step.status === 'RUNNING'
+            const label = STEP_LABELS[step.stepType] ?? step.stepType
+            return (
+              <div key={step.id ?? idx} className="flex items-start gap-4 px-5 py-4">
+                {/* Step indicator */}
+                <div className="flex flex-col items-center pt-0.5 shrink-0">
+                  <div
+                    className={`w-3 h-3 rounded-full border-2 ${isRunning ? 'animate-pulse' : ''}`}
+                    style={{ backgroundColor: c.dot, borderColor: c.dot }}
+                  />
+                  {idx < steps.length - 1 && (
+                    <div className="w-px h-full min-h-[28px] bg-white/[0.06] mt-1" />
+                  )}
+                </div>
+
+                {/* Step details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-white font-medium">{label}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${c.badge}`}>
+                      {step.status}
+                    </span>
+                    {isRunning && (
+                      <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
+                    {step.startedAt && <span>Started {fmt(step.startedAt)}</span>}
+                    {step.completedAt && <span>· Finished {fmt(step.completedAt)}</span>}
+                    {step.startedAt && (
+                      <span className="text-gray-400">· {dur(step.startedAt, step.completedAt)}</span>
+                    )}
+                  </div>
+                  {step.errorMessage && (
+                    <p className="mt-1.5 text-xs text-red-400 font-mono bg-red-500/5 border border-red-500/10 rounded px-2 py-1.5">
+                      {step.errorMessage}
+                    </p>
+                  )}
+                </div>
+
+                {/* Step number */}
+                <span className="text-xs text-gray-600 font-mono shrink-0 pt-0.5">
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
 function LogsTab({ instanceId, isRunning }) {
   const [logs, setLogs]         = useState('')
   const [loading, setLoading]   = useState(false)

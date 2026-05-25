@@ -48,6 +48,10 @@ public class DeployedContainer {
     @Column(name = "removed_at")
     private LocalDateTime removedAt;
 
+    /** ID of the most recent {@link com.dbdeployer.pipeline.model.DeploymentPipeline} for this container. */
+    @Column(name = "latest_pipeline_id")
+    private String latestPipelineId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -90,6 +94,9 @@ public class DeployedContainer {
 
     public LocalDateTime getRemovedAt() { return removedAt; }
     public void setRemovedAt(LocalDateTime removedAt) { this.removedAt = removedAt; }
+
+    public String getLatestPipelineId() { return latestPipelineId; }
+    public void setLatestPipelineId(String latestPipelineId) { this.latestPipelineId = latestPipelineId; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

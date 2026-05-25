@@ -79,6 +79,13 @@ public class DbInstanceController {
         return Map.of("logs", service.getLogs(id, tail));
     }
 
+    /** Get the latest deploy pipeline for an instance */
+    @GetMapping("/instances/{id}/pipeline")
+    public ResponseEntity<PipelineResponse> pipeline(@PathVariable String id) {
+        PipelineResponse resp = service.getLatestPipeline(id);
+        return resp != null ? ResponseEntity.ok(resp) : ResponseEntity.notFound().build();
+    }
+
     /** Get connection string for an instance */
     @GetMapping("/instances/{id}/connection-string")
     public Map<String, String> connectionString(@PathVariable String id) {

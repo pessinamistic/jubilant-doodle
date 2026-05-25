@@ -17,6 +17,7 @@ const STATUS_COLORS = {
   DEPLOYING: '#60a5fa',
   ERROR:     '#ef4444',
   REMOVING:  '#fb923c',
+  REMOVED:   '#374151',
 }
 
 export function InstanceCard({ instance, onRefresh }) {

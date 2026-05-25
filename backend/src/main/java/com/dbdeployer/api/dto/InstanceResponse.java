@@ -29,7 +29,8 @@ public record InstanceResponse(
         LocalDateTime updatedAt,
         LocalDateTime startedAt,        // time the container was last started (for uptime)
         boolean isSystem,               // true = system DB — hide stop/remove actions
-        boolean isImported              // true = imported container — remove only untracks, does not delete
+        boolean isImported,             // true = imported container — remove only untracks, does not delete
+        String latestPipelineId         // ID of the most recent deploy pipeline, if any
 ) {
     /**
      * Build an {@link InstanceResponse} from the two-table model.
@@ -63,7 +64,8 @@ public record InstanceResponse(
                 config.getUpdatedAt(),
                 container != null ? container.getStartedAt()     : null,
                 config.isSystem(),
-                config.isImported()
+                config.isImported(),
+                container != null ? container.getLatestPipelineId() : null
         );
     }
 }

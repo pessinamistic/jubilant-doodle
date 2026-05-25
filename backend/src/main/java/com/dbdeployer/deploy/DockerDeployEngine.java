@@ -63,6 +63,81 @@ public class DockerDeployEngine {
         this.docker = DockerClientImpl.getInstance(config, httpClient);
     }
 
+    // ── Granular step methods (used by pipeline step impls) ───────────────────
+
+    /**
+     * Pull the named Docker image (e.g. {@code postgres:16}).
+     * Blocks until the pull is complete.
+     */
+    public void pullImage(String image) throws Exception {
+        docker.pullImageCmd(image)
+                .start()
+                .awaitCompletion();
+    }
+
+    /**
+     * Create (but do not start) a Docker container for the given config.
+     * Populates {@code container.containerId}, {@code containerName}, and
+     * {@code dataDirectory} in-place. The caller must persist.
+     */
+    public void createContainer(DeploymentConfig config, DeployedContainer container) throws Exception {
+        var def = DatabaseCatalog.get(config.getDbType());
+        String image         = def.dockerImage() + ":" + config.getVersion();
+        String containerName = "dbdeployer-" + config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-");
+
+        container.setContainerName(containerName);
+
+        List<String> envVars = buildEnvVars(config, def);
+
+        ExposedPort exposed = ExposedPort.tcp(config.getContainerPort());
+        Ports portBindings  = new Ports();
+        portBindings.bind(exposed, Ports.Binding.bindPort(config.getHostPort()));
+
+        List<Bind> binds = new ArrayList<>();
+        if (def.dataVolumePath() != null) {
+            Path hostDataDir = Paths.get(System.getProperty("user.home"),
+                    ".db-deployer", "data", config.getId());
+            Files.createDirectories(hostDataDir);
+            binds.add(new Bind(hostDataDir.toAbsolutePath().toString(),
+                    new Volume(def.dataVolumePath())));
+            container.setDataDirectory(hostDataDir.toAbsolutePath().toString());
+        }
+
+        List<ExposedPort> exposedPorts = new ArrayList<>();
+        exposedPorts.add(exposed);
+        if (config.getDbType() == DbType.NEO4J) {
+            ExposedPort bolt = ExposedPort.tcp(7687);
+            exposedPorts.add(bolt);
+            portBindings.bind(bolt, Ports.Binding.bindPort(7687));
+        }
+        if (config.getDbType() == DbType.CLICKHOUSE) {
+            ExposedPort http = ExposedPort.tcp(8123);
+            exposedPorts.add(http);
+            portBindings.bind(http, Ports.Binding.bindPort(8123));
+        }
+
+        CreateContainerResponse created = docker.createContainerCmd(image)
+                .withName(containerName)
+                .withEnv(envVars)
+                .withExposedPorts(exposedPorts)
+                .withHostConfig(HostConfig.newHostConfig()
+                        .withPortBindings(portBindings)
+                        .withBinds(binds)
+                        .withRestartPolicy(RestartPolicy.unlessStoppedRestart()))
+                .exec();
+
+        container.setContainerId(created.getId());
+    }
+
+    /**
+     * Start a previously-created container.
+     * Does NOT set {@code container.status} or {@code startedAt} — the caller or
+     * {@code FinaliseStep} is responsible for those.
+     */
+    public void startContainer(DeployedContainer container) {
+        docker.startContainerCmd(container.getContainerId()).exec();
+    }
+
     /** Check Docker is reachable on this machine */
     public boolean isDockerAvailable() {
         try {
