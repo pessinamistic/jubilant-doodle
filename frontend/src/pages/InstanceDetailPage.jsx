@@ -10,6 +10,7 @@ import { ConnectionString } from '../components/ConnectionString'
 import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
 import {
+  Activity,
   ArrowLeft,
   BarChart3,
   Clipboard,
@@ -34,7 +35,9 @@ import {
   Server,
   Settings,
   Square,
+  Timer,
   Trash2,
+  TrendingUp,
   Unlink,
   Zap,
 } from 'lucide-react'
@@ -43,14 +46,17 @@ import { PIPELINE_STATUS_TOKENS, PIPELINE_STEP_TOKENS } from '../theme/statusTok
 import {
   ResponsiveContainer,
   LineChart, Line,
+  AreaChart, Area,
   BarChart, Bar,
   PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
+  ReferenceLine,
 } from 'recharts'
 
 const TABS = [
   { id: 'overview',       label: 'Overview',          icon: <BarChart3 className="w-4 h-4" /> },
-  { id: 'internals',      label: 'System Internals',  icon: <Cpu className="w-4 h-4" />, systemOnly: true },
+  { id: 'internals',      label: 'System Internals',  icon: <Cpu className="w-4 h-4" />,      systemOnly: true },
+  { id: 'metrics',        label: 'Metrics',           icon: <Activity className="w-4 h-4" />, nonSystemOnly: true },
   { id: 'pipeline',       label: 'Pipeline',           icon: <Rocket className="w-4 h-4" /> },
   { id: 'configuration',  label: 'Configuration',     icon: <Settings className="w-4 h-4" /> },
   { id: 'logs',           label: 'Logs',               icon: <FileText className="w-4 h-4" /> },
@@ -235,7 +241,7 @@ export function InstanceDetailPage() {
 
       {/* ── Tab bar ── */}
       <div className="tab-bar mb-6 w-fit animate-fade-up delay-100">
-        {TABS.filter(t => !t.systemOnly || instance.isSystem).map(t => (
+        {TABS.filter(t => (!t.systemOnly || instance.isSystem) && (!t.nonSystemOnly || !instance.isSystem)).map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={`tab-item ${activeTab === t.id ? 'tab-active' : 'tab-inactive'}`}>
             {t.icon}
@@ -246,11 +252,12 @@ export function InstanceDetailPage() {
 
       {/* ── Tab content ── */}
       <div key={activeTab} className="animate-fade-up">
-        {activeTab === 'overview'      && <OverviewTab      instance={instance} />}
-        {activeTab === 'internals'     && instance.isSystem && <SystemInternalsTab />}
-        {activeTab === 'pipeline'      && <PipelineTab      instanceId={id} instance={instance} />}
-        {activeTab === 'configuration' && <ConfigurationTab instance={instance} />}
-        {activeTab === 'logs'          && <LogsTab          instanceId={id} isRunning={isRunning} />}
+        {activeTab === 'overview'      && <OverviewTab          instance={instance} />}
+        {activeTab === 'internals'     && instance.isSystem  && <SystemInternalsTab />}
+        {activeTab === 'metrics'       && !instance.isSystem && <InstanceMetricsTab instanceId={id} instance={instance} />}
+        {activeTab === 'pipeline'      && <PipelineTab          instanceId={id} instance={instance} />}
+        {activeTab === 'configuration' && <ConfigurationTab     instance={instance} />}
+        {activeTab === 'logs'          && <LogsTab              instanceId={id} isRunning={isRunning} />}
       </div>
 
       {showReImport && (
@@ -677,6 +684,314 @@ function SystemInternalsTab() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+/*  Instance Metrics Tab  (non-system instances only)                          */
+/* ─────────────────────────────────────────────────────────────────────────── */
+function InstanceMetricsTab({ instanceId, instance }) {
+  const [pipeline, setPipeline] = useState(null)
+  const [pipelineLoading, setPipelineLoading] = useState(true)
+
+  useEffect(() => {
+    getPipeline(instanceId)
+      .then(d => setPipeline(d))
+      .catch(() => setPipeline(null))
+      .finally(() => setPipelineLoading(false))
+  }, [instanceId])
+
+  const now = Date.now()
+
+  const fmtAge = (ms) => {
+    if (!ms || ms <= 0) return '—'
+    const d = Math.floor(ms / 86_400_000)
+    const h = Math.floor((ms % 86_400_000) / 3_600_000)
+    const m = Math.floor((ms % 3_600_000) / 60_000)
+    if (d > 0) return `${d}d ${h}h`
+    if (h > 0) return `${h}h ${m}m`
+    return `${m}m`
+  }
+
+  const fmtTs = (iso) => iso ? new Date(iso).toLocaleString() : '—'
+  const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString() : '—'
+  const durMs = (a, b) => a && b ? new Date(b) - new Date(a) : null
+  const fmtMs = (ms) => {
+    if (ms === null || ms === undefined) return '—'
+    if (ms < 1000) return `${ms}ms`
+    if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
+    return `${(ms / 60_000).toFixed(1)}m`
+  }
+
+  const isRunning = instance.status === 'RUNNING'
+  const instanceAge = now - new Date(instance.createdAt).getTime()
+  const uptimeMs = isRunning && instance.startedAt ? now - new Date(instance.startedAt).getTime() : null
+
+  /* ── Step timing bar-chart data from pipeline ── */
+  const STEP_DISPLAY = {
+    IMAGE_PULL:        'Pull Image',
+    PULL_IMAGE:        'Pull Image',
+    CONTAINER_CREATE:  'Create Container',
+    CONTAINER_START:   'Start Container',
+    START_CONTAINER:   'Start Container',
+    FINALISE:          'Finalise',
+  }
+  const STEP_COLORS = {
+    SUCCESS: '#22c55e',
+    FAILED:  '#ef4444',
+    RUNNING: '#3b82f6',
+    PENDING: '#9ca3af',
+    SKIPPED: '#a855f7',
+  }
+
+  const stepTimings = pipeline?.steps
+    ?.filter(s => s.startedAt && s.completedAt)
+    .map(s => ({
+      name:     STEP_DISPLAY[s.stepType] ?? s.stepType,
+      durationMs: durMs(s.startedAt, s.completedAt),
+      status:   s.status,
+      fill:     STEP_COLORS[s.status] ?? '#9ca3af',
+    })) ?? []
+
+  const totalDeployMs = pipeline?.startedAt && pipeline?.completedAt
+    ? durMs(pipeline.startedAt, pipeline.completedAt)
+    : null
+
+  /* ── Lifecycle timeline points ── */
+  const timelinePoints = [
+    { label: 'Registered', ts: instance.createdAt, active: true },
+    { label: 'Last Started', ts: instance.startedAt, active: !!instance.startedAt },
+    { label: 'Last Updated', ts: instance.updatedAt, active: !!instance.updatedAt },
+  ]
+
+  return (
+    <div className="space-y-8">
+
+      {/* ── Section 1: Lifetime Stats ── */}
+      <div>
+        <p className="section-label">Lifetime</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
+          {[
+            { icon: <TrendingUp className="w-5 h-5" />, label: 'Instance Age',    value: fmtAge(instanceAge),  color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { icon: <Clock3     className="w-5 h-5" />, label: 'Current Uptime',  value: uptimeMs ? fmtAge(uptimeMs) : isRunning ? '< 1m' : '—', color: isRunning ? 'text-green-400' : 'text-gray-400', bg: isRunning ? 'bg-green-500/10' : 'bg-gray-500/10' },
+            { icon: <Globe      className="w-5 h-5" />, label: 'Host Port',       value: instance.hostPort,    color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { icon: <Database   className="w-5 h-5" />, label: 'DB Type',         value: instance.dbTypeDisplay, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+          ].map(s => (
+            <div key={s.label} className="stat-card animate-fade-up">
+              <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
+                {s.icon}
+              </div>
+              <div>
+                <div className="text-base font-bold text-[var(--text-primary)] font-mono">{s.value}</div>
+                <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Section 2: Lifecycle Timeline ── */}
+      <div>
+        <p className="section-label">Lifecycle Timeline</p>
+        <div className="card p-6">
+          {/* Timeline bar */}
+          <div className="flex items-center gap-0 mb-6 relative">
+            {timelinePoints.map((pt, i) => (
+              <div key={pt.label} className="flex items-center flex-1">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className={`w-3 h-3 rounded-full border-2 ${
+                    pt.active
+                      ? 'bg-[var(--accent)] border-[var(--accent)]'
+                      : 'bg-[var(--bg-surface-3)] border-[var(--border-soft)]'
+                  }`} />
+                  <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide whitespace-nowrap">{pt.label}</span>
+                  <span className="text-[10px] font-mono text-[var(--text-secondary)]">{pt.ts ? new Date(pt.ts).toLocaleDateString() : '—'}</span>
+                  <span className="text-[10px] font-mono text-[var(--text-quiet)]">{pt.ts ? new Date(pt.ts).toLocaleTimeString() : ''}</span>
+                </div>
+                {i < timelinePoints.length - 1 && (
+                  <div className="flex-1 h-px bg-[var(--border-soft)] mx-2 -mt-8" />
+                )}
+              </div>
+            ))}
+            {/* "Now" marker */}
+            <div className="flex flex-col items-center gap-1.5 ml-2">
+              <div className={`w-3 h-3 rounded-full border-2 ${isRunning ? 'bg-green-500 border-green-500 animate-pulse' : 'bg-gray-500/40 border-gray-500/40'}`} />
+              <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide">Now</span>
+              <span className="text-[10px] font-mono text-[var(--text-quiet)]">{isRunning ? fmtAge(uptimeMs ?? 0) + ' up' : instance.status}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Section 3: Last Deploy Performance ── */}
+      <div>
+        <p className="section-label">Last Deploy Performance</p>
+
+        {pipelineLoading ? (
+          <div className="card p-8 flex items-center justify-center gap-2 text-[var(--text-muted)] text-sm">
+            <div className="w-4 h-4 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin" />
+            Loading pipeline…
+          </div>
+        ) : !pipeline ? (
+          <div className="card p-10 text-center">
+            <Rocket className="w-8 h-8 text-[var(--text-quiet)] mx-auto mb-3" />
+            <p className="text-sm text-[var(--text-muted)]">No pipeline recorded yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* KPI cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                {
+                  icon: <Timer className="w-5 h-5" />,
+                  label: 'Total Deploy Time',
+                  value: fmtMs(totalDeployMs),
+                  color: 'text-orange-400', bg: 'bg-orange-500/10',
+                },
+                {
+                  icon: <Zap className="w-5 h-5" />,
+                  label: 'Image Pull',
+                  value: fmtMs(durMs(
+                    pipeline.steps?.find(s => s.stepType === 'PULL_IMAGE' || s.stepType === 'IMAGE_PULL')?.startedAt,
+                    pipeline.steps?.find(s => s.stepType === 'PULL_IMAGE' || s.stepType === 'IMAGE_PULL')?.completedAt,
+                  )),
+                  color: 'text-yellow-400', bg: 'bg-yellow-500/10',
+                },
+                {
+                  icon: <Layers className="w-5 h-5" />,
+                  label: 'Steps Completed',
+                  value: `${pipeline.steps?.filter(s => s.status === 'SUCCESS').length ?? 0} / ${pipeline.steps?.length ?? 0}`,
+                  color: 'text-blue-400', bg: 'bg-blue-500/10',
+                },
+                {
+                  icon: <Activity className="w-5 h-5" />,
+                  label: 'Outcome',
+                  value: pipeline.status,
+                  color: pipeline.status === 'SUCCESS' ? 'text-green-400' : pipeline.status === 'FAILED' ? 'text-red-400' : 'text-yellow-400',
+                  bg: pipeline.status === 'SUCCESS' ? 'bg-green-500/10' : pipeline.status === 'FAILED' ? 'bg-red-500/10' : 'bg-yellow-500/10',
+                },
+              ].map(s => (
+                <div key={s.label} className="stat-card">
+                  <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>
+                    {s.icon}
+                  </div>
+                  <div>
+                    <div className="text-base font-bold text-[var(--text-primary)] font-mono">{s.value}</div>
+                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Step timing Gantt bar chart */}
+            {stepTimings.length > 0 && (
+              <div className="card p-5">
+                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Step Timing Breakdown
+                </p>
+                <ResponsiveContainer width="100%" height={stepTimings.length * 48 + 32}>
+                  <BarChart
+                    layout="vertical"
+                    data={stepTimings}
+                    margin={{ top: 0, right: 60, left: 16, bottom: 0 }}
+                    barSize={18}
+                  >
+                    <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                    <XAxis
+                      type="number"
+                      tickFormatter={v => v < 1000 ? `${v}ms` : `${(v/1000).toFixed(1)}s`}
+                      tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                      axisLine={{ stroke: 'var(--border-soft)' }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={110}
+                      tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--bg-surface-2)', border: '2px solid var(--border-strong)', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}
+                      labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
+                      itemStyle={{ color: 'var(--text-secondary)' }}
+                      cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                      formatter={(v) => [v < 1000 ? `${v}ms` : `${(v/1000).toFixed(2)}s`, 'Duration']}
+                    />
+                    <Bar dataKey="durationMs" radius={[0, 3, 3, 0]} label={{ position: 'right', formatter: v => v < 1000 ? `${v}ms` : `${(v/1000).toFixed(1)}s`, fill: 'var(--text-muted)', fontSize: 11 }}>
+                      {stepTimings.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} fillOpacity={0.85} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Error detail */}
+            {pipeline.status === 'FAILED' && pipeline.errorCode && (
+              <div className="card p-4 border border-red-500/20 bg-red-500/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-red-400 uppercase tracking-wide">Deploy Failed</span>
+                  <span className="font-mono text-xs text-red-300 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                    {pipeline.errorCode}
+                  </span>
+                </div>
+                {pipeline.errorMessage && (
+                  <p className="text-xs text-red-400/80 font-mono leading-relaxed">{pipeline.errorMessage}</p>
+                )}
+              </div>
+            )}
+
+            {/* Pipeline meta */}
+            <div className="card p-4">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Pipeline Details</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { label: 'Pipeline ID',  value: pipeline.id?.slice(-12) },
+                  { label: 'Started',      value: fmtTs(pipeline.startedAt) },
+                  { label: 'Completed',    value: fmtTs(pipeline.completedAt) },
+                ].map(row => (
+                  <div key={row.label} className="bg-[var(--bg-surface-2)] rounded p-3">
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mb-1">{row.label}</div>
+                    <div className="text-xs font-mono text-[var(--text-secondary)] truncate">{row.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Section 4: Container Identity ── */}
+      <div>
+        <p className="section-label">Container Identity</p>
+        <div className="card p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              instance.containerName && { label: 'Container Name', value: instance.containerName,         mono: true },
+              instance.containerId   && { label: 'Container ID',   value: instance.containerId.slice(0,12), mono: true },
+              { label: 'Image Version',  value: `${instance.dbTypeDisplay} ${instance.version}` },
+              { label: 'Deploy Method',  value: instance.deployMethod },
+              { label: 'Origin',         value: instance.isImported ? 'Imported (unmanaged)' : 'Deployed by Port Wrangler' },
+              instance.dataDirectory && { label: 'Data Volume', value: instance.dataDirectory, mono: true, small: true },
+              { label: 'Registered',     value: fmtTs(instance.createdAt) },
+              instance.startedAt && { label: 'Last Started', value: fmtTs(instance.startedAt) },
+            ].filter(Boolean).map(row => (
+              <div key={row.label} className="flex items-start justify-between gap-3 py-2 border-b border-[var(--border-soft)]/30 last:border-0">
+                <span className="text-xs text-[var(--text-muted)] shrink-0 w-32">{row.label}</span>
+                <span className={`text-right flex-1 min-w-0 truncate ${row.mono ? 'font-mono text-xs' : 'text-sm'} text-[var(--text-secondary)]`}>
+                  {row.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 /*  Overview Tab                                                               */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function OverviewTab({ instance }) {
@@ -687,8 +1002,7 @@ function OverviewTab({ instance }) {
     if (!isRunning) return null
     const base = instance.startedAt ?? instance.createdAt
     if (!base) return null
-    const end = instance.updatedAt ?? instance.startedAt ?? instance.createdAt
-    const diff = Math.max(0, new Date(end).getTime() - new Date(base).getTime())
+    const diff = Math.max(0, Date.now() - new Date(base).getTime())
     const d = Math.floor(diff / 86_400_000)
     const h = Math.floor((diff % 86_400_000) / 3_600_000)
     const m = Math.floor((diff % 3_600_000) / 60_000)
