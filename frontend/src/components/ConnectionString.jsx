@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { ClipboardDocumentIcon, ClipboardDocumentCheckIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { Clipboard, ClipboardCheck, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function ConnectionString({ value, masked }) {
   const [copied, setCopied]   = useState(false)
   const [visible, setVisible] = useState(false)
 
-  if (!value) return <span className="text-gray-400 text-sm">N/A</span>
+  if (!value) return <span className="text-[var(--text-muted)] text-sm">N/A</span>
 
   const display = visible ? value : (masked ?? value.replace(/:[^@:/]+@/, ':****@'))
 
@@ -18,21 +18,25 @@ export function ConnectionString({ value, masked }) {
   }
 
   return (
-    <div className="flex items-center gap-2 bg-gray-900 rounded-lg px-3 py-2 font-mono text-sm text-green-400 max-w-full overflow-hidden">
+    <div className="flex items-center gap-2 rounded-[6px] px-3 py-2 font-mono text-sm max-w-full overflow-hidden border-2" style={{
+      background: 'var(--bg-inset)',
+      borderColor: 'var(--border-strong)',
+      color: 'var(--status-running)',
+    }}>
       <span className="truncate flex-1">{display}</span>
       <button
         onClick={() => setVisible(v => !v)}
-        className="text-gray-400 hover:text-white shrink-0"
+        className="text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0"
         title={visible ? 'Hide password' : 'Reveal password'}>
-        {visible ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+        {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
       <button
         onClick={copy}
-        className="text-gray-400 hover:text-white shrink-0"
+        className="text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0"
         title="Copy full connection string">
         {copied
-          ? <ClipboardDocumentCheckIcon className="w-4 h-4 text-green-400" />
-          : <ClipboardDocumentIcon className="w-4 h-4" />}
+          ? <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--status-running)' }} />
+          : <Clipboard className="w-4 h-4" />}
       </button>
     </div>
   )

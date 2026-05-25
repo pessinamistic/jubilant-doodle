@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { discoverContainers, importContainer, reImportInstance } from '../api/client'
 import {
-  XMarkIcon, ArrowPathIcon, MagnifyingGlassIcon,
-  CloudArrowDownIcon, CheckCircleIcon, ArrowUturnLeftIcon,
-} from '@heroicons/react/24/outline'
+  CheckCircle2,
+  CloudDownload,
+  CornerUpLeft,
+  RefreshCw,
+  Search,
+  X,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 /**
@@ -42,7 +46,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
     databaseName:  existingInstance?.databaseName  ?? '',
   })
 
-  const discover = async () => {
+  const discover = useCallback(async () => {
     setDiscovering(true)
     try {
       const data = await discoverContainers()
@@ -55,10 +59,14 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
     } finally {
       setDiscovering(false)
     }
-  }
+  }, [])
 
   // Auto-discover on mount — skip in re-import mode
-  useEffect(() => { if (!isReImport) discover() }, [])
+  useEffect(() => {
+    if (isReImport) return undefined
+    const kick = setTimeout(() => discover(), 0)
+    return () => clearTimeout(kick)
+  }, [discover, isReImport])
 
   const selectContainer = (c) => {
     setSelected(c)
@@ -126,27 +134,27 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative z-10 w-full max-w-xl bg-[#12141c] border border-white/[0.09] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-xl card overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07]">
+        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-(--border-strong)">
           <div className="flex items-center gap-3">
             {isReImport
-              ? <ArrowUturnLeftIcon className="w-5 h-5 text-amber-400" />
-              : <CloudArrowDownIcon className="w-5 h-5 text-indigo-400" />
+              ? <CornerUpLeft className="w-5 h-5" style={{ color: 'var(--status-warning)' }} />
+              : <CloudDownload className="w-5 h-5" style={{ color: 'var(--status-deploying)' }} />
             }
             <div>
-              <h2 className="text-white font-semibold">
+              <h2 className="text-(--text-primary) font-semibold">
                 {isReImport ? 'Re-import Instance' : 'Import Existing Container'}
               </h2>
               {isReImport && (
-                <p className="text-xs text-amber-400/70 mt-0.5">
-                  Verifying container for <span className="font-medium text-amber-300">{existingInstance.name}</span>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--status-warning)' }}>
+                  Verifying container for <span className="font-medium">{existingInstance.name}</span>
                 </p>
               )}
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-            <XMarkIcon className="w-5 h-5" />
+          <button onClick={onClose} className="text-(--text-muted) hover:text-(--text-primary) transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -160,12 +168,12 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
               <div key={label} className="flex items-center gap-1.5">
                 {i > 0 && <div className="w-8 h-px bg-white/10 mx-1" />}
                 <div className={`flex items-center gap-1.5 text-xs font-medium ${
-                  active ? 'text-white' : done ? 'text-green-400' : 'text-gray-600'
+                  active ? 'text-(--text-primary)' : done ? 'text-(--status-running)' : 'text-(--text-quiet)'
                 }`}>
                   {done
-                    ? <CheckCircleIcon className="w-4 h-4" />
+                    ? <CheckCircle2 className="w-4 h-4" />
                     : <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${
-                        active ? 'border-blue-400 text-blue-400' : 'border-gray-600 text-gray-600'
+                        active ? 'border-(--status-deploying) text-(--status-deploying)' : 'border-(--text-quiet) text-(--text-quiet)'
                       }`}>{i + 1}</span>
                   }
                   {label}
@@ -180,7 +188,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
         {step === 'discover' && (
           <div className="px-6 pb-6 pt-3">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-(--text-muted)">
                 {isReImport
                   ? `Select the container to bind to "${existingInstance.name}".`
                   : 'Running Docker containers detected as databases but not yet tracked.'
@@ -190,21 +198,21 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
                 onClick={discover}
                 disabled={discovering}
                 className="btn-ghost flex items-center gap-1.5 text-xs shrink-0">
-                <ArrowPathIcon className={`w-3.5 h-3.5 ${discovering ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${discovering ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
             </div>
 
             {discovering ? (
-              <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+              <div className="flex items-center justify-center py-12 text-(--text-muted) gap-2">
                 <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 Scanning containers…
               </div>
             ) : containers.length === 0 ? (
               <div className="text-center py-12">
-                <MagnifyingGlassIcon className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm">No untracked database containers found</p>
-                <p className="text-xs text-gray-600 mt-1">Start a container manually then click Refresh</p>
+                <Search className="w-10 h-10 text-(--text-quiet) mx-auto mb-3" />
+                <p className="text-(--text-muted) text-sm">No untracked database containers found</p>
+                <p className="text-xs text-(--text-quiet) mt-1">Start a container manually then click Refresh</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -212,22 +220,22 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
                   <button
                     key={c.containerId}
                     onClick={() => selectContainer(c)}
-                    className="w-full text-left px-4 py-3 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.06] hover:border-blue-500/30 transition-all group">
+                    className="w-full text-left px-4 py-3 rounded-md border-2 border-(--border-strong) bg-(--bg-surface-2) hover:-translate-y-1 hover:shadow-(--shadow-raised) transition-all group">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{c.icon ?? '🗄️'}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-medium text-sm truncate">{c.containerName}</span>
-                          <span className="text-xs text-gray-500 font-mono">{c.containerId.slice(0, 12)}</span>
+                          <span className="text-(--text-primary) font-medium text-sm truncate">{c.containerName}</span>
+                          <span className="text-xs text-(--text-muted) font-mono">{c.containerId.slice(0, 12)}</span>
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                            c.status === 'RUNNING' ? 'bg-green-500/10 text-green-400' : 'bg-gray-500/10 text-gray-400'
+                            c.status === 'RUNNING' ? 'bg-(--status-running-bg) text-(--status-running)' : 'bg-(--status-stopped-bg) text-(--status-stopped)'
                           }`}>{c.status}</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                        <p className="text-xs text-(--text-muted) mt-0.5 truncate">
                           {c.suggestedDbTypeDisplay} · port {c.suggestedHostPort ?? '?'}:{c.containerPort ?? '?'}
                         </p>
                       </div>
-                      <span className="text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <span className="text-xs text-(--status-deploying) opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         Select →
                       </span>
                     </div>
@@ -245,14 +253,14 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/[0.06] border border-blue-500/[0.15] mb-5">
               <span className="text-xl">{selected.icon ?? '🗄️'}</span>
               <div>
-                <p className="text-sm text-white font-medium">{selected.containerName}</p>
-                <p className="text-xs text-gray-500 font-mono">{selected.containerId.slice(0, 12)}</p>
+                <p className="text-sm text-(--text-primary) font-medium">{selected.containerName}</p>
+                <p className="text-xs text-(--text-muted) font-mono">{selected.containerId.slice(0, 12)}</p>
               </div>
               {!isReImport && (
               <button
                 onClick={() => setStep('discover')}
-                className="ml-auto text-xs text-gray-500 hover:text-gray-300 transition-colors">
-                ← Back
+                className="ml-auto text-xs text-(--text-muted) hover:text-(--text-primary) transition-colors">
+                Back
               </button>
               )}
             </div>
@@ -261,7 +269,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
               /* Re-import: just confirm — all config preserved, only container changes */
               <div className="space-y-3">
                 <div className="px-4 py-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/[0.15]">
-                  <p className="text-xs text-amber-300/80 mb-2 font-medium uppercase tracking-wider">Config preserved from original</p>
+                  <p className="text-xs mb-2 font-medium uppercase tracking-wider" style={{ color: 'var(--status-warning)' }}>Config preserved from original</p>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                     <Row label="Name"     value={existingInstance.name} />
                     <Row label="Type"     value={existingInstance.dbTypeDisplay} />
@@ -270,7 +278,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
                     <Row label="Database" value={existingInstance.databaseName || '—'} />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 pl-1">
+                <p className="text-xs text-(--text-muted) pl-1">
                   Credentials and connection settings are kept as-is. Only the container binding is updated.
                 </p>
               </div>
@@ -328,7 +336,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
 function Label({ text, children }) {
   return (
     <label className="block">
-      <span className="text-xs text-gray-500 mb-1.5 block">{text}</span>
+      <span className="text-xs text-(--text-muted) mb-1.5 block">{text}</span>
       {children}
     </label>
   )
@@ -337,8 +345,8 @@ function Label({ text, children }) {
 function Row({ label, value }) {
   return (
     <>
-      <span className="text-gray-500">{label}</span>
-      <span className="text-gray-200 font-mono text-xs">{value}</span>
+      <span className="text-(--text-muted)">{label}</span>
+      <span className="text-(--text-secondary) font-mono text-xs">{value}</span>
     </>
   )
 }

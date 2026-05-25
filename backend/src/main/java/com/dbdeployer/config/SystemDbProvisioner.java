@@ -1,18 +1,22 @@
 package com.dbdeployer.config;
 
-import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.exception.NotFoundException;
-import com.github.dockerjava.api.model.*;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
+import java.net.Socket;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 
-import java.net.Socket;
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.exception.NotFoundException;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Ports;
+import com.github.dockerjava.api.model.RestartPolicy;
+import com.github.dockerjava.core.DefaultDockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 
 /**
  * Runs before any Spring bean is created.
@@ -58,7 +62,7 @@ public class SystemDbProvisioner
             docker.pingCmd().exec();
         } catch (Exception e) {
             throw new IllegalStateException(
-                "Docker is not available. DB Deployer requires Docker to manage the system database. " +
+                "Docker is not available. Port Wrangler requires Docker to manage the system database. " +
                 "Please start Docker and try again.", e);
         }
 

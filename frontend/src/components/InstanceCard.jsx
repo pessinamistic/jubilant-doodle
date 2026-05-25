@@ -3,22 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { StatusBadge } from './StatusBadge'
 import { ConfirmModal } from './ConfirmModal'
 import {
-  PlayIcon, StopIcon, TrashIcon, ClockIcon,
-  PencilSquareIcon, CheckIcon, XMarkIcon,
-  ArrowTopRightOnSquareIcon, LinkSlashIcon,
-} from '@heroicons/react/24/outline'
+  Check,
+  Clock3,
+  ExternalLink,
+  Pencil,
+  Play,
+  Square,
+  Trash2,
+  Unlink,
+  X,
+} from 'lucide-react'
 import { startInstance, stopInstance, removeInstance, renameInstance } from '../api/client'
+import { INSTANCE_STATUS_TOKENS } from '../theme/statusTokens'
 import toast from 'react-hot-toast'
-
-// Inline styles to avoid Tailwind purge issues with dynamic colors
-const STATUS_COLORS = {
-  RUNNING:   '#22c55e',
-  STOPPED:   '#6b7280',
-  DEPLOYING: '#60a5fa',
-  ERROR:     '#ef4444',
-  REMOVING:  '#fb923c',
-  REMOVED:   '#374151',
-}
 
 export function InstanceCard({ instance, onRefresh }) {
   const [busy, setBusy]               = useState(false)
@@ -29,7 +26,8 @@ export function InstanceCard({ instance, onRefresh }) {
   const inputRef = useRef(null)
   const navigate = useNavigate()
 
-  const accentColor = STATUS_COLORS[instance.status] ?? STATUS_COLORS.STOPPED
+  const statusToken = INSTANCE_STATUS_TOKENS[instance.status] ?? INSTANCE_STATUS_TOKENS.UNKNOWN
+  const accentColor = statusToken.accent
   const isRunning   = instance.status === 'RUNNING'
   const isStopped   = instance.status === 'STOPPED'
   const isDeploying = instance.status === 'DEPLOYING'
@@ -96,7 +94,8 @@ export function InstanceCard({ instance, onRefresh }) {
     if (!isRunning) return null
     const base = instance.startedAt ?? instance.createdAt
     if (!base) return null
-    const diff = Date.now() - new Date(base).getTime()
+    const end = instance.updatedAt ?? instance.startedAt ?? instance.createdAt
+    const diff = Math.max(0, new Date(end).getTime() - new Date(base).getTime())
     const h = Math.floor(diff / 3_600_000)
     const m = Math.floor((diff % 3_600_000) / 60_000)
     return h > 0 ? `${h}h ${m}m` : `${m}m`
@@ -106,9 +105,9 @@ export function InstanceCard({ instance, onRefresh }) {
   const confirmConfig = isImported
     ? {
         variant: 'warning',
-        icon: <LinkSlashIcon className="w-5 h-5" />,
+        icon: <Unlink className="w-5 h-5" />,
         title: `Untrack "${instance.name}"?`,
-        message: 'The Docker container will not be stopped or removed — it will just stop being managed by DB Deployer.',
+        message: 'The Docker container will not be stopped or removed. It will only stop being managed by Port Wrangler.',
         confirmLabel: 'Untrack',
       }
     : {
@@ -128,7 +127,7 @@ export function InstanceCard({ instance, onRefresh }) {
         <div className="h-[3px]" style={{ backgroundColor: accentColor }} />
 
         {/* Card body with very subtle status tint */}
-        <div className="p-4" style={{ backgroundColor: `${accentColor}08` }}>
+        <div className="p-4" style={{ backgroundColor: statusToken.background }}>
 
           {/* ── Header row: icon + name + navigate btn ── */}
           <div className="flex items-start gap-3 mb-3">
@@ -156,28 +155,28 @@ export function InstanceCard({ instance, onRefresh }) {
                     <button
                       onClick={saveEdit}
                       disabled={savingName}
-                      className="p-1 rounded text-green-400 hover:bg-green-500/10 disabled:opacity-40"
+                      className="p-1 rounded text-[var(--status-running)] hover:bg-[var(--status-running-bg)] disabled:opacity-40"
                     >
-                      <CheckIcon className="w-3.5 h-3.5" />
+                      <Check className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="p-1 rounded text-gray-400 hover:bg-white/10"
+                      className="p-1 rounded text-[var(--text-muted)] hover:bg-[var(--bg-surface-2)]"
                     >
-                      <XMarkIcon className="w-3.5 h-3.5" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ) : (
                   <>
-                    <span className="font-semibold text-white text-sm truncate">
+                    <span className="font-semibold text-sm truncate text-[var(--text-primary)]">
                       {instance.name}
                     </span>
                     <button
                       onClick={startEdit}
                       title="Rename"
-                      className="opacity-0 group-hover:opacity-50 hover:!opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-200 transition-opacity shrink-0"
+                      className="opacity-0 group-hover:opacity-50 hover:!opacity-100 p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-opacity shrink-0"
                     >
-                      <PencilSquareIcon className="w-3.5 h-3.5" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                   </>
                 )}
@@ -187,12 +186,20 @@ export function InstanceCard({ instance, onRefresh }) {
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <StatusBadge status={instance.status} />
                 {instance.isSystem && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-violet-500/15 text-violet-300 border border-violet-500/25">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border" style={{
+                    background: 'var(--status-skipped-bg)',
+                    color: 'var(--status-skipped)',
+                    borderColor: 'var(--status-skipped-border)',
+                  }}>
                     SYSTEM
                   </span>
                 )}
                 {instance.isImported && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border" style={{
+                    background: 'var(--status-warning-bg)',
+                    color: 'var(--status-warning)',
+                    borderColor: 'var(--status-warning-border)',
+                  }}>
                     IMPORTED
                   </span>
                 )}
@@ -203,33 +210,33 @@ export function InstanceCard({ instance, onRefresh }) {
             <button
               onClick={e => { e.stopPropagation(); navigate(`/instances/${instance.id}`) }}
               title="Open detail"
-              className="opacity-0 group-hover:opacity-50 hover:!opacity-100 p-1 rounded text-gray-500 hover:text-gray-300 transition-opacity shrink-0"
+              className="opacity-0 group-hover:opacity-50 hover:!opacity-100 p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-opacity shrink-0"
             >
-              <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* ── Meta row ── */}
-          <div className="text-xs text-gray-500 space-y-1 pl-10">
+          <div className="text-xs text-[var(--text-muted)] space-y-1 pl-10">
             <div className="flex items-center gap-0 flex-wrap">
-              <span className="text-gray-400">{instance.dbTypeDisplay}</span>
-              <span className="mx-1.5 text-gray-600">·</span>
+              <span className="text-[var(--text-secondary)]">{instance.dbTypeDisplay}</span>
+              <span className="mx-1.5 text-[var(--text-quiet)]">·</span>
               <span>v{instance.version}</span>
-              <span className="mx-1.5 text-gray-600">·</span>
-              <span className="font-mono text-gray-400">:{instance.hostPort}</span>
+              <span className="mx-1.5 text-[var(--text-quiet)]">·</span>
+              <span className="mono-info">:{instance.hostPort}</span>
             </div>
 
             {isRunning && uptime && (
-              <div className="flex items-center gap-1 text-green-500/80">
-                <ClockIcon className="w-3 h-3" />
+              <div className="flex items-center gap-1" style={{ color: 'var(--status-running)' }}>
+                <Clock3 className="w-3 h-3" />
                 <span>{uptime} uptime</span>
               </div>
             )}
 
             {isDeploying && (
-              <div className="flex items-center gap-1.5 text-blue-400 animate-pulse">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                <span>Deploying — pulling image…</span>
+              <div className="flex items-center gap-1.5 animate-pulse" style={{ color: 'var(--status-deploying)' }}>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--status-deploying)' }} />
+                <span>Deploying - pulling image...</span>
               </div>
             )}
           </div>
@@ -237,23 +244,23 @@ export function InstanceCard({ instance, onRefresh }) {
           {/* ── Action footer (hidden for SYSTEM) ── */}
           {!instance.isSystem && (
             <div
-              className="flex items-center gap-2 mt-4 pt-3 border-t border-white/[0.05]"
+              className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-[var(--border-strong)]"
               onClick={e => e.stopPropagation()}
             >
               {isStopped && (
                 <ActionBtn
-                  icon={<PlayIcon className="w-3.5 h-3.5" />}
+                  icon={<Play className="w-3.5 h-3.5" />}
                   label="Start"
-                  color="text-green-400 hover:bg-green-500/10 border-green-500/20"
+                  color="text-[var(--status-running)] hover:bg-[var(--status-running-bg)] border-[var(--status-running-border)]"
                   onClick={action(startInstance, 'Start')}
                   disabled={isBusy}
                 />
               )}
               {isRunning && (
                 <ActionBtn
-                  icon={<StopIcon className="w-3.5 h-3.5" />}
+                  icon={<Square className="w-3.5 h-3.5" />}
                   label="Stop"
-                  color="text-yellow-400 hover:bg-yellow-500/10 border-yellow-500/20"
+                  color="text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] border-[var(--status-warning-border)]"
                   onClick={action(stopInstance, 'Stop')}
                   disabled={isBusy}
                 />
@@ -263,13 +270,13 @@ export function InstanceCard({ instance, onRefresh }) {
 
               <ActionBtn
                 icon={isImported
-                  ? <LinkSlashIcon className="w-3.5 h-3.5" />
-                  : <TrashIcon className="w-3.5 h-3.5" />
+                  ? <Unlink className="w-3.5 h-3.5" />
+                  : <Trash2 className="w-3.5 h-3.5" />
                 }
                 label={isImported ? 'Untrack' : 'Remove'}
                 color={isImported
-                  ? 'text-amber-400 hover:bg-amber-500/10 border-amber-500/20'
-                  : 'text-red-400 hover:bg-red-500/10 border-red-500/20'
+                  ? 'text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] border-[var(--status-warning-border)]'
+                  : 'text-[var(--status-error)] hover:bg-[var(--status-error-bg)] border-[var(--status-error-border)]'
                 }
                 onClick={handleRemoveClick}
                 disabled={isBusy || isDeploying}
@@ -296,7 +303,7 @@ function ActionBtn({ icon, label, color, onClick, disabled }) {
       onClick={onClick}
       disabled={disabled}
       title={label}
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border bg-transparent border-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${color}`}
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-semibold border-2 bg-transparent transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${color}`}
     >
       {icon}
       {label}

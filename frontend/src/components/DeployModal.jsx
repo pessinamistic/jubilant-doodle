@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCatalog } from '../api/client'
-import { XMarkIcon, InformationCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { Eye, EyeOff, Info, Rocket, X } from 'lucide-react'
 
 const DEFAULT_PORTS = {
   POSTGRESQL: 5432, MYSQL: 3306, MONGODB: 27017, REDIS: 6379,
@@ -13,7 +13,6 @@ export function DeployModal({ onClose, onDeploy }) {
   const [step, setStep]             = useState(1)
   const [selected, setSelected]     = useState(null)
   const [form, setForm]             = useState({})
-  const [loading, setLoading]       = useState(false)  // kept for future use
   const [extraEnv, setExtraEnv]     = useState([])
   const [showPassword, setShowPassword] = useState(false)
 
@@ -53,14 +52,15 @@ export function DeployModal({ onClose, onDeploy }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#161b27] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+      <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-          <h2 className="text-lg font-semibold text-white">
-            {step === 1 ? '🗄️ Deploy a Database' : `Configure ${selected?.displayName}`}
+        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-(--border-strong)">
+          <h2 className="text-lg font-semibold text-(--text-primary) flex items-center gap-2">
+            <Rocket className="w-4 h-4" />
+            {step === 1 ? 'Launch a Database' : `Configure ${selected?.displayName}`}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
-            <XMarkIcon className="w-5 h-5" />
+          <button onClick={onClose} className="text-(--text-muted) hover:text-(--text-primary) transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -70,11 +70,11 @@ export function DeployModal({ onClose, onDeploy }) {
             {catalog.map(def => (
               <button key={def.type}
                 onClick={() => selectDb(def)}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-white/[0.06] hover:border-blue-500/50 hover:bg-blue-500/[0.08] transition-all text-center group"
+                className="flex flex-col items-center gap-2 p-4 rounded-md border-2 border-(--border-strong) hover:-translate-y-1 hover:shadow-(--shadow-raised) transition-all text-center group bg-(--bg-surface-2)"
               >
                 <span className="text-3xl">{def.icon}</span>
-                <span className="text-sm font-medium text-gray-200 group-hover:text-white">{def.displayName}</span>
-                <span className="text-xs text-gray-500">{def.versions[0]}</span>
+                <span className="text-sm font-medium text-(--text-primary)">{def.displayName}</span>
+                <span className="text-xs text-(--text-muted)">{def.versions[0]}</span>
               </button>
             ))}
           </div>
@@ -83,8 +83,8 @@ export function DeployModal({ onClose, onDeploy }) {
         {/* Step 2 — Configure */}
         {step === 2 && selected && (
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            <p className="text-sm text-gray-400 flex items-center gap-1">
-              <InformationCircleIcon className="w-4 h-4 shrink-0 text-blue-400" />
+            <p className="text-sm text-(--text-muted) flex items-center gap-1">
+              <Info className="w-4 h-4 shrink-0" style={{ color: 'var(--status-deploying)' }} />
               {selected.description}
             </p>
 
@@ -128,10 +128,10 @@ export function DeployModal({ onClose, onDeploy }) {
                       className="input pr-9" />
                     <button type="button"
                       onClick={() => setShowPassword(s => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary)">
                       {showPassword
-                        ? <EyeSlashIcon className="w-4 h-4" />
-                        : <EyeIcon className="w-4 h-4" />}
+                        ? <EyeOff className="w-4 h-4" />
+                        : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </Field>
@@ -149,7 +149,7 @@ export function DeployModal({ onClose, onDeploy }) {
             {/* Extra env vars (e.g. root password, EULA) */}
             {extraEnv.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Additional Configuration</h3>
+                <h3 className="text-sm font-medium text-(--text-secondary) mb-2">Additional Configuration</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {extraEnv.map((env, i) => (
                     <Field key={env.key} label={env.label}>
@@ -168,9 +168,9 @@ export function DeployModal({ onClose, onDeploy }) {
 
             <div className="flex items-center justify-between pt-2">
               <button type="button" onClick={() => setStep(1)}
-                className="text-sm text-gray-400 hover:text-white transition-colors">← Back</button>
+                className="text-sm text-(--text-muted) hover:text-(--text-primary) transition-colors">Back</button>
               <button type="submit" className="btn-primary">
-                🚀 Deploy {selected.displayName}
+                <Rocket className="w-4 h-4" /> Launch {selected.displayName}
               </button>
             </div>
           </form>
@@ -183,8 +183,8 @@ export function DeployModal({ onClose, onDeploy }) {
 function Field({ label, required, children }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-400">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className="text-xs font-medium text-(--text-muted)">
+        {label}{required && <span className="ml-0.5" style={{ color: 'var(--status-error)' }}>*</span>}
       </label>
       {children}
     </div>

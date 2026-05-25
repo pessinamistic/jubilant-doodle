@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "port-wrangler-ui",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@heroicons/react": "^2.2.0",
     "axios": "^1.16.1",
+    "lucide-react": "^0.525.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-hot-toast": "^2.6.0",

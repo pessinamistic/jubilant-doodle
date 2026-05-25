@@ -13,9 +13,13 @@ export default function App() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#1c2333',
-            color: '#e5e7eb',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg-surface)',
+            color: 'var(--text-primary)',
+            border: '2px solid var(--border-strong)',
+            borderRadius: '4px',
+            boxShadow: 'var(--shadow-raised)',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 600,
           },
         }}
       />

@@ -1,0 +1,88 @@
+export const INSTANCE_STATUS_TOKENS = {
+  RUNNING: {
+    accent: 'var(--status-running)',
+    background: 'var(--status-running-bg)',
+    border: 'var(--status-running-border)',
+    text: 'var(--status-running)',
+    dot: 'var(--status-running)',
+    pulse: false,
+  },
+  STOPPED: {
+    accent: 'var(--status-stopped)',
+    background: 'var(--status-stopped-bg)',
+    border: 'var(--status-stopped-border)',
+    text: 'var(--status-stopped)',
+    dot: 'var(--status-stopped)',
+    pulse: false,
+  },
+  DEPLOYING: {
+    accent: 'var(--status-deploying)',
+    background: 'var(--status-deploying-bg)',
+    border: 'var(--status-deploying-border)',
+    text: 'var(--status-deploying)',
+    dot: 'var(--status-deploying)',
+    pulse: true,
+  },
+  ERROR: {
+    accent: 'var(--status-error)',
+    background: 'var(--status-error-bg)',
+    border: 'var(--status-error-border)',
+    text: 'var(--status-error)',
+    dot: 'var(--status-error)',
+    pulse: false,
+  },
+  REMOVING: {
+    accent: 'var(--status-removing)',
+    background: 'var(--status-removing-bg)',
+    border: 'var(--status-removing-border)',
+    text: 'var(--status-removing)',
+    dot: 'var(--status-removing)',
+    pulse: true,
+  },
+  REMOVED: {
+    accent: 'var(--status-removed)',
+    background: 'var(--status-removed-bg)',
+    border: 'var(--status-removed-border)',
+    text: 'var(--status-removed)',
+    dot: 'var(--status-removed)',
+    pulse: false,
+  },
+  UNKNOWN: {
+    accent: 'var(--status-stopped)',
+    background: 'var(--status-stopped-bg)',
+    border: 'var(--status-stopped-border)',
+    text: 'var(--status-stopped)',
+    dot: 'var(--status-stopped)',
+    pulse: false,
+  },
+}
+
+export const PIPELINE_STEP_TOKENS = {
+  PENDING: INSTANCE_STATUS_TOKENS.STOPPED,
+  RUNNING: INSTANCE_STATUS_TOKENS.DEPLOYING,
+  SUCCESS: INSTANCE_STATUS_TOKENS.RUNNING,
+  FAILED: INSTANCE_STATUS_TOKENS.ERROR,
+  SKIPPED: {
+    accent: 'var(--status-skipped)',
+    background: 'var(--status-skipped-bg)',
+    border: 'var(--status-skipped-border)',
+    text: 'var(--status-skipped)',
+    dot: 'var(--status-skipped)',
+    pulse: false,
+  },
+}
+
+export const PIPELINE_STATUS_TOKENS = {
+  PENDING: INSTANCE_STATUS_TOKENS.STOPPED,
+  RUNNING: INSTANCE_STATUS_TOKENS.DEPLOYING,
+  SUCCESS: INSTANCE_STATUS_TOKENS.RUNNING,
+  FAILED: INSTANCE_STATUS_TOKENS.ERROR,
+  CANCELLED: {
+    accent: 'var(--status-warning)',
+    background: 'var(--status-warning-bg)',
+    border: 'var(--status-warning-border)',
+    text: 'var(--status-warning)',
+    dot: 'var(--status-warning)',
+    pulse: false,
+  },
+}

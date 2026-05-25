@@ -1,6 +1,6 @@
-# 🗄️ DB Deployer
+# 🛠️ Port Wrangler
 
-A local self-serve portal for deploying and managing databases on your development machine using Docker.
+A local self-serve portal for deploying and managing databases on your development machine using Docker. Previously known as DB Deployer.
 
 ## Features
 

@@ -5,11 +5,18 @@ import { AppShell } from '../components/AppShell'
 import { DeployModal } from '../components/DeployModal'
 import { StatusBadge } from '../components/StatusBadge'
 import {
-  CircleStackIcon, PlayIcon, StopCircleIcon,
-  ExclamationTriangleIcon, ArrowPathIcon, PlusIcon,
-  BoltIcon, ClockIcon, CheckCircleIcon, Cog6ToothIcon,
-  XCircleIcon,
-} from '@heroicons/react/24/outline'
+  CircleCheck,
+  CircleOff,
+  CircleX,
+  Clock3,
+  Database,
+  Plus,
+  RefreshCw,
+  Settings,
+  TriangleAlert,
+  Play,
+  Zap,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function HomePage() {
@@ -27,9 +34,12 @@ export function HomePage() {
   }, [])
 
   useEffect(() => {
-    load()
+    const kick = setTimeout(() => load(), 0)
     const t = setInterval(load, 10_000)
-    return () => clearInterval(t)
+    return () => {
+      clearTimeout(kick)
+      clearInterval(t)
+    }
   }, [load])
 
   const handleDeploy = async (data) => {
@@ -44,13 +54,13 @@ export function HomePage() {
     .slice(0, 5)
 
   const statCards = stats ? [
-    { label: 'Total Instances', value: stats.total,    icon: <CircleStackIcon className="w-5 h-5" />,    color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20' },
-    { label: 'Running',         value: stats.running,  icon: <PlayIcon className="w-5 h-5" />,            color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/20', pulse: stats.running > 0 },
-    { label: 'Stopped',         value: stats.stopped,  icon: <StopCircleIcon className="w-5 h-5" />,      color: 'text-gray-400',   bg: 'bg-gray-500/10',   border: 'border-gray-500/20' },
-    { label: 'Deploying',       value: stats.deploying,icon: <ArrowPathIcon className={`w-5 h-5 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />, color: 'text-blue-300', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-    { label: 'Removing',        value: stats.removing, icon: <ArrowPathIcon className={`w-5 h-5 ${stats.removing > 0 ? 'animate-spin' : ''}`} />,  color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-    { label: 'Errors',          value: stats.error,    icon: <ExclamationTriangleIcon className="w-5 h-5" />, color: stats.error > 0 ? 'text-red-400' : 'text-gray-600', bg: stats.error > 0 ? 'bg-red-500/10' : 'bg-gray-500/5', border: stats.error > 0 ? 'border-red-500/20' : 'border-white/[0.06]' },
-    { label: 'Removed',         value: stats.removed,  icon: <XCircleIcon className="w-5 h-5" />,         color: stats.removed > 0 ? 'text-gray-400' : 'text-gray-600', bg: 'bg-gray-500/10', border: 'border-gray-500/20' },
+    { label: 'Total Instances', value: stats.total,    icon: <Database className="w-5 h-5" />, color: 'text-[var(--status-deploying)]', bg: 'bg-[var(--status-deploying-bg)]', border: 'border-[var(--status-deploying-border)]' },
+    { label: 'Running',         value: stats.running,  icon: <Play className="w-5 h-5" />, color: 'text-[var(--status-running)]', bg: 'bg-[var(--status-running-bg)]', border: 'border-[var(--status-running-border)]', pulse: stats.running > 0 },
+    { label: 'Stopped',         value: stats.stopped,  icon: <CircleOff className="w-5 h-5" />, color: 'text-[var(--status-stopped)]', bg: 'bg-[var(--status-stopped-bg)]', border: 'border-[var(--status-stopped-border)]' },
+    { label: 'Deploying',       value: stats.deploying, icon: <RefreshCw className={`w-5 h-5 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />, color: 'text-[var(--status-deploying)]', bg: 'bg-[var(--status-deploying-bg)]', border: 'border-[var(--status-deploying-border)]' },
+    { label: 'Removing',        value: stats.removing, icon: <RefreshCw className={`w-5 h-5 ${stats.removing > 0 ? 'animate-spin' : ''}`} />, color: 'text-[var(--status-removing)]', bg: 'bg-[var(--status-removing-bg)]', border: 'border-[var(--status-removing-border)]' },
+    { label: 'Errors',          value: stats.error,    icon: <TriangleAlert className="w-5 h-5" />, color: stats.error > 0 ? 'text-[var(--status-error)]' : 'text-[var(--status-stopped)]', bg: stats.error > 0 ? 'bg-[var(--status-error-bg)]' : 'bg-[var(--status-stopped-bg)]', border: stats.error > 0 ? 'border-[var(--status-error-border)]' : 'border-[var(--status-stopped-border)]' },
+    { label: 'Removed',         value: stats.removed,  icon: <CircleX className="w-5 h-5" />, color: stats.removed > 0 ? 'text-[var(--status-removed)]' : 'text-[var(--status-stopped)]', bg: 'bg-[var(--status-removed-bg)]', border: 'border-[var(--status-removed-border)]' },
   ] : []
 
   return (
@@ -58,35 +68,39 @@ export function HomePage() {
 
       {/* ── Hero ── */}
       <section className="relative mb-10 pt-4 pb-8 overflow-hidden animate-fade-up">
-        <div className="absolute -top-20 left-1/3 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -top-10 left-1/4 w-[300px] h-[200px] bg-indigo-600/8 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -top-20 left-1/3 w-[600px] h-[300px] rounded-full blur-3xl pointer-events-none" style={{ background: 'color-mix(in srgb, var(--accent) 16%, transparent)' }} />
+        <div className="absolute -top-10 left-1/4 w-[300px] h-[200px] rounded-full blur-2xl pointer-events-none" style={{ background: 'color-mix(in srgb, var(--status-deploying) 12%, transparent)' }} />
 
         <div className="relative flex flex-col lg:flex-row lg:items-center lg:gap-12">
           {/* Left — copy */}
           <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium px-3 py-1.5 rounded-full mb-5 animate-slide-down">
-              <BoltIcon className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full mb-5 animate-slide-down border" style={{
+              background: 'var(--status-deploying-bg)',
+              borderColor: 'var(--status-deploying-border)',
+              color: 'var(--status-deploying)',
+            }}>
+              <Zap className="w-3.5 h-3.5" />
               Local Developer Database Manager
             </div>
-            <h1 className="text-4xl xl:text-5xl font-bold text-white mb-4 tracking-tight animate-fade-up delay-100">
+            <h1 className="text-4xl xl:text-5xl font-bold text-[var(--text-primary)] mb-4 tracking-tight animate-fade-up delay-100">
               Deploy & manage databases
               <br />
-              <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--status-deploying)] bg-clip-text text-transparent">
                 in seconds
               </span>
             </h1>
-            <p className="text-gray-400 text-lg mb-8 max-w-lg animate-fade-up delay-150">
+            <p className="text-[var(--text-muted)] text-lg mb-8 max-w-lg animate-fade-up delay-150">
               Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine
-              using Docker — no config headaches.
+              using Docker - no config headaches.
             </p>
             <div className="flex items-center gap-3 flex-wrap animate-fade-up delay-200">
               <button onClick={() => setShowModal(true)}
                 className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
-                <PlusIcon className="w-5 h-5" />
+                <Plus className="w-5 h-5" />
                 Deploy a Database
               </button>
               <Link to="/instances" className="btn-secondary flex items-center gap-2 px-6 py-2.5 text-base">
-                <CircleStackIcon className="w-5 h-5" />
+                <Database className="w-5 h-5" />
                 View Instances
               </Link>
             </div>
@@ -95,18 +109,22 @@ export function HomePage() {
           {/* Right — quick-step card */}
           <div className="hidden lg:flex flex-col gap-3 w-72 xl:w-80 shrink-0 stagger-children">
             {[
-              { icon: <PlusIcon className="w-4 h-4" />, step: '1', title: 'Click Deploy', desc: 'Choose a database from the catalog.' },
-              { icon: <Cog6ToothIcon className="w-4 h-4" />, step: '2', title: 'Configure', desc: 'Set port, credentials & name.' },
-              { icon: <CheckCircleIcon className="w-4 h-4" />, step: '3', title: 'Connect', desc: 'Copy the connection string and go.' },
+              { icon: <Plus className="w-4 h-4" />, step: '1', title: 'Click Deploy', desc: 'Choose a database from the catalog.' },
+              { icon: <Settings className="w-4 h-4" />, step: '2', title: 'Configure', desc: 'Set port, credentials & name.' },
+              { icon: <CircleCheck className="w-4 h-4" />, step: '3', title: 'Connect', desc: 'Copy the connection string and go.' },
             ].map(card => (
-              <div key={card.step} className="card p-4 flex gap-3 items-start animate-slide-right hover:border-white/[0.12] hover:bg-[#1c2333] transition-all duration-200">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <div key={card.step} className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] transition-all duration-200">
+                <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
+                  background: 'var(--status-deploying-bg)',
+                  borderColor: 'var(--status-deploying-border)',
+                  color: 'var(--status-deploying)',
+                }}>
                   {card.icon}
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 mb-0.5">Step {card.step}</p>
-                  <h3 className="text-sm font-semibold text-white mb-0.5">{card.title}</h3>
-                  <p className="text-xs text-gray-400">{card.desc}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Step {card.step}</p>
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-0.5">{card.title}</h3>
+                  <p className="text-xs text-[var(--text-muted)]">{card.desc}</p>
                 </div>
               </div>
             ))}
@@ -129,10 +147,10 @@ export function HomePage() {
                   {s.icon}
                 </div>
                 <div>
-                  <div className={`text-2xl font-bold text-white tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
+                  <div className={`text-2xl font-bold text-[var(--text-primary)] tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
                     {s.value}
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
                 </div>
               </Link>
             ))}
@@ -144,7 +162,7 @@ export function HomePage() {
       <section className="animate-fade-up delay-300">
         <div className="flex items-center justify-between mb-4">
           <p className="section-label mb-0">Recent Instances</p>
-          <Link to="/instances" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+          <Link to="/instances" className="text-xs text-[var(--status-deploying)] hover:opacity-80 transition-colors">
             View all →
           </Link>
         </div>
@@ -152,14 +170,14 @@ export function HomePage() {
         {recent.length === 0 ? (
           <div className="card p-12 text-center animate-scale-in">
             <div className="text-4xl mb-3">🗄️</div>
-            <p className="text-gray-400 text-sm mb-4">No databases deployed yet</p>
+            <p className="text-[var(--text-muted)] text-sm mb-4">No databases deployed yet</p>
             <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center gap-2">
-              <PlusIcon className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               Deploy your first database
             </button>
           </div>
         ) : (
-          <div className="card divide-y divide-white/[0.05] overflow-hidden">
+          <div className="card divide-y-2 divide-[var(--border-strong)] overflow-hidden">
             {recent.map((inst, i) => (
               <RecentRow
                 key={inst.id}
@@ -178,18 +196,22 @@ export function HomePage() {
           <p className="section-label">Quick Start</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
             {[
-              { icon: <PlusIcon className="w-5 h-5" />, step: '1', title: 'Click Deploy', desc: 'Choose a database engine from the catalog — PostgreSQL, MySQL, MongoDB, Redis and more.' },
-              { icon: <Cog6ToothIcon className="w-5 h-5" />, step: '2', title: 'Configure', desc: 'Set a port, credentials and database name. Sensible defaults are pre-filled for you.' },
-              { icon: <CheckCircleIcon className="w-5 h-5" />, step: '3', title: 'Connect', desc: 'Copy the generated connection string and start building. Your data persists across restarts.' },
+              { icon: <Plus className="w-5 h-5" />, step: '1', title: 'Click Deploy', desc: 'Choose a database engine from the catalog - PostgreSQL, MySQL, MongoDB, Redis and more.' },
+              { icon: <Settings className="w-5 h-5" />, step: '2', title: 'Configure', desc: 'Set a port, credentials and database name. Sensible defaults are pre-filled for you.' },
+              { icon: <CircleCheck className="w-5 h-5" />, step: '3', title: 'Connect', desc: 'Copy the generated connection string and start building. Your data persists across restarts.' },
             ].map(card => (
-              <div key={card.step} className="card p-5 flex gap-4 animate-fade-up hover:border-white/[0.12] transition-all duration-200">
-                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <div key={card.step} className="card p-5 flex gap-4 animate-fade-up transition-all duration-200">
+                <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
+                  background: 'var(--status-deploying-bg)',
+                  borderColor: 'var(--status-deploying-border)',
+                  color: 'var(--status-deploying)',
+                }}>
                   {card.icon}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Step {card.step}</p>
-                  <h3 className="text-sm font-semibold text-white mb-1">{card.title}</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed">{card.desc}</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">Step {card.step}</p>
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{card.title}</h3>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{card.desc}</p>
                 </div>
               </div>
             ))}
@@ -209,20 +231,20 @@ function RecentRow({ instance, onClick, delay = 0 }) {
     <button
       onClick={onClick}
       style={{ animationDelay: `${delay}ms` }}
-      className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.03] transition-all duration-150 text-left animate-fade-in group"
+      className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--bg-surface-2)] transition-all duration-150 text-left animate-fade-in group"
     >
       <span className="text-2xl shrink-0 transition-transform duration-200 group-hover:scale-110">{instance.icon}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white truncate">{instance.name}</span>
+          <span className="text-sm font-medium text-[var(--text-primary)] truncate">{instance.name}</span>
           <StatusBadge status={instance.status} />
         </div>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <p className="text-xs text-[var(--text-muted)] mt-0.5">
           {instance.dbTypeDisplay} {instance.version} · port {instance.hostPort}
         </p>
       </div>
-      <div className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0 transition-colors group-hover:text-gray-400">
-        <ClockIcon className="w-3.5 h-3.5" />
+      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] shrink-0 transition-colors group-hover:opacity-80">
+        <Clock3 className="w-3.5 h-3.5" />
         {timeAgo(instance.createdAt)}
       </div>
     </button>

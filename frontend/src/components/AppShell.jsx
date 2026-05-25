@@ -1,10 +1,21 @@
 import { NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
-  HomeIcon, CircleStackIcon, PlusIcon, ArrowPathIcon,
-  Bars3Icon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon,
-} from '@heroicons/react/24/outline'
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  HardDrive,
+  House,
+  Laptop,
+  Menu,
+  Moon,
+  Plus,
+  RefreshCw,
+  Sun,
+  X,
+} from 'lucide-react'
 import { syncStatuses, getSystemInfo } from '../api/client'
+import { useTheme } from '../theme/useTheme'
 import toast from 'react-hot-toast'
 
 const SIDEBAR_EXPANDED = 224
@@ -18,6 +29,12 @@ export function AppShell({ children, onDeploy, onRefresh }) {
   const [collapsed, setCollapsed]   = useState(
     () => localStorage.getItem(LS_KEY) !== 'false'   // default: collapsed
   )
+  const { mode, effectiveTheme, cycleMode } = useTheme()
+
+  const ThemeIcon = mode === 'system' ? Laptop : mode === 'light' ? Sun : Moon
+  const themeLabel = mode === 'system'
+    ? `Theme: Auto (${effectiveTheme === 'dark' ? 'Night' : 'Day'})`
+    : `Theme: ${mode === 'dark' ? 'Night' : 'Day'}`
 
   useEffect(() => {
     getSystemInfo().then(setSysInfo).catch(() => {})
@@ -44,12 +61,12 @@ export function AppShell({ children, onDeploy, onRefresh }) {
   const sidebarW = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED
 
   return (
-    <div className="min-h-screen bg-[#0f1117] text-gray-100">
+    <div className="shell-root min-h-screen text-(--text-primary)">
 
       {/* ── Desktop sidebar ── */}
       <aside
         style={{ width: sidebarW }}
-        className="hidden lg:flex flex-col border-r border-white/[0.06] bg-[#0b0e15] fixed inset-y-0 left-0 z-30 transition-[width] duration-200 ease-in-out"
+        className="shell-sidebar hidden lg:flex flex-col fixed inset-y-0 left-0 z-30 transition-[width] duration-200 ease-in-out"
         // NOTE: no overflow-hidden — tooltips must escape the sidebar boundary
       >
         {/* Inner wrapper: clips text during animation but NOT the tooltip layer */}
@@ -58,12 +75,12 @@ export function AppShell({ children, onDeploy, onRefresh }) {
           {/* Logo */}
           <div className={`flex items-center shrink-0 px-3 py-4 animate-fade-up ${collapsed ? 'justify-center' : 'justify-between'}`}>
             <NavLink to="/" className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30 select-none shrink-0 transition-transform duration-200 hover:scale-105">
-                DB
+              <div className="w-8 h-8 flex items-center justify-center font-bold text-xs brutal-chip select-none shrink-0 transition-transform duration-200 hover:scale-105">
+                PW
               </div>
               {!collapsed && (
-                <span className="font-semibold text-white text-sm tracking-tight truncate">
-                  DB Deployer
+                <span className="font-semibold text-sm tracking-tight truncate text-(--text-primary)">
+                  Port Wrangler
                 </span>
               )}
             </NavLink>
@@ -77,7 +94,7 @@ export function AppShell({ children, onDeploy, onRefresh }) {
             )}
 
             <SidebarBtn
-              icon={<ArrowPathIcon className={`w-4 h-4 shrink-0 ${syncing ? 'animate-spin' : ''}`} />}
+              icon={<RefreshCw className={`w-4 h-4 shrink-0 ${syncing ? 'animate-spin' : ''}`} />}
               label="Sync statuses"
               collapsed={collapsed}
               onClick={handleSync}
@@ -85,7 +102,14 @@ export function AppShell({ children, onDeploy, onRefresh }) {
             />
 
             <SidebarBtn
-              icon={<PlusIcon className="w-4 h-4 shrink-0" />}
+              icon={<ThemeIcon className="w-4 h-4 shrink-0" />}
+              label={themeLabel}
+              collapsed={collapsed}
+              onClick={cycleMode}
+            />
+
+            <SidebarBtn
+              icon={<Plus className="w-4 h-4 shrink-0" />}
               label="Deploy DB"
               collapsed={collapsed}
               onClick={() => onDeploy?.()}
@@ -94,33 +118,33 @@ export function AppShell({ children, onDeploy, onRefresh }) {
           </div>
 
           {/* Divider */}
-          <div className="mx-3 border-t border-white/[0.05] mb-2 shrink-0 animate-fade-in delay-150" />
+          <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0 animate-fade-in delay-150" />
 
           {/* Nav */}
           <nav className={`flex-1 space-y-0.5 ${collapsed ? 'px-2' : 'px-2'}`}>
             {!collapsed && (
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-600 px-3 py-2 animate-fade-in delay-150">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2 animate-fade-in delay-150">
                 Navigation
               </p>
             )}
             <SideNavItem
-              to="/" icon={<HomeIcon className="w-4 h-4" />}
+              to="/" icon={<House className="w-4 h-4" />}
               label="Home" end collapsed={collapsed}
               className="animate-fade-up delay-200"
             />
             <SideNavItem
-              to="/instances" icon={<CircleStackIcon className="w-4 h-4" />}
+              to="/instances" icon={<Database className="w-4 h-4" />}
               label="Instances" collapsed={collapsed}
               className="animate-fade-up delay-300"
             />
           </nav>
 
           {/* Collapse toggle */}
-          <div className={`shrink-0 border-t border-white/[0.05] py-3 animate-fade-up delay-300 ${collapsed ? 'px-2' : 'px-3'}`}>
+          <div className={`shrink-0 border-t-2 border-(--border-strong) py-3 animate-fade-up delay-300 ${collapsed ? 'px-2' : 'px-3'}`}>
             <SidebarBtn
               icon={collapsed
-                ? <ChevronRightIcon className="w-4 h-4 shrink-0" />
-                : <ChevronLeftIcon className="w-4 h-4 shrink-0" />
+                ? <ChevronRight className="w-4 h-4 shrink-0" />
+                : <ChevronLeft className="w-4 h-4 shrink-0" />
               }
               label={collapsed ? 'Expand' : 'Collapse'}
               collapsed={collapsed}
@@ -138,29 +162,30 @@ export function AppShell({ children, onDeploy, onRefresh }) {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 w-56 bg-[#0b0e15] border-r border-white/[0.06] z-50 lg:hidden flex flex-col animate-slide-right">
+          <aside className="shell-sidebar fixed inset-y-0 left-0 w-56 z-50 lg:hidden flex flex-col animate-slide-right">
             <div className="flex flex-col h-full overflow-x-hidden">
               <div className="flex items-center justify-between shrink-0 px-3 py-4 animate-fade-up">
                 <NavLink to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30 select-none shrink-0">
-                    DB
+                  <div className="w-8 h-8 brutal-chip flex items-center justify-center text-xs font-bold shrink-0">
+                    PW
                   </div>
-                  <span className="font-semibold text-white text-sm tracking-tight">DB Deployer</span>
+                  <span className="font-semibold text-sm tracking-tight">Port Wrangler</span>
                 </NavLink>
-                <button onClick={() => setMobileOpen(false)} className="p-1 rounded text-gray-500 hover:text-white hover:bg-white/[0.06] transition-colors">
-                  <XMarkIcon className="w-5 h-5" />
+                <button onClick={() => setMobileOpen(false)} className="p-1 rounded text-(--text-muted) hover:text-(--text-primary) hover:bg-(--bg-surface-2) transition-colors">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="shrink-0 space-y-1 pb-3 px-3 animate-fade-up delay-50">
                 {sysInfo && <DockerPill info={sysInfo} />}
-                <SidebarBtn icon={<ArrowPathIcon className={`w-4 h-4 shrink-0 ${syncing ? 'animate-spin' : ''}`} />} label="Sync statuses" collapsed={false} onClick={handleSync} disabled={syncing} />
-                <SidebarBtn icon={<PlusIcon className="w-4 h-4 shrink-0" />} label="Deploy DB" collapsed={false} onClick={() => { onDeploy?.(); setMobileOpen(false) }} primary />
+                <SidebarBtn icon={<RefreshCw className={`w-4 h-4 shrink-0 ${syncing ? 'animate-spin' : ''}`} />} label="Sync statuses" collapsed={false} onClick={handleSync} disabled={syncing} />
+                <SidebarBtn icon={<ThemeIcon className="w-4 h-4 shrink-0" />} label={themeLabel} collapsed={false} onClick={cycleMode} />
+                <SidebarBtn icon={<Plus className="w-4 h-4 shrink-0" />} label="Deploy DB" collapsed={false} onClick={() => { onDeploy?.(); setMobileOpen(false) }} primary />
               </div>
-              <div className="mx-3 border-t border-white/[0.05] mb-2 shrink-0" />
+              <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0" />
               <nav className="flex-1 space-y-0.5 px-2 animate-fade-up delay-100">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-600 px-3 py-2">Navigation</p>
-                <SideNavItem to="/" icon={<HomeIcon className="w-4 h-4" />} label="Home" end collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-150" />
-                <SideNavItem to="/instances" icon={<CircleStackIcon className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2">Navigation</p>
+                <SideNavItem to="/" icon={<House className="w-4 h-4" />} label="Home" end collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-150" />
+                <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
               </nav>
             </div>
           </aside>
@@ -168,16 +193,20 @@ export function AppShell({ children, onDeploy, onRefresh }) {
       )}
 
       {/* ── Mobile top bar ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 bg-[#0f1117]/90 backdrop-blur-md border-b border-white/[0.06] z-30 h-14 flex items-center px-4 gap-3 animate-slide-down">
-        <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors">
-          <Bars3Icon className="w-5 h-5" />
+      <header className="shell-topbar lg:hidden fixed top-0 left-0 right-0 z-30 h-14 flex items-center px-4 gap-2 animate-slide-down">
+        <button onClick={() => setMobileOpen(true)} className="p-1.5 rounded text-(--text-muted) hover:text-(--text-primary) hover:bg-(--bg-surface-2) transition-colors">
+          <Menu className="w-5 h-5" />
         </button>
         <NavLink to="/" className="flex items-center gap-2 flex-1">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-blue-500/30 select-none">DB</div>
-          <span className="font-semibold text-white text-sm tracking-tight">DB Deployer</span>
+          <div className="w-7 h-7 brutal-chip flex items-center justify-center text-[10px] font-bold select-none">PW</div>
+          <span className="font-semibold text-sm tracking-tight">Port Wrangler</span>
         </NavLink>
+        <button onClick={cycleMode} className="btn-secondary text-[11px] px-2.5 py-1.5">
+          <ThemeIcon className="w-3.5 h-3.5" />
+          {mode === 'system' ? 'Auto' : mode === 'dark' ? 'Night' : 'Day'}
+        </button>
         <button onClick={() => onDeploy?.()} className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5">
-          <PlusIcon className="w-3.5 h-3.5" />Deploy
+          <Plus className="w-3.5 h-3.5" />Deploy
         </button>
       </header>
 
@@ -199,12 +228,12 @@ export function AppShell({ children, onDeploy, onRefresh }) {
 
 // ── Shared sidebar button (works expanded + collapsed) ───────────────────────
 function SidebarBtn({ icon, label, collapsed, onClick, disabled, primary, muted }) {
-  const base = `group relative flex items-center rounded-lg text-sm transition-all w-full disabled:opacity-50`
+  const base = `group relative flex items-center rounded-sm text-sm transition-all w-full disabled:opacity-50`
   const colors = primary
-    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-px active:translate-y-0'
+    ? 'btn-primary'
     : muted
-      ? 'text-gray-500 hover:text-white hover:bg-white/[0.06]'
-      : 'text-gray-400 hover:text-white hover:bg-white/[0.06]'
+      ? 'btn-ghost text-[var(--text-muted)]'
+      : 'btn-secondary'
 
   return (
     <button
@@ -226,11 +255,11 @@ function SideNavItem({ to, icon, label, end, collapsed, onNavigate, className = 
       end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `group relative flex items-center rounded-lg text-sm transition-all w-full ${className}
+          `group relative flex items-center rounded-sm text-sm transition-all w-full border-2 ${className}
          ${collapsed ? 'justify-center py-2.5 px-0' : 'gap-3 px-3 py-2'}
          ${isActive
-           ? 'bg-blue-600/15 text-white font-medium border border-blue-500/20 shadow-sm shadow-blue-500/10'
-           : 'text-gray-400 hover:text-white hover:bg-white/[0.05] border border-transparent'
+            ? 'bg-(--accent-soft) text-(--text-primary) font-semibold border-(--border-strong) shadow-(--shadow-raised)'
+            : 'text-(--text-muted) hover:text-(--text-primary) hover:bg-(--bg-surface-2) border-transparent hover:border-(--border-soft)'
          }`
       }
     >
@@ -246,13 +275,19 @@ function Tooltip({ children }) {
     <span
       className="
         pointer-events-none fixed ml-1
-        whitespace-nowrap rounded-md bg-gray-800 border border-white/[0.08]
-        px-2.5 py-1 text-xs text-white shadow-lg
+        whitespace-nowrap rounded-sm
+        px-2.5 py-1 text-xs shadow-lg
         opacity-0 group-hover:opacity-100
         -translate-y-1 group-hover:translate-y-0
-        transition-all duration-150 z-[100]
+        transition-all duration-150 z-100
       "
-      style={{ left: SIDEBAR_COLLAPSED + 8 }}
+      style={{
+        background: 'var(--bg-surface)',
+        border: '2px solid var(--border-strong)',
+        color: 'var(--text-primary)',
+        boxShadow: 'var(--shadow-raised)',
+        left: SIDEBAR_COLLAPSED + 8,
+      }}
     >
       {children}
     </span>
@@ -264,14 +299,23 @@ function DockerPill({ info }) {
   const ok = info.dockerAvailable
   const os = info.osType === 'MACOS' ? 'macOS' : (info.osType ?? 'Docker')
   if (!ok) return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400">
-      <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />Docker offline
+    <div className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2" style={{
+      background: 'var(--status-error-bg)',
+      borderColor: 'var(--status-error-border)',
+      color: 'var(--status-error)',
+    }}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--status-error)' }} />Docker offline
     </div>
   )
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-green-500/[0.07] border border-green-500/15 text-green-400 cursor-default transition-all duration-200 hover:bg-green-500/[0.12]">
-      <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 animate-pulse" />
-      🐳 {os} · {info.arch}
+    <div className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-default transition-all duration-200" style={{
+      background: 'var(--status-running-bg)',
+      borderColor: 'var(--status-running-border)',
+      color: 'var(--status-running)',
+    }}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: 'var(--status-running)' }} />
+      <HardDrive className="w-3.5 h-3.5" />
+      Docker {os} · {info.arch}
     </div>
   )
 }
@@ -281,9 +325,9 @@ function DockerDot({ info }) {
   const ok = info.dockerAvailable
   const os = info.osType === 'MACOS' ? 'macOS' : (info.osType ?? 'Docker')
   return (
-    <div className={`group relative flex items-center justify-center py-2.5 w-full cursor-default rounded-lg ${ok ? 'text-green-400' : 'text-red-400'}`}>
-      <span className={`w-2 h-2 rounded-full ${ok ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-      <Tooltip>{ok ? `🐳 Docker · ${os} · ${info.arch}` : 'Docker offline'}</Tooltip>
+    <div className="group relative flex items-center justify-center py-2.5 w-full cursor-default rounded-sm">
+      <span className={`w-2 h-2 rounded-full ${ok ? 'animate-pulse' : ''}`} style={{ backgroundColor: ok ? 'var(--status-running)' : 'var(--status-error)' }} />
+      <Tooltip>{ok ? `Docker · ${os} · ${info.arch}` : 'Docker offline'}</Tooltip>
     </div>
   )
 }

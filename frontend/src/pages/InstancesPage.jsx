@@ -5,11 +5,18 @@ import { InstanceCard } from '../components/InstanceCard'
 import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
 import {
-  PlusIcon, MagnifyingGlassIcon, CloudArrowDownIcon,
-  CircleStackIcon, PlayIcon, StopCircleIcon,
-  ArrowPathIcon, ExclamationTriangleIcon, ChevronDownIcon,
-  TrashIcon, XCircleIcon,
-} from '@heroicons/react/24/outline'
+  ChevronDown,
+  CircleOff,
+  CircleX,
+  CloudDownload,
+  Database,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'ERROR', 'REMOVED']
@@ -37,7 +44,10 @@ export function InstancesPage() {
   }, [])
 
   // Initial load
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const kick = setTimeout(() => load(), 0)
+    return () => clearTimeout(kick)
+  }, [load])
 
   // Adaptive polling — 3 s when deploying/removing, 8 s otherwise
   useEffect(() => {
@@ -65,59 +75,59 @@ export function InstancesPage() {
     {
       label: 'Total',
       value: stats.total,
-      icon: <CircleStackIcon className="w-4 h-4" />,
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/20',
+      icon: <Database className="w-4 h-4" />,
+      color: 'text-[var(--status-deploying)]',
+      bg: 'bg-[var(--status-deploying-bg)]',
+      border: 'border-[var(--status-deploying-border)]',
     },
     {
       label: 'Running',
       value: stats.running,
-      icon: <PlayIcon className="w-4 h-4" />,
-      color: 'text-green-400',
-      bg: 'bg-green-500/10',
-      border: 'border-green-500/20',
+      icon: <Play className="w-4 h-4" />,
+      color: 'text-[var(--status-running)]',
+      bg: 'bg-[var(--status-running-bg)]',
+      border: 'border-[var(--status-running-border)]',
       pulse: stats.running > 0,
     },
     {
       label: 'Stopped',
       value: stats.stopped,
-      icon: <StopCircleIcon className="w-4 h-4" />,
-      color: 'text-gray-400',
-      bg: 'bg-gray-500/10',
-      border: 'border-gray-500/20',
+      icon: <CircleOff className="w-4 h-4" />,
+      color: 'text-[var(--status-stopped)]',
+      bg: 'bg-[var(--status-stopped-bg)]',
+      border: 'border-[var(--status-stopped-border)]',
     },
     {
       label: 'Deploying',
       value: stats.deploying,
-      icon: <ArrowPathIcon className={`w-4 h-4 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />,
-      color: 'text-blue-300',
-      bg: 'bg-blue-400/10',
-      border: 'border-blue-400/20',
+      icon: <RefreshCw className={`w-4 h-4 ${stats.deploying > 0 ? 'animate-spin' : ''}`} />,
+      color: 'text-[var(--status-deploying)]',
+      bg: 'bg-[var(--status-deploying-bg)]',
+      border: 'border-[var(--status-deploying-border)]',
     },
     {
       label: 'Removing',
       value: stats.removing,
-      icon: <ArrowPathIcon className={`w-4 h-4 ${stats.removing > 0 ? 'animate-spin' : ''}`} />,
-      color: 'text-orange-400',
-      bg: 'bg-orange-500/10',
-      border: 'border-orange-500/20',
+      icon: <RefreshCw className={`w-4 h-4 ${stats.removing > 0 ? 'animate-spin' : ''}`} />,
+      color: 'text-[var(--status-removing)]',
+      bg: 'bg-[var(--status-removing-bg)]',
+      border: 'border-[var(--status-removing-border)]',
     },
     {
       label: 'Errors',
       value: stats.error,
-      icon: <ExclamationTriangleIcon className="w-4 h-4" />,
-      color: stats.error > 0 ? 'text-red-400' : 'text-gray-600',
-      bg: stats.error > 0 ? 'bg-red-500/10' : 'bg-gray-500/5',
-      border: stats.error > 0 ? 'border-red-500/20' : 'border-white/[0.06]',
+      icon: <TriangleAlert className="w-4 h-4" />,
+      color: stats.error > 0 ? 'text-[var(--status-error)]' : 'text-[var(--status-stopped)]',
+      bg: stats.error > 0 ? 'bg-[var(--status-error-bg)]' : 'bg-[var(--status-stopped-bg)]',
+      border: stats.error > 0 ? 'border-[var(--status-error-border)]' : 'border-[var(--status-stopped-border)]',
     },
     {
       label: 'Removed',
       value: stats.removed,
-      icon: <XCircleIcon className="w-4 h-4" />,
-      color: stats.removed > 0 ? 'text-gray-400' : 'text-gray-600',
-      bg: 'bg-gray-500/10',
-      border: 'border-gray-500/20',
+      icon: <CircleX className="w-4 h-4" />,
+      color: stats.removed > 0 ? 'text-[var(--status-removed)]' : 'text-[var(--status-stopped)]',
+      bg: 'bg-[var(--status-removed-bg)]',
+      border: 'border-[var(--status-removed-border)]',
     },
   ] : []
 
@@ -142,8 +152,8 @@ export function InstancesPage() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between mb-6 animate-fade-up">
         <div>
-          <h1 className="text-xl font-semibold text-white">Instances</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Instances</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">
             {stats ? (
               <>
                 {stats.total} active &nbsp;·&nbsp; {stats.running} running
@@ -155,13 +165,13 @@ export function InstancesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/[0.05] border border-white/[0.08] text-gray-300 hover:text-white hover:border-white/[0.15] transition-all"
+            className="btn-secondary text-sm"
           >
-            <CloudArrowDownIcon className="w-4 h-4" />
+            <CloudDownload className="w-4 h-4" />
             Import
           </button>
           <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
-            <PlusIcon className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
             Deploy DB
           </button>
         </div>
@@ -178,10 +188,10 @@ export function InstancesPage() {
                   {s.icon}
                 </div>
                 <div>
-                  <div className={`text-2xl font-bold text-white tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
+                  <div className={`text-2xl font-bold text-[var(--text-primary)] tabular-nums ${s.pulse ? 'animate-pulse' : ''}`}>
                     {s.value}
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
                 </div>
               </div>
             ))}
@@ -192,7 +202,7 @@ export function InstancesPage() {
       {/* ── Search + status filter ── */}
       <div className="flex items-center gap-3 mb-6 flex-wrap animate-fade-up delay-150">
         <div className="relative flex-1 min-w-52">
-          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
             type="text"
             value={search}
@@ -206,10 +216,10 @@ export function InstancesPage() {
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-[4px] text-xs font-semibold transition-colors border-2 ${
                 statusFilter === s
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                  : 'bg-white/[0.05] border border-white/[0.08] text-gray-400 hover:text-white hover:border-white/[0.15]'
+                  ? 'bg-[var(--accent-soft)] border-[var(--border-strong)] text-[var(--text-primary)] shadow-[var(--shadow-raised)]'
+                  : 'bg-[var(--bg-surface-2)] border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
               {s}
@@ -220,8 +230,8 @@ export function InstancesPage() {
 
       {/* ── Card grid ── */}
       {loading ? (
-        <div className="flex items-center justify-center py-24 text-gray-500 gap-2">
-          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center justify-center py-24 text-[var(--text-muted)] gap-2">
+          <div className="w-5 h-5 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin" />
           Loading instances…
         </div>
       ) : filtered.length === 0 && activeInstances.length === 0 && !showingRemoved ? (
@@ -241,23 +251,30 @@ export function InstancesPage() {
         <section className="mt-10">
           <button
             onClick={() => setShowRemoved(v => !v)}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-3 group"
+            className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-3 group"
           >
-            <div className="flex items-center justify-center w-5 h-5 rounded bg-gray-500/10 border border-gray-500/20">
-              <TrashIcon className="w-3 h-3" />
+            <div className="flex items-center justify-center w-5 h-5 rounded-[4px] border" style={{
+              background: 'var(--status-removed-bg)',
+              borderColor: 'var(--status-removed-border)',
+            }}>
+              <Trash2 className="w-3 h-3" style={{ color: 'var(--status-removed)' }} />
             </div>
             <span className="font-medium">Removed</span>
-            <span className="text-xs text-gray-600 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+            <span className="text-xs px-1.5 py-0.5 rounded-full border" style={{
+              color: 'var(--text-muted)',
+              background: 'var(--bg-surface-2)',
+              borderColor: 'var(--border-strong)',
+            }}>
               {removedInstances.length}
             </span>
-            <ChevronDownIcon
+            <ChevronDown
               className={`w-3.5 h-3.5 transition-transform duration-200 ${showRemoved ? 'rotate-180' : ''}`}
             />
           </button>
 
           {showRemoved && (
             filteredRemoved.length === 0 ? (
-              <p className="text-xs text-gray-600 pl-1">No removed instances match the current search.</p>
+              <p className="text-xs text-[var(--text-muted)] pl-1">No removed instances match the current search.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 opacity-60 hover:opacity-80 transition-opacity">
                 {filteredRemoved.map(instance => (
@@ -283,17 +300,17 @@ function EmptyState({ onDeploy, hasInstances }) {
   return (
     <div className="card p-16 text-center animate-scale-in">
       <div className="text-5xl mb-4">{hasInstances ? '🔍' : '🗄️'}</div>
-      <h2 className="text-lg font-semibold text-white mb-2">
+      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
         {hasInstances ? 'No matches found' : 'No databases yet'}
       </h2>
-      <p className="text-gray-500 text-sm mb-6">
+      <p className="text-[var(--text-muted)] text-sm mb-6">
         {hasInstances
           ? 'Try clearing the search or status filter'
           : 'Deploy your first database to get started'}
       </p>
       {!hasInstances && (
         <button onClick={onDeploy} className="btn-primary inline-flex items-center gap-2">
-          <PlusIcon className="w-4 h-4" />
+          <Plus className="w-4 h-4" />
           Deploy a Database
         </button>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ExclamationTriangleIcon, LinkSlashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { TriangleAlert, Unlink, X } from 'lucide-react'
 
 /**
  * Generic confirmation dialog.
@@ -44,16 +44,32 @@ export function ConfirmModal({
   if (!open) return null
 
   const isDanger  = variant === 'danger'
-  const iconColor = isDanger ? 'text-red-400'    : 'text-amber-400'
-  const iconBg    = isDanger ? 'bg-red-500/10'   : 'bg-amber-500/10'
-  const iconBorder= isDanger ? 'border-red-500/20': 'border-amber-500/20'
-  const btnColor  = isDanger
-    ? 'bg-red-600 hover:bg-red-500 focus:ring-red-500/40 text-white'
-    : 'bg-amber-600 hover:bg-amber-500 focus:ring-amber-500/40 text-white'
+  const iconTone = isDanger
+    ? {
+        color: 'var(--status-error)',
+        background: 'var(--status-error-bg)',
+        borderColor: 'var(--status-error-border)',
+      }
+    : {
+        color: 'var(--status-warning)',
+        background: 'var(--status-warning-bg)',
+        borderColor: 'var(--status-warning-border)',
+      }
+  const btnTone = isDanger
+    ? {
+        color: 'var(--text-inverse)',
+        background: 'var(--status-error)',
+        borderColor: 'var(--status-error-border)',
+      }
+    : {
+        color: 'var(--text-inverse)',
+        background: 'var(--status-warning)',
+        borderColor: 'var(--status-warning-border)',
+      }
 
   const defaultIcon = isDanger
-    ? <ExclamationTriangleIcon className="w-5 h-5" />
-    : <LinkSlashIcon className="w-5 h-5" />
+    ? <TriangleAlert className="w-5 h-5" />
+    : <Unlink className="w-5 h-5" />
 
   return (
     /* Backdrop */
@@ -66,38 +82,39 @@ export function ConfirmModal({
 
       {/* Dialog */}
       <div
-        className="relative w-full max-w-sm bg-[#1a1d27] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 p-6 animate-in fade-in zoom-in-95 duration-150"
+        className="relative w-full max-w-sm card p-6 animate-in fade-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
-        {/* Close × */}
+        {/* Close */}
         <button
           onClick={onCancel}
-          className="absolute top-4 right-4 p-1 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/[0.06] transition-colors"
+          className="absolute top-4 right-4 p-1 rounded-[4px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)] transition-colors"
         >
-          <XMarkIcon className="w-4 h-4" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Icon */}
-        <div className={`w-12 h-12 rounded-xl ${iconBg} border ${iconBorder} flex items-center justify-center ${iconColor} mb-4`}>
+        <div className="w-12 h-12 rounded-[6px] border-2 flex items-center justify-center mb-4" style={iconTone}>
           {icon ?? defaultIcon}
         </div>
 
         {/* Text */}
-        <h2 className="text-base font-semibold text-white mb-2">{title}</h2>
-        <p className="text-sm text-gray-400 leading-relaxed">{message}</p>
+        <h2 className="text-base font-semibold text-[var(--text-primary)] mb-2">{title}</h2>
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed">{message}</p>
 
         {/* Buttons */}
         <div className="flex gap-3 mt-6">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 rounded-xl text-sm font-medium bg-white/[0.05] border border-white/[0.08] text-gray-300 hover:text-white hover:border-white/[0.15] transition-colors"
+            className="btn-secondary flex-1"
           >
             {cancelLabel}
           </button>
           <button
             ref={confirmRef}
             onClick={onConfirm}
-            className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-colors focus:outline-none focus:ring-2 ${btnColor}`}
+            className="flex-1 px-4 py-2 rounded-[4px] text-sm font-semibold border-2 shadow-[var(--shadow-raised)] transition-colors focus:outline-none"
+            style={btnTone}
           >
             {confirmLabel}
           </button>
