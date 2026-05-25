@@ -195,7 +195,43 @@ public class DbInstanceService {
         containerRepo.save(container);
     }
 
-    // ── Import ─────────────────────────────────────────────────────────────────
+    // ── Import / Re-import ─────────────────────────────────────────────────────
+
+    /**
+     * Re-import an untracked (REMOVED) imported instance by associating it with a
+     * new Docker container. All config (name, credentials, ports) is preserved;
+     * only the container binding changes.
+     */
+    @Transactional
+    public DeploymentConfig reImportInstance(String id, ReImportRequest req) {
+        DeploymentConfig config    = getById(id);
+        DeployedContainer existing = requireContainer(config);
+
+        if (!config.isImported()) {
+            throw new IllegalArgumentException("Only imported instances can be re-imported");
+        }
+        if (existing.getStatus() != InstanceStatus.REMOVED) {
+            throw new IllegalArgumentException("Instance '" + config.getName() + "' is not in REMOVED state");
+        }
+        if (containerRepo.existsByContainerId(req.containerId())) {
+            throw new IllegalArgumentException("Container " + req.containerId().substring(0, 12) + " is already tracked");
+        }
+
+        DeployedContainer container = new DeployedContainer();
+        container.setId(java.util.UUID.randomUUID().toString());
+        container.setConfig(config);
+        container.setContainerId(req.containerId());
+        container.setContainerName(req.containerName());
+        container.setStatus(getContainerStatus(req.containerId()));
+        container.setStartedAt(docker.getStartedAt(req.containerId()));
+        containerRepo.save(container);
+
+        config.setContainer(container);
+        configRepo.save(config);
+
+        log.info("Re-imported instance '{}' → container {}", config.getName(), req.containerId().substring(0, 12));
+        return config;
+    }
 
     @Transactional
     public DeploymentConfig importContainer(ImportRequest req) {

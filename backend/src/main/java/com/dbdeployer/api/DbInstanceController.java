@@ -115,6 +115,18 @@ public class DbInstanceController {
         return ResponseEntity.ok(toResponse(config));
     }
 
+    /**
+     * Re-import a previously untracked (REMOVED) imported instance by binding it
+     * to a new Docker container. All config metadata is preserved.
+     */
+    @PutMapping("/instances/{id}/reimport")
+    public ResponseEntity<InstanceResponse> reImportInstance(
+            @PathVariable String id,
+            @Valid @RequestBody ReImportRequest req) {
+        DeploymentConfig config = service.reImportInstance(id, req);
+        return ResponseEntity.ok(toResponse(config));
+    }
+
     /** List all supported database types with their catalog info */
     @GetMapping("/catalog")
     public Collection<DatabaseCatalog.DbDefinition> catalog() {

@@ -6,13 +6,14 @@ import {
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { ConnectionString } from '../components/ConnectionString'
+import { ImportModal } from '../components/ImportModal'
 import {
   ArrowLeftIcon, PlayIcon, StopIcon, TrashIcon,
   ArrowPathIcon, ChartBarIcon, Cog6ToothIcon, DocumentTextIcon,
   ServerIcon, ClockIcon, HashtagIcon, CircleStackIcon,
   FolderIcon, KeyIcon, UserIcon, GlobeAltIcon,
   EyeIcon, EyeSlashIcon, ClipboardDocumentIcon, ClipboardDocumentCheckIcon,
-  RocketLaunchIcon, LinkSlashIcon,
+  RocketLaunchIcon, LinkSlashIcon, ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -27,10 +28,11 @@ export function InstanceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const [instance, setInstance] = useState(null)
-  const [loading, setLoading]   = useState(true)
+  const [instance, setInstance]   = useState(null)
+  const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const [busy, setBusy]         = useState(false)
+  const [busy, setBusy]           = useState(false)
+  const [showReImport, setShowReImport] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +83,7 @@ export function InstanceDetailPage() {
 
   const isRunning = instance.status === 'RUNNING'
   const isStopped = instance.status === 'STOPPED'
+  const isRemoved = instance.status === 'REMOVED'
   const isBusy    = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
 
   return (
@@ -154,7 +157,16 @@ export function InstanceDetailPage() {
                 <StopIcon className="w-4 h-4" /> Stop
               </button>
             )}
-            {!instance.isSystem && (
+            {/* Re-import: only for imported instances that have been untracked */}
+            {!instance.isSystem && instance.isImported && isRemoved && (
+              <button
+                onClick={() => setShowReImport(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-colors">
+                <ArrowUturnLeftIcon className="w-4 h-4" /> Re-import
+              </button>
+            )}
+            {/* Remove/Untrack: hidden when already removed */}
+            {!instance.isSystem && !isRemoved && (
               <button
                 onClick={handle(removeInstance, instance.isImported ? 'Untrack' : 'Remove', true)}
                 disabled={isBusy}
@@ -189,6 +201,14 @@ export function InstanceDetailPage() {
       {activeTab === 'pipeline'      && <PipelineTab      instanceId={id} instance={instance} />}
       {activeTab === 'configuration' && <ConfigurationTab instance={instance} />}
       {activeTab === 'logs'          && <LogsTab          instanceId={id} isRunning={isRunning} />}
+
+      {showReImport && (
+        <ImportModal
+          onClose={() => setShowReImport(false)}
+          onImported={() => { setShowReImport(false); load() }}
+          reImportInstance={instance}
+        />
+      )}
     </AppShell>
   )
 }
