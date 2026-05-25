@@ -24,6 +24,7 @@ export function HomePage() {
   const [stats, setStats]         = useState(null)
   const [showModal, setShowModal] = useState(false)
   const navigate = useNavigate()
+  const openDeployModal = useCallback(() => setShowModal(true), [])
 
   const load = useCallback(async () => {
     try {
@@ -64,7 +65,7 @@ export function HomePage() {
   ] : []
 
   return (
-    <AppShell onDeploy={() => setShowModal(true)} onRefresh={load}>
+    <AppShell onDeploy={openDeployModal} onRefresh={load}>
 
       {/* ── Hero ── */}
       <section className="relative mb-10 pt-4 pb-8 overflow-hidden animate-fade-up">
@@ -94,7 +95,7 @@ export function HomePage() {
               using Docker - no config headaches.
             </p>
             <div className="flex items-center gap-3 flex-wrap animate-fade-up delay-200">
-              <button onClick={() => setShowModal(true)}
+              <button onClick={openDeployModal}
                 className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
                 <Plus className="w-5 h-5" />
                 Deploy a Database
@@ -112,7 +113,27 @@ export function HomePage() {
               { icon: <Plus className="w-4 h-4" />, step: '1', title: 'Click Deploy', desc: 'Choose a database from the catalog.' },
               { icon: <Settings className="w-4 h-4" />, step: '2', title: 'Configure', desc: 'Set port, credentials & name.' },
               { icon: <CircleCheck className="w-4 h-4" />, step: '3', title: 'Connect', desc: 'Copy the connection string and go.' },
-            ].map(card => (
+            ].map(card => card.step === '1' ? (
+              <button
+                key={card.step}
+                type="button"
+                onClick={openDeployModal}
+                className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] hover:-translate-y-0.5 transition-all duration-200 text-left cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
+                  background: 'var(--status-deploying-bg)',
+                  borderColor: 'var(--status-deploying-border)',
+                  color: 'var(--status-deploying)',
+                }}>
+                  {card.icon}
+                </div>
+                <div>
+                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Step {card.step}</p>
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-0.5">{card.title}</h3>
+                  <p className="text-xs text-[var(--text-muted)]">{card.desc}</p>
+                </div>
+              </button>
+            ) : (
               <div key={card.step} className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] transition-all duration-200">
                 <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
                   background: 'var(--status-deploying-bg)',
@@ -171,7 +192,7 @@ export function HomePage() {
           <div className="card p-12 text-center animate-scale-in">
             <div className="text-4xl mb-3">🗄️</div>
             <p className="text-[var(--text-muted)] text-sm mb-4">No databases deployed yet</p>
-            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center gap-2">
+            <button onClick={openDeployModal} className="btn-primary inline-flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Deploy your first database
             </button>
@@ -199,7 +220,27 @@ export function HomePage() {
               { icon: <Plus className="w-5 h-5" />, step: '1', title: 'Click Deploy', desc: 'Choose a database engine from the catalog - PostgreSQL, MySQL, MongoDB, Redis and more.' },
               { icon: <Settings className="w-5 h-5" />, step: '2', title: 'Configure', desc: 'Set a port, credentials and database name. Sensible defaults are pre-filled for you.' },
               { icon: <CircleCheck className="w-5 h-5" />, step: '3', title: 'Connect', desc: 'Copy the generated connection string and start building. Your data persists across restarts.' },
-            ].map(card => (
+            ].map(card => card.step === '1' ? (
+              <button
+                key={card.step}
+                type="button"
+                onClick={openDeployModal}
+                className="card p-5 flex gap-4 animate-fade-up transition-all duration-200 text-left cursor-pointer hover:bg-[var(--bg-surface-2)]"
+              >
+                <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
+                  background: 'var(--status-deploying-bg)',
+                  borderColor: 'var(--status-deploying-border)',
+                  color: 'var(--status-deploying)',
+                }}>
+                  {card.icon}
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">Step {card.step}</p>
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{card.title}</h3>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{card.desc}</p>
+                </div>
+              </button>
+            ) : (
               <div key={card.step} className="card p-5 flex gap-4 animate-fade-up transition-all duration-200">
                 <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
                   background: 'var(--status-deploying-bg)',

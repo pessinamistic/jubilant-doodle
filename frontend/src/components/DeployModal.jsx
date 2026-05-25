@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getCatalog } from '../api/client'
-import { Eye, EyeOff, Info, Rocket, X } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Info, Rocket, X } from 'lucide-react'
 
 const DEFAULT_PORTS = {
   POSTGRESQL: 5432, MYSQL: 3306, MONGODB: 27017, REDIS: 6379,
@@ -8,19 +8,36 @@ const DEFAULT_PORTS = {
   ELASTICSEARCH: 9200, COUCHDB: 5984, NEO4J: 7474, DYNAMODB_LOCAL: 8000,
 }
 
+/**
+ * Maps a backend error message to the field it relates to.
+ * Returns { field: 'name'|'hostPort'|null, message: string }
+ */
+function parseFieldError(errMsg) {
+  if (!errMsg) return { field: null, message: errMsg }
+  const lower = errMsg.toLowerCase()
+  if (lower.includes('already exists') || lower.includes('named')) {
+    return { field: 'name', message: errMsg }
+  }
+  if (lower.includes('port') && (lower.includes('in use') || lower.includes('already'))) {
+    return { field: 'hostPort', message: errMsg }
+  }
+  return { field: null, message: errMsg }
+}
+
 export function DeployModal({ onClose, onDeploy }) {
-  const [catalog, setCatalog]       = useState([])
-  const [step, setStep]             = useState(1)
-  const [selected, setSelected]     = useState(null)
-  const [form, setForm]             = useState({})
-  const [extraEnv, setExtraEnv]     = useState([])
+  const [catalog, setCatalog]           = useState([])
+  const [step, setStep]                 = useState(1)
+  const [selected, setSelected]         = useState(null)
+  const [form, setForm]                 = useState({})
+  const [extraEnv, setExtraEnv]         = useState([])
   const [showPassword, setShowPassword] = useState(false)
+  const [submitting, setSubmitting]     = useState(false)
+  const [fieldErrors, setFieldErrors]   = useState({}) // { name?: string, hostPort?: string }
 
   useEffect(() => { getCatalog().then(setCatalog) }, [])
 
   const selectDb = (def) => {
     setSelected(def)
-    // Pre-fill with catalog placeholders so nothing is ever blank on submit
     const usernameDefault = def.credentialEnvVars.find(e => e.type === 'TEXT')?.placeholder     ?? 'admin'
     const passwordDefault = def.credentialEnvVars.find(e => e.type === 'PASSWORD')?.placeholder ?? 'secret'
     const databaseDefault = def.credentialEnvVars.find(e => e.type === 'DATABASE')?.placeholder ?? 'mydb'
@@ -37,17 +54,43 @@ export function DeployModal({ onClose, onDeploy }) {
       .filter(e => !['TEXT', 'PASSWORD', 'DATABASE'].includes(e.type))
       .map(e => ({ key: e.name, value: e.placeholder, label: e.label })))
     setShowPassword(false)
+    setFieldErrors({})
     setStep(2)
   }
 
-  const handleSubmit = (e) => {
+  // Clear a field's error as soon as the user starts editing it
+  const updateField = (key, value) => {
+    setForm(f => ({ ...f, [key]: value }))
+    if (fieldErrors[key]) setFieldErrors(fe => ({ ...fe, [key]: undefined }))
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setFieldErrors({})
+    setSubmitting(true)
+
     const extraEnvJson = extraEnv.length
       ? JSON.stringify(Object.fromEntries(extraEnv.map(e => [e.key, e.value])))
       : null
-    // Fire and forget — errors surface as toasts from the parent handler
-    onDeploy({ ...form, dbType: selected.type, extraEnvJson })
-    onClose() // close immediately without waiting for the HTTP round-trip
+
+    try {
+      await onDeploy({ ...form, dbType: selected.type, extraEnvJson })
+      // onDeploy resolves on success — close the modal
+      onClose()
+    } catch (err) {
+      const message = err?.response?.data?.error ?? err?.message ?? 'Deploy failed'
+      const { field, message: msg } = parseFieldError(message)
+
+      if (field) {
+        // Highlight the specific input that caused the conflict
+        setFieldErrors({ [field]: msg })
+      } else {
+        // Generic error — show at the bottom of the form
+        setFieldErrors({ _form: msg })
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -89,30 +132,42 @@ export function DeployModal({ onClose, onDeploy }) {
             </p>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Instance Name" required>
-                <input type="text" required value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="input" placeholder="my-postgres" />
+              <Field label="Instance Name" required error={fieldErrors.name}>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={e => updateField('name', e.target.value)}
+                  className={`input ${fieldErrors.name ? 'input-error' : ''}`}
+                  placeholder="my-postgres"
+                />
               </Field>
 
               <Field label="Version" required>
-                <select value={form.version}
-                  onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
+                <select
+                  value={form.version}
+                  onChange={e => updateField('version', e.target.value)}
                   className="input">
                   {selected.versions.map(v => <option key={v}>{v}</option>)}
                 </select>
               </Field>
 
-              <Field label="Host Port" required>
-                <input type="number" required value={form.hostPort}
-                  onChange={e => setForm(f => ({ ...f, hostPort: parseInt(e.target.value) }))}
-                  className="input" min={1024} max={65535} />
+              <Field label="Host Port" required error={fieldErrors.hostPort}>
+                <input
+                  type="number"
+                  required
+                  value={form.hostPort}
+                  onChange={e => updateField('hostPort', parseInt(e.target.value))}
+                  className={`input ${fieldErrors.hostPort ? 'input-error' : ''}`}
+                  min={1024}
+                  max={65535}
+                />
               </Field>
 
               {selected.supportsUsername && (
                 <Field label="Username" required>
                   <input type="text" required value={form.username}
-                    onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                    onChange={e => updateField('username', e.target.value)}
                     className="input" />
                 </Field>
               )}
@@ -124,14 +179,12 @@ export function DeployModal({ onClose, onDeploy }) {
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={form.password}
-                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      onChange={e => updateField('password', e.target.value)}
                       className="input pr-9" />
                     <button type="button"
                       onClick={() => setShowPassword(s => !s)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary)">
-                      {showPassword
-                        ? <EyeOff className="w-4 h-4" />
-                        : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </Field>
@@ -140,7 +193,7 @@ export function DeployModal({ onClose, onDeploy }) {
               {selected.supportsDatabase && (
                 <Field label="Database Name" required>
                   <input type="text" required value={form.databaseName}
-                    onChange={e => setForm(f => ({ ...f, databaseName: e.target.value }))}
+                    onChange={e => updateField('databaseName', e.target.value)}
                     className="input" />
                 </Field>
               )}
@@ -166,11 +219,28 @@ export function DeployModal({ onClose, onDeploy }) {
               </div>
             )}
 
+            {/* Generic form-level error (not tied to a specific field) */}
+            {fieldErrors._form && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--status-error)' }} />
+                <p className="text-sm" style={{ color: 'var(--status-error)' }}>{fieldErrors._form}</p>
+              </div>
+            )}
+
             <div className="flex items-center justify-between pt-2">
-              <button type="button" onClick={() => setStep(1)}
-                className="text-sm text-(--text-muted) hover:text-(--text-primary) transition-colors">Back</button>
-              <button type="submit" className="btn-primary">
-                <Rocket className="w-4 h-4" /> Launch {selected.displayName}
+              <button type="button" onClick={() => { setStep(1); setFieldErrors({}) }}
+                className="text-sm text-(--text-muted) hover:text-(--text-primary) transition-colors">
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn-primary flex items-center gap-2 disabled:opacity-60">
+                {submitting
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <Rocket className="w-4 h-4" />
+                }
+                {submitting ? 'Launching…' : `Launch ${selected.displayName}`}
               </button>
             </div>
           </form>
@@ -180,13 +250,19 @@ export function DeployModal({ onClose, onDeploy }) {
   )
 }
 
-function Field({ label, required, children }) {
+function Field({ label, required, error, children }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-medium text-(--text-muted)">
         {label}{required && <span className="ml-0.5" style={{ color: 'var(--status-error)' }}>*</span>}
       </label>
       {children}
+      {error && (
+        <p className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--status-error)' }}>
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   )
 }

@@ -56,15 +56,17 @@ export function InstancesPage() {
     return () => clearTimeout(t)
   }, [instances, load])
 
-  // handleDeploy is fire-and-forget (modal closes immediately)
+  // handleDeploy — awaited by DeployModal so field-level errors can be shown there.
+  // Re-throws on error so the modal stays open and highlights the offending field.
   const handleDeploy = async (data) => {
     try {
       await deployInstance(data)
       toast.success(`Deploying ${data.name}… this may take a minute`)
+      load()
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'Deploy failed')
+      // Re-throw so DeployModal can show inline field errors instead of just a toast
+      throw err
     }
-    load()
   }
 
   // Split active vs removed

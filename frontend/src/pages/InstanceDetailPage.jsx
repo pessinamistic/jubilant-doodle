@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getInstance, startInstance, stopInstance, removeInstance, getLogs, getPipeline,
+  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { ConnectionString } from '../components/ConnectionString'
+import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
 import {
   ArrowLeft,
@@ -49,6 +50,7 @@ export function InstanceDetailPage() {
   const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [busy, setBusy]           = useState(false)
+  const [showDeployModal, setShowDeployModal] = useState(false)
   const [showReImport, setShowReImport] = useState(false)
 
   const load = useCallback(async () => {
@@ -87,6 +89,17 @@ export function InstanceDetailPage() {
     }
   }
 
+  const handleDeploy = async (data) => {
+    try {
+      await deployInstance(data)
+      toast.success(`Deploying ${data.name}… this may take a minute`)
+      load()
+    } catch (err) {
+      // Allow DeployModal to map backend errors to inline field-level messages.
+      throw err
+    }
+  }
+
   if (loading) {
     return (
       <AppShell>
@@ -106,7 +119,7 @@ export function InstanceDetailPage() {
   const isBusy    = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
 
   return (
-    <AppShell onRefresh={load}>
+    <AppShell onDeploy={() => setShowDeployModal(true)} onRefresh={load}>
       {/* ── Breadcrumb ── */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6 animate-slide-down">
         <Link to="/instances" className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1">
@@ -228,6 +241,13 @@ export function InstanceDetailPage() {
           onClose={() => setShowReImport(false)}
           onImported={() => { setShowReImport(false); load() }}
           reImportInstance={instance}
+        />
+      )}
+
+      {showDeployModal && (
+        <DeployModal
+          onClose={() => setShowDeployModal(false)}
+          onDeploy={handleDeploy}
         />
       )}
     </AppShell>
