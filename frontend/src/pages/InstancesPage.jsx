@@ -13,21 +13,23 @@ import {
   Play,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   Trash2,
   TriangleAlert,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'REMOVING', 'ERROR', 'REMOVED']
+const STATUS_FILTERS = ['ALL', 'RUNNING', 'RESTARTING', 'STOPPED', 'DEPLOYING', 'REMOVING', 'ERROR', 'REMOVED']
 
 const STATUS_SORT_ORDER = {
   RUNNING: 0,
-  STOPPED: 1,
-  DEPLOYING: 2,
-  REMOVING: 3,
-  ERROR: 4,
-  REMOVED: 5,
+  RESTARTING: 1,
+  STOPPED: 2,
+  DEPLOYING: 3,
+  REMOVING: 4,
+  ERROR: 5,
+  REMOVED: 6,
 }
 
 function getStatusSortOrder(status) {
@@ -116,6 +118,15 @@ export function InstancesPage() {
       bg: 'bg-[var(--status-running-bg)]',
       border: 'border-[var(--status-running-border)]',
       pulse: stats.running > 0,
+    },
+    {
+      label: 'Restarting',
+      filter: 'RESTARTING',
+      value: stats.restarting ?? 0,
+      icon: <RotateCcw className={`w-4 h-4 ${(stats.restarting ?? 0) > 0 ? 'animate-spin' : ''}`} />,
+      color: (stats.restarting ?? 0) > 0 ? 'text-[var(--status-restarting)]' : 'text-[var(--status-stopped)]',
+      bg: (stats.restarting ?? 0) > 0 ? 'bg-[var(--status-restarting-bg)]' : 'bg-[var(--status-stopped-bg)]',
+      border: (stats.restarting ?? 0) > 0 ? 'border-[var(--status-restarting-border)]' : 'border-[var(--status-stopped-border)]',
     },
     {
       label: 'Stopped',

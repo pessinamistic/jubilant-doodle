@@ -1,10 +1,20 @@
 package com.dbdeployer.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
-import java.time.LocalDateTime;
 
 /**
  * Stable, user-facing configuration record for a database instance.
@@ -27,7 +37,7 @@ public class DeploymentConfig {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "db_type", nullable = false)
+    @Column(name = "db_type", nullable = false, columnDefinition = "VARCHAR(50)")
     private DbType dbType;
 
     @NotBlank

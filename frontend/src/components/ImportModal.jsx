@@ -52,7 +52,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
       const data = await discoverContainers()
       setContainers(data)
       if (data.length === 0) {
-        toast('No untracked database containers found', { icon: 'ℹ️' })
+        toast('No untracked containers found', { icon: 'ℹ️' })
       }
     } catch (e) {
       toast.error(e.response?.data?.error ?? 'Discovery failed')
@@ -211,7 +211,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
             ) : containers.length === 0 ? (
               <div className="text-center py-12">
                 <Search className="w-10 h-10 text-(--text-quiet) mx-auto mb-3" />
-                <p className="text-(--text-muted) text-sm">No untracked database containers found</p>
+                <p className="text-(--text-muted) text-sm">No untracked containers found</p>
                 <p className="text-xs text-(--text-quiet) mt-1">Start a container manually then click Refresh</p>
               </div>
             ) : (

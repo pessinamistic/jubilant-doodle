@@ -3,11 +3,43 @@ import { getCatalog } from '../api/client'
 import { AlertCircle, Eye, EyeOff, Info, Rocket, X } from 'lucide-react'
 
 const DEFAULT_PORTS = {
-  POSTGRESQL: 5432, MYSQL: 3306, MONGODB: 27017, REDIS: 6379,
-  MARIADB: 3307, CASSANDRA: 9042, MSSQL: 1433, CLICKHOUSE: 9000,
-  ELASTICSEARCH: 9200, COUCHDB: 5984, NEO4J: 7474, DYNAMODB_LOCAL: 8000,
+  // Relational
+  POSTGRESQL: 5432, MYSQL: 3306, MARIADB: 3307, MSSQL: 1433,
+  // NoSQL
+  MONGODB: 27017, COUCHDB: 5984, NEO4J: 7474, DYNAMODB_LOCAL: 8000,
+  // Cache / KV
+  REDIS: 6379,
+  // Wide-column / OLAP
+  CASSANDRA: 9042, CLICKHOUSE: 9000,
+  // Search
+  ELASTICSEARCH: 9200,
+  // Messaging
   RABBITMQ: 5672, KAFKA: 9092,
+  // Observability
+  GRAFANA: 3000, PROMETHEUS: 9090, LOKI: 3100,
+  // Object storage
+  MINIO: 9000,
+  // Identity / secrets
+  KEYCLOAK: 8080, VAULT: 8200,
+  // Web / proxy
+  NGINX: 8080,
+  // DB admin UIs
+  ADMINER: 8080, PGADMIN: 5050,
 }
+
+const CATALOG_GROUPS = [
+  { label: 'Relational Databases',   types: ['POSTGRESQL','MYSQL','MARIADB','MSSQL'] },
+  { label: 'NoSQL Databases',        types: ['MONGODB','COUCHDB','NEO4J','DYNAMODB_LOCAL'] },
+  { label: 'Cache & Key-Value',      types: ['REDIS'] },
+  { label: 'Wide-Column & OLAP',     types: ['CASSANDRA','CLICKHOUSE'] },
+  { label: 'Search Engines',         types: ['ELASTICSEARCH'] },
+  { label: 'Messaging & Streaming',  types: ['RABBITMQ','KAFKA'] },
+  { label: 'Observability',          types: ['GRAFANA','PROMETHEUS','LOKI'] },
+  { label: 'Object Storage',         types: ['MINIO'] },
+  { label: 'Identity & Secrets',     types: ['KEYCLOAK','VAULT'] },
+  { label: 'Web & Proxy',            types: ['NGINX'] },
+  { label: 'DB Admin UIs',           types: ['ADMINER','PGADMIN'] },
+]
 
 /**
  * Maps a backend error message to the field it relates to.
@@ -101,28 +133,41 @@ export function DeployModal({ onClose, onDeploy }) {
         <div className="flex items-center justify-between px-6 py-4 border-b-2 border-(--border-strong)">
           <h2 className="text-lg font-semibold text-(--text-primary) flex items-center gap-2">
             <Rocket className="w-4 h-4" />
-            {step === 1 ? 'Launch a Database' : `Configure ${selected?.displayName}`}
+            {step === 1 ? 'Launch a Container' : `Configure ${selected?.displayName}`}
           </h2>
           <button onClick={onClose} className="text-(--text-muted) hover:text-(--text-primary) transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Step 1 — DB selector */}
-        {step === 1 && (
-          <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {catalog.map(def => (
-              <button key={def.type}
-                onClick={() => selectDb(def)}
-                className="flex flex-col items-center gap-2 p-4 rounded-md border-2 border-(--border-strong) hover:-translate-y-1 hover:shadow-(--shadow-raised) transition-all text-center group bg-(--bg-surface-2)"
-              >
-                <span className="text-3xl">{def.icon}</span>
-                <span className="text-sm font-medium text-(--text-primary)">{def.displayName}</span>
-                <span className="text-xs text-(--text-muted)">{def.versions[0]}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Step 1 — Container type selector, grouped by category */}
+        {step === 1 && (() => {
+          const byType = Object.fromEntries(catalog.map(d => [d.type, d]))
+          const groups = CATALOG_GROUPS
+            .map(g => ({ ...g, defs: g.types.map(t => byType[t]).filter(Boolean) }))
+            .filter(g => g.defs.length > 0)
+          return (
+            <div className="p-6 space-y-6 overflow-y-auto">
+              {groups.map(g => (
+                <div key={g.label}>
+                  <p className="text-xs font-bold uppercase tracking-widest text-(--text-muted) mb-3 border-b border-(--border-soft) pb-1">{g.label}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {g.defs.map(def => (
+                      <button key={def.type}
+                        onClick={() => selectDb(def)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-md border-2 border-(--border-strong) hover:-translate-y-1 hover:shadow-(--shadow-raised) transition-all text-center bg-(--bg-surface-2)"
+                      >
+                        <span className="text-3xl">{def.icon}</span>
+                        <span className="text-sm font-medium text-(--text-primary)">{def.displayName}</span>
+                        <span className="text-xs text-(--text-muted)">{def.versions[0]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Step 2 — Configure */}
         {step === 2 && selected && (

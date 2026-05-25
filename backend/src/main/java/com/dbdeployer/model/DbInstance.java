@@ -1,10 +1,17 @@
 package com.dbdeployer.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @Entity
 @Table(name = "db_instances")
@@ -20,7 +27,7 @@ public class DbInstance {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "db_type", nullable = false)
+    @Column(name = "db_type", nullable = false, columnDefinition = "VARCHAR(50)")
     private DbType dbType;
 
     @NotBlank

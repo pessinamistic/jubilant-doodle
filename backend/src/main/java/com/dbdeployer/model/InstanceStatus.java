@@ -3,6 +3,7 @@ package com.dbdeployer.model;
 public enum InstanceStatus {
     DEPLOYING,
     RUNNING,
+    RESTARTING,
     STOPPED,
     ERROR,
     REMOVING,

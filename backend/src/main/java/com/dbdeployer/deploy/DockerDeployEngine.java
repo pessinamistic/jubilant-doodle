@@ -1,15 +1,23 @@
 package com.dbdeployer.deploy;
 
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.model.*;
 import com.dbdeployer.config.DockerSocketResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.*;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
@@ -33,25 +41,51 @@ public class DockerDeployEngine {
     private final DockerClient docker;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // DB image name → DbType mapping (order matters: more specific first)
+    // Container image name → DbType mapping (order matters: more specific first)
     private static final Map<String, DbType> IMAGE_DB_TYPE_MAP = new LinkedHashMap<>();
     static {
-        IMAGE_DB_TYPE_MAP.put("mariadb",        DbType.MARIADB);
-        IMAGE_DB_TYPE_MAP.put("postgres",        DbType.POSTGRESQL);
-        IMAGE_DB_TYPE_MAP.put("mysql",           DbType.MYSQL);
-        IMAGE_DB_TYPE_MAP.put("mongo",           DbType.MONGODB);
-        IMAGE_DB_TYPE_MAP.put("redis",           DbType.REDIS);
-        IMAGE_DB_TYPE_MAP.put("cassandra",       DbType.CASSANDRA);
-        IMAGE_DB_TYPE_MAP.put("couchdb",         DbType.COUCHDB);
-        IMAGE_DB_TYPE_MAP.put("clickhouse",      DbType.CLICKHOUSE);
-        IMAGE_DB_TYPE_MAP.put("neo4j",           DbType.NEO4J);
-        IMAGE_DB_TYPE_MAP.put("elasticsearch",   DbType.ELASTICSEARCH);
-        IMAGE_DB_TYPE_MAP.put("mssql",           DbType.MSSQL);
-        IMAGE_DB_TYPE_MAP.put("sqlserver",       DbType.MSSQL);
-        IMAGE_DB_TYPE_MAP.put("dynamodb-local",  DbType.DYNAMODB_LOCAL);
-        IMAGE_DB_TYPE_MAP.put("rabbitmq",        DbType.RABBITMQ);
-        IMAGE_DB_TYPE_MAP.put("apache/kafka",    DbType.KAFKA);
-        IMAGE_DB_TYPE_MAP.put("kafka",           DbType.KAFKA);
+        // ── Relational ────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("mariadb",            DbType.MARIADB);
+        IMAGE_DB_TYPE_MAP.put("postgres",           DbType.POSTGRESQL);
+        IMAGE_DB_TYPE_MAP.put("mysql",              DbType.MYSQL);
+        IMAGE_DB_TYPE_MAP.put("mssql",              DbType.MSSQL);
+        IMAGE_DB_TYPE_MAP.put("sqlserver",          DbType.MSSQL);
+        // ── NoSQL ─────────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("mongo",              DbType.MONGODB);
+        IMAGE_DB_TYPE_MAP.put("couchdb",            DbType.COUCHDB);
+        IMAGE_DB_TYPE_MAP.put("neo4j",              DbType.NEO4J);
+        IMAGE_DB_TYPE_MAP.put("dynamodb-local",     DbType.DYNAMODB_LOCAL);
+        // ── Cache / KV ────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("redis",              DbType.REDIS);
+        // ── Wide-column / OLAP ────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("cassandra",          DbType.CASSANDRA);
+        IMAGE_DB_TYPE_MAP.put("clickhouse",         DbType.CLICKHOUSE);
+        // ── Search ────────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("elasticsearch",      DbType.ELASTICSEARCH);
+        // ── Messaging ─────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("rabbitmq",           DbType.RABBITMQ);
+        IMAGE_DB_TYPE_MAP.put("apache/kafka",       DbType.KAFKA);
+        IMAGE_DB_TYPE_MAP.put("kafka",              DbType.KAFKA);
+        // ── Observability ─────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("grafana/grafana",    DbType.GRAFANA);
+        IMAGE_DB_TYPE_MAP.put("grafana/loki",       DbType.LOKI);
+        IMAGE_DB_TYPE_MAP.put("grafana",            DbType.GRAFANA);   // fallback: any image containing "grafana"
+        IMAGE_DB_TYPE_MAP.put("prom/prometheus",    DbType.PROMETHEUS);
+        IMAGE_DB_TYPE_MAP.put("prometheus",         DbType.PROMETHEUS);
+        // ── Object storage ────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("minio/minio",        DbType.MINIO);
+        IMAGE_DB_TYPE_MAP.put("minio",              DbType.MINIO);
+        // ── Identity / secrets ────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("keycloak/keycloak",  DbType.KEYCLOAK);
+        IMAGE_DB_TYPE_MAP.put("keycloak",           DbType.KEYCLOAK);
+        IMAGE_DB_TYPE_MAP.put("hashicorp/vault",    DbType.VAULT);
+        IMAGE_DB_TYPE_MAP.put("vault",              DbType.VAULT);
+        // ── Web / proxy ───────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("nginx",              DbType.NGINX);
+        // ── DB admin UIs ──────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("adminer",            DbType.ADMINER);
+        IMAGE_DB_TYPE_MAP.put("pgadmin4",           DbType.PGADMIN);
+        IMAGE_DB_TYPE_MAP.put("pgadmin",            DbType.PGADMIN);
     }
 
     public DockerDeployEngine() {
@@ -254,8 +288,13 @@ public class DockerDeployEngine {
         try {
             InspectContainerResponse info = docker.inspectContainerCmd(container.getContainerId()).exec();
             InspectContainerResponse.ContainerState state = info.getState();
-            if (Boolean.TRUE.equals(state.getRunning())) return InstanceStatus.RUNNING;
-            if (Boolean.TRUE.equals(state.getPaused()))  return InstanceStatus.STOPPED;
+            if (Boolean.TRUE.equals(state.getRestarting())) return InstanceStatus.RESTARTING;
+            if (Boolean.TRUE.equals(state.getRunning()))    return InstanceStatus.RUNNING;
+            if (Boolean.TRUE.equals(state.getPaused()))     return InstanceStatus.STOPPED;
+            // Crashed / OOM-killed containers have a non-zero exit code
+            if (Boolean.TRUE.equals(state.getOOMKilled()))  return InstanceStatus.ERROR;
+            Long exitCode = state.getExitCodeLong();
+            if (exitCode != null && exitCode != 0)          return InstanceStatus.ERROR;
             return InstanceStatus.STOPPED;
         } catch (NotFoundException e) {
             return InstanceStatus.ERROR;
@@ -313,7 +352,7 @@ public class DockerDeployEngine {
                                                            Set<String> trackedNames) {
         List<Container> running;
         try {
-            running = docker.listContainersCmd().withShowAll(false).exec();
+            running = docker.listContainersCmd().withShowAll(true).exec();
         } catch (Exception e) {
             log.warn("Could not list Docker containers for discovery: {}", e.getMessage());
             return List.of();
@@ -419,5 +458,152 @@ public class DockerDeployEngine {
         }
 
         return env;
+    }
+
+    // ── Container metrics ──────────────────────────────────────────────────────
+
+    /**
+     * Collects a single-shot live metrics snapshot for a running container.
+     * Returns {@link ContainerMetricsResponse#unavailable()} if the container
+     * is stopped, not found, or Docker is unreachable.
+     */
+    public ContainerMetricsResponse getContainerMetrics(String containerId, int hostPort) {
+        if (containerId == null) return ContainerMetricsResponse.unavailable();
+
+        // ── 1. Docker stats (no-stream = single sample) ──────────────────────
+        var statsRef = new AtomicReference<Statistics>();
+        try {
+            docker.statsCmd(containerId)
+                    .withNoStream(true)
+                    .exec(new ResultCallback.Adapter<>() {
+                        @Override public void onNext(Statistics s) { statsRef.set(s); }
+                    })
+                    .awaitCompletion(6, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.debug("Stats unavailable for {}: {}", containerId, e.getMessage());
+            return ContainerMetricsResponse.unavailable();
+        }
+
+        Statistics stats = statsRef.get();
+        if (stats == null) return ContainerMetricsResponse.unavailable();
+
+        // ── 2. CPU % ─────────────────────────────────────────────────────────
+        double cpuPercent = 0.0;
+        int cpuCores = 0;
+        try {
+            CpuStatsConfig    curr    = stats.getCpuStats();
+            CpuStatsConfig    prev    = stats.getPreCpuStats();
+            CpuUsageConfig    cu      = curr.getCpuUsage();
+            CpuUsageConfig    pu      = prev.getCpuUsage();
+            long cpuDelta    = cu.getTotalUsage()       - pu.getTotalUsage();
+            long systemDelta = curr.getSystemCpuUsage() - prev.getSystemCpuUsage();
+            Long cores       = curr.getOnlineCpus();
+            cpuCores         = (cores != null && cores > 0) ? cores.intValue()
+                             : (cu.getPercpuUsage() != null ? cu.getPercpuUsage().size() : 1);
+            if (systemDelta > 0 && cpuDelta >= 0) {
+                cpuPercent = ((double) cpuDelta / systemDelta) * cpuCores * 100.0;
+                cpuPercent = Math.min(cpuPercent, 100.0 * cpuCores); // clamp
+            }
+        } catch (Exception e) {
+            log.debug("CPU calc failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 3. Memory ────────────────────────────────────────────────────────
+        long memUsage = 0, memLimit = 0;
+        double memPercent = 0.0;
+        try {
+            MemoryStatsConfig mem = stats.getMemoryStats();
+            memLimit = mem.getLimit() != null ? mem.getLimit() : 0;
+            long rawUsage = mem.getUsage() != null ? mem.getUsage() : 0;
+            // subtract page cache (Linux); Docker Desktop on macOS may not have cache stats
+            long cache = 0L;
+            try {
+                if (mem.getStats() != null && mem.getStats().getCache() != null) {
+                    cache = mem.getStats().getCache();
+                }
+            } catch (Exception ignored) {}
+            memUsage = rawUsage - cache;
+            if (memLimit > 0) memPercent = (double) memUsage / memLimit * 100.0;
+        } catch (Exception e) {
+            log.debug("Memory calc failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 4. Network I/O ───────────────────────────────────────────────────
+        long netRx = 0, netTx = 0, netRxPkts = 0, netTxPkts = 0;
+        try {
+            Map<String, StatisticNetworksConfig> nets = stats.getNetworks();
+            if (nets != null) {
+                for (StatisticNetworksConfig n : nets.values()) {
+                    netRx    += n.getRxBytes()   != null ? n.getRxBytes()   : 0;
+                    netTx    += n.getTxBytes()   != null ? n.getTxBytes()   : 0;
+                    netRxPkts += n.getRxPackets() != null ? n.getRxPackets() : 0;
+                    netTxPkts += n.getTxPackets() != null ? n.getTxPackets() : 0;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Network stats failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 5. Block I/O ─────────────────────────────────────────────────────
+        long blkRead = 0, blkWrite = 0;
+        try {
+            BlkioStatsConfig blkio = stats.getBlkioStats();
+            if (blkio != null && blkio.getIoServiceBytesRecursive() != null) {
+                for (BlkioStatEntry e : blkio.getIoServiceBytesRecursive()) {
+                    if (e.getValue() == null) continue;
+                    if ("Read".equalsIgnoreCase(e.getOp()))  blkRead  += e.getValue();
+                    if ("Write".equalsIgnoreCase(e.getOp())) blkWrite += e.getValue();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Blkio stats failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 6. PIDs ──────────────────────────────────────────────────────────
+        long pids = 0;
+        try {
+            if (stats.getPidsStats() != null && stats.getPidsStats().getCurrent() != null) {
+                pids = stats.getPidsStats().getCurrent();
+            }
+        } catch (Exception ignored) {}
+
+        // ── 7. Inspect (restart count + image + state) ───────────────────────
+        int    restartCount = 0;
+        String image        = null;
+        String containerState = "unknown";
+        try {
+            InspectContainerResponse inspect = docker.inspectContainerCmd(containerId).exec();
+            restartCount   = inspect.getRestartCount() != null ? inspect.getRestartCount() : 0;
+            image          = inspect.getConfig() != null ? inspect.getConfig().getImage() : null;
+            containerState = inspect.getState() != null && inspect.getState().getStatus() != null
+                    ? inspect.getState().getStatus() : "unknown";
+        } catch (Exception e) {
+            log.debug("Inspect failed for {}: {}", containerId, e.getMessage());
+        }
+
+        // ── 8. Port probe ────────────────────────────────────────────────────
+        boolean portReachable = false;
+        long    portLatencyMs = -1;
+        if (hostPort > 0) {
+            long t0 = System.currentTimeMillis();
+            try (Socket sock = new Socket()) {
+                sock.connect(new InetSocketAddress("localhost", hostPort), 800);
+                portReachable = true;
+                portLatencyMs = System.currentTimeMillis() - t0;
+            } catch (IOException ignored) {}
+        }
+
+        return new ContainerMetricsResponse(
+                true,
+                Math.round(cpuPercent * 100.0) / 100.0,
+                cpuCores,
+                memUsage, memLimit,
+                Math.round(memPercent * 100.0) / 100.0,
+                netRx, netTx, netRxPkts, netTxPkts,
+                blkRead, blkWrite,
+                pids,
+                restartCount, image, containerState,
+                portReachable, portLatencyMs
+        );
     }
 }

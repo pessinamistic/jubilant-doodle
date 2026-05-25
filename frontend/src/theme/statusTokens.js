@@ -31,6 +31,14 @@ export const INSTANCE_STATUS_TOKENS = {
     dot: 'var(--status-error)',
     pulse: false,
   },
+  RESTARTING: {
+    accent: 'var(--status-restarting)',
+    background: 'var(--status-restarting-bg)',
+    border: 'var(--status-restarting-border)',
+    text: 'var(--status-restarting)',
+    dot: 'var(--status-restarting)',
+    pulse: true,
+  },
   REMOVING: {
     accent: 'var(--status-removing)',
     background: 'var(--status-removing-bg)',

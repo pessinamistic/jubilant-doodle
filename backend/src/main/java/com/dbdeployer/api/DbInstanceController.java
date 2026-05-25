@@ -1,17 +1,38 @@
 package com.dbdeployer.api;
 
-import com.dbdeployer.api.dto.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
+import com.dbdeployer.api.dto.DeployRequest;
+import com.dbdeployer.api.dto.DiscoveredContainerDto;
+import com.dbdeployer.api.dto.ImportRequest;
+import com.dbdeployer.api.dto.InstanceResponse;
+import com.dbdeployer.api.dto.InstanceStatsResponse;
+import com.dbdeployer.api.dto.PipelineResponse;
+import com.dbdeployer.api.dto.ReImportRequest;
+import com.dbdeployer.api.dto.SystemDbStatsResponse;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.service.DbInstanceService;
-import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import com.dbdeployer.service.SystemDbStatsService;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api")
@@ -19,10 +40,14 @@ public class DbInstanceController {
 
     private final DbInstanceService       service;
     private final ConnectionStringBuilder connBuilder;
+    private final SystemDbStatsService    statsService;
 
-    public DbInstanceController(DbInstanceService service, ConnectionStringBuilder connBuilder) {
-        this.service     = service;
-        this.connBuilder = connBuilder;
+    public DbInstanceController(DbInstanceService service,
+                                ConnectionStringBuilder connBuilder,
+                                SystemDbStatsService statsService) {
+        this.service      = service;
+        this.connBuilder  = connBuilder;
+        this.statsService = statsService;
     }
 
     /** List all deployed instances */
@@ -85,6 +110,12 @@ public class DbInstanceController {
         return Map.of("logs", service.getLogs(id, tail));
     }
 
+    /** Live container metrics — CPU, memory, network/block I/O, port probe */
+    @GetMapping("/instances/{id}/container-metrics")
+    public ContainerMetricsResponse containerMetrics(@PathVariable String id) {
+        return service.getContainerMetrics(id);
+    }
+
     /** Get the latest deploy pipeline for an instance */
     @GetMapping("/instances/{id}/pipeline")
     public ResponseEntity<PipelineResponse> pipeline(@PathVariable String id) {
@@ -143,6 +174,12 @@ public class DbInstanceController {
     @GetMapping("/system")
     public Object systemInfo() {
         return service.getSystemInfo();
+    }
+
+    /** Live stats for the embedded H2 system database (schema row counts, pool, JVM heap, uptime) */
+    @GetMapping("/system/stats")
+    public SystemDbStatsResponse systemStats() {
+        return statsService.getStats();
     }
 
     /** Sync container statuses from Docker */

@@ -23,8 +23,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // PostgreSQL (system config store — auto-provisioned via Docker on first start)
-    implementation("org.postgresql:postgresql:42.7.4")
+    // H2 embedded database (system config store — zero-download, auto-provisions itself)
+    runtimeOnly("com.h2database:h2")
 
     // Docker Java SDK (zerodep transport has native Unix socket support on macOS/Linux/Windows)
     implementation("com.github.docker-java:docker-java-core:3.4.1")

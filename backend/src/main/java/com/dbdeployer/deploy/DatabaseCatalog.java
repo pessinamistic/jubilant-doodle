@@ -1,7 +1,11 @@
 package com.dbdeployer.deploy;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.dbdeployer.model.DbType;
-import java.util.*;
 
 /**
  * Central catalog of all supported databases.
@@ -39,6 +43,21 @@ public class DatabaseCatalog {
     private static final Map<DbType, DbDefinition> CATALOG = new LinkedHashMap<>();
 
     static {
+        // H2 — system store only; not user-deployable but needs a catalog entry for display
+        CATALOG.put(DbType.H2, new DbDefinition(
+                DbType.H2,
+                "H2",
+                "Port Wrangler’s embedded system database (internal use only)",
+                "🗄️",
+                null,       // no Docker image
+                -1,         // no external port
+                List.of(),
+                List.of(),
+                "jdbc:h2:file:./data/dbdeployer",
+                null,
+                true, false, false
+        ));
+
         CATALOG.put(DbType.POSTGRESQL, new DbDefinition(
                 DbType.POSTGRESQL,
                 "PostgreSQL",
@@ -289,6 +308,160 @@ public class DatabaseCatalog {
                 "localhost:{port}",
                 "/var/lib/kafka/data",
                 false, false, false
+        ));
+
+        // ── Observability ─────────────────────────────────────────────────────
+
+        CATALOG.put(DbType.GRAFANA, new DbDefinition(
+                DbType.GRAFANA,
+                "Grafana",
+                "Open-source observability and dashboard platform for metrics, logs, and traces",
+                "📊",
+                "grafana/grafana",
+                3000,
+                List.of("11.4.0", "11.3.2", "11.2.3", "10.4.12", "latest"),
+                List.of(
+                        new EnvVar("GF_SECURITY_ADMIN_USER",     "Admin Username", "admin",  false, EnvVarType.TEXT),
+                        new EnvVar("GF_SECURITY_ADMIN_PASSWORD", "Admin Password", "secret", false, EnvVarType.PASSWORD)
+                ),
+                "http://localhost:{port}",
+                "/var/lib/grafana",
+                false, true, true
+        ));
+
+        CATALOG.put(DbType.PROMETHEUS, new DbDefinition(
+                DbType.PROMETHEUS,
+                "Prometheus",
+                "Monitoring system and time-series database with a powerful query language (PromQL)",
+                "🔥",
+                "prom/prometheus",
+                9090,
+                List.of("v3.2.1", "v3.1.0", "v2.55.1", "latest"),
+                List.of(),
+                "http://localhost:{port}",
+                "/prometheus",
+                false, false, false
+        ));
+
+        CATALOG.put(DbType.LOKI, new DbDefinition(
+                DbType.LOKI,
+                "Loki",
+                "Log aggregation system designed to work with Grafana — like Prometheus but for logs",
+                "🪵",
+                "grafana/loki",
+                3100,
+                List.of("3.3.2", "3.2.1", "2.9.10", "latest"),
+                List.of(),
+                "http://localhost:{port}",
+                "/loki",
+                false, false, false
+        ));
+
+        // ── Object storage ────────────────────────────────────────────────────
+
+        CATALOG.put(DbType.MINIO, new DbDefinition(
+                DbType.MINIO,
+                "MinIO",
+                "High-performance, S3-compatible object storage for AI/ML and cloud-native applications",
+                "🪣",
+                "minio/minio",
+                9000,
+                List.of("RELEASE.2025-01-20T14-49-07Z", "RELEASE.2024-11-07T00-52-20Z", "latest"),
+                List.of(
+                        new EnvVar("MINIO_ROOT_USER",     "Root User",     "minioadmin", true, EnvVarType.TEXT),
+                        new EnvVar("MINIO_ROOT_PASSWORD", "Root Password", "minioadmin", true, EnvVarType.PASSWORD),
+                        new EnvVar("MINIO_CONSOLE_ADDRESS", "Console Port", ":9001",     false, EnvVarType.TEXT)
+                ),
+                "http://localhost:{port}",
+                "/data",
+                false, true, true
+        ));
+
+        // ── Identity & secrets ────────────────────────────────────────────────
+
+        CATALOG.put(DbType.KEYCLOAK, new DbDefinition(
+                DbType.KEYCLOAK,
+                "Keycloak",
+                "Open-source identity and access management — SSO, OIDC, OAuth2, SAML",
+                "🔐",
+                "quay.io/keycloak/keycloak",
+                8080,
+                List.of("26.1", "26.0", "25.0", "24.0"),
+                List.of(
+                        new EnvVar("KEYCLOAK_ADMIN",          "Admin Username", "admin",  true,  EnvVarType.TEXT),
+                        new EnvVar("KEYCLOAK_ADMIN_PASSWORD", "Admin Password", "secret", true,  EnvVarType.PASSWORD),
+                        new EnvVar("KC_BOOTSTRAP_ADMIN_USERNAME", "Bootstrap Admin User", "admin",  false, EnvVarType.TEXT),
+                        new EnvVar("KC_BOOTSTRAP_ADMIN_PASSWORD", "Bootstrap Admin Pass", "secret", false, EnvVarType.PASSWORD)
+                ),
+                "http://localhost:{port}",
+                "/opt/keycloak/data",
+                false, true, true
+        ));
+
+        CATALOG.put(DbType.VAULT, new DbDefinition(
+                DbType.VAULT,
+                "HashiCorp Vault",
+                "Secrets management and data protection — API keys, passwords, certificates",
+                "🏛️",
+                "hashicorp/vault",
+                8200,
+                List.of("1.18", "1.17", "1.16", "latest"),
+                List.of(
+                        new EnvVar("VAULT_DEV_ROOT_TOKEN_ID", "Root Token",    "root",           false, EnvVarType.TEXT),
+                        new EnvVar("VAULT_DEV_LISTEN_ADDRESS", "Listen Address","0.0.0.0:{port}", false, EnvVarType.TEXT)
+                ),
+                "http://localhost:{port}",
+                null,
+                false, false, false
+        ));
+
+        // ── Web / proxy ───────────────────────────────────────────────────────
+
+        CATALOG.put(DbType.NGINX, new DbDefinition(
+                DbType.NGINX,
+                "Nginx",
+                "High-performance HTTP server, reverse proxy, and load balancer",
+                "⚡",
+                "nginx",
+                8080,
+                List.of("1.27", "1.26", "1.25", "alpine", "latest"),
+                List.of(),
+                "http://localhost:{port}",
+                "/usr/share/nginx/html",
+                false, false, false
+        ));
+
+        // ── DB admin UIs ──────────────────────────────────────────────────────
+
+        CATALOG.put(DbType.ADMINER, new DbDefinition(
+                DbType.ADMINER,
+                "Adminer",
+                "Single-file database management tool — supports MySQL, PostgreSQL, SQLite, MS SQL",
+                "🛠️",
+                "adminer",
+                8080,
+                List.of("4.8.1", "4.8.0", "4.7.9", "latest"),
+                List.of(),
+                "http://localhost:{port}",
+                null,
+                false, false, false
+        ));
+
+        CATALOG.put(DbType.PGADMIN, new DbDefinition(
+                DbType.PGADMIN,
+                "pgAdmin 4",
+                "Feature-rich web-based administration tool for PostgreSQL",
+                "🐘",
+                "dpage/pgadmin4",
+                5050,
+                List.of("8.14", "8.13", "8.12", "latest"),
+                List.of(
+                        new EnvVar("PGADMIN_DEFAULT_EMAIL",    "Admin Email",    "admin@admin.com", true, EnvVarType.TEXT),
+                        new EnvVar("PGADMIN_DEFAULT_PASSWORD", "Admin Password", "secret",          true, EnvVarType.PASSWORD)
+                ),
+                "http://localhost:{port}",
+                "/var/lib/pgadmin",
+                false, true, true
         ));
     }
 

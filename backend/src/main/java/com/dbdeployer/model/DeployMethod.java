@@ -5,5 +5,7 @@ public enum DeployMethod {
     HOMEBREW,
     APT,
     CHOCOLATEY,
-    WINGET
+    WINGET,
+    /** Built-in embedded database managed directly by Port Wrangler (e.g. H2). */
+    EMBEDDED
 }

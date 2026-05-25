@@ -83,25 +83,36 @@ public class DbInstanceService {
     /** Aggregate status counts across all instances. Derived directly from the DB. */
     public InstanceStatsResponse getStats() {
         List<DeployedContainer> all = containerRepo.findAll();
-        int running   = 0, stopped  = 0, deploying = 0,
-            removing  = 0, error    = 0, removed   = 0;
+        int running   = 0, restarting = 0, stopped  = 0, deploying = 0,
+            removing  = 0, error      = 0, removed  = 0;
         for (DeployedContainer c : all) {
             switch (c.getStatus()) {
-                case RUNNING   -> running++;
-                case STOPPED   -> stopped++;
-                case DEPLOYING -> deploying++;
-                case REMOVING  -> removing++;
-                case ERROR     -> error++;
-                case REMOVED   -> removed++;
+                case RUNNING    -> running++;
+                case RESTARTING -> restarting++;
+                case STOPPED    -> stopped++;
+                case DEPLOYING  -> deploying++;
+                case REMOVING   -> removing++;
+                case ERROR      -> error++;
+                case REMOVED    -> removed++;
             }
         }
-        int total = running + stopped + deploying + removing + error; // active only
-        return new InstanceStatsResponse(total, running, stopped, deploying, removing, error, removed);
+        int total = running + restarting + stopped + deploying + removing + error; // active only
+        return new InstanceStatsResponse(total, running, restarting, stopped, deploying, removing, error, removed);
     }
 
     public DeploymentConfig getById(String id) {
         return configRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
+    }
+
+    /** Live Docker container metrics snapshot for a non-system instance. */
+    public com.dbdeployer.api.dto.ContainerMetricsResponse getContainerMetrics(String configId) {
+        DeploymentConfig config = getById(configId);
+        DeployedContainer container = config.getContainer();
+        if (container == null || container.getContainerId() == null) {
+            return com.dbdeployer.api.dto.ContainerMetricsResponse.unavailable();
+        }
+        return docker.getContainerMetrics(container.getContainerId(), config.getHostPort());
     }
 
     /** Returns the most recent pipeline for an instance (or null if none exists). */
