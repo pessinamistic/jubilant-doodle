@@ -51,53 +51,56 @@ tasks.withType<Test> {
 //
 // The task depends on bootJar so the fat JAR is always fresh before packaging.
 // Output lands in build/dist/.
+//
+// NOTE: uses a plain task + exec {} (not the Exec task type) so that the
+// command can be built dynamically in doLast without triggering Gradle 9
+// configuration-time executable validation.
+
 val jpackageType: String = findProperty("jpackage.type")?.toString() ?: "dmg"
 
-tasks.register<Exec>("jpackageInstaller") {
+tasks.register("jpackageInstaller") {
     dependsOn(tasks.named("bootJar"))
-
-    doFirst {
+    doLast {
         val distDir = layout.buildDirectory.dir("dist").get().asFile
         distDir.mkdirs()
 
-        val jarsDir   = layout.buildDirectory.dir("libs").get().asFile
-        val mainJar   = jarsDir.listFiles()
+        val jarsDir = layout.buildDirectory.dir("libs").get().asFile
+        val mainJar = jarsDir.listFiles()
             ?.firstOrNull { it.name.endsWith(".jar") && !it.name.endsWith("-plain.jar") }
             ?: error("bootJar output not found in ${jarsDir.absolutePath}")
 
-        val jpackage  = "${System.getProperty("java.home")}/bin/jpackage"
-        val appVersion = project.version.toString()
-            .replace("-SNAPSHOT", "")   // jpackage version must be numeric (e.g. 1.0.0)
+        // Prefer JAVA_HOME env (set by actions/setup-java) over the JRE
+        // that Gradle bootstrapped itself with (which may not have jpackage).
+        val javaHome   = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
+        val isWindows  = System.getProperty("os.name", "").lowercase().contains("win")
+        val jpackageBin = "$javaHome/bin/jpackage${if (isWindows) ".exe" else ""}"
+
+        val appVersion = project.version.toString().replace("-SNAPSHOT", "")
 
         val cmd = mutableListOf(
-            jpackage,
-            "--type",            jpackageType,
-            "--name",            "Port Wrangler",
-            "--vendor",          "dbdeployer",
-            "--app-version",     appVersion,
-            "--description",     "Manage and deploy local database instances",
-            "--input",           jarsDir.absolutePath,
-            "--main-jar",        mainJar.name,
-            "--main-class",      "org.springframework.boot.loader.launch.JarLauncher",
-            "--dest",            distDir.absolutePath,
-            "--java-options",    "-Xmx256m",
-            "--java-options",    "-Dspring.profiles.active=prod",
+            jpackageBin,
+            "--type",         jpackageType,
+            "--name",         "Port Wrangler",
+            "--vendor",       "dbdeployer",
+            "--app-version",  appVersion,
+            "--description",  "Manage and deploy local database instances",
+            "--input",        jarsDir.absolutePath,
+            "--main-jar",     mainJar.name,
+            // --main-class is intentionally omitted: jpackage reads Main-Class
+            // from the fat JAR's MANIFEST.MF (set by Spring Boot's bootJar).
+            "--dest",         distDir.absolutePath,
+            "--java-options", "-Xmx256m",
         )
 
-        // Platform-specific installer options
-        if (jpackageType == "dmg") {
-            cmd += listOf(
-                "--mac-package-identifier", "com.dbdeployer.portwrangler",
-            )
-        } else if (jpackageType == "exe") {
-            cmd += listOf(
-                "--win-dir-chooser",
-                "--win-menu",
-                "--win-shortcut",
-                "--win-shortcut-prompt",
-            )
+        when (jpackageType) {
+            "dmg" -> cmd += listOf("--mac-package-identifier", "com.dbdeployer.portwrangler")
+            "exe" -> cmd += listOf("--win-dir-chooser", "--win-menu", "--win-shortcut")
         }
 
-        commandLine(cmd)
+        logger.lifecycle("jpackageInstaller: running {}", cmd.joinToString(" "))
+
+        exec {
+            commandLine(cmd)
+        }
     }
 }

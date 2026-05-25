@@ -65,41 +65,54 @@ jobs:
         working-directory: backend
         run: ./gradlew bootJar -x test --no-daemon
 
-      # ── 5. Verify WiX (Windows only — required by jpackage for EXE) ──────────
-      - name: Verify WiX Toolset (Windows)
+      # ── 5. Verify jpackage is available ──────────────────────────────────────
+      - name: Verify jpackage
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          "$JAVA_HOME/bin/jpackage" --version
+
+      # ── 6. Install / locate WiX Toolset (Windows only) ───────────────────────
+      - name: Setup WiX Toolset (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $wix = Get-Command candle.exe -ErrorAction SilentlyContinue
-          if (-not $wix) {
-            $paths = @(
-              "C:\Program Files (x86)\WiX Toolset v3.11\bin",
-              "C:\Program Files\WiX Toolset v3.11\bin"
-            )
-            foreach ($p in $paths) {
-              if (Test-Path "$p\candle.exe") {
-                echo "$p" >> $env:GITHUB_PATH
-                Write-Host "WiX found at $p"
-                exit 0
-              }
+          # Check standard pre-installed locations first
+          $wixPaths = @(
+            "C:\Program Files (x86)\WiX Toolset v3.11\bin",
+            "C:\Program Files\WiX Toolset v3.11\bin",
+            "C:\Program Files (x86)\WiX Toolset v3.14\bin",
+            "C:\Program Files\WiX Toolset v3.14\bin"
+          )
+          foreach ($p in $wixPaths) {
+            if (Test-Path "$p\candle.exe") {
+              echo "$p" >> $env:GITHUB_PATH
+              Write-Host "WiX found at: $p"
+              exit 0
             }
-            Write-Error "WiX Toolset not found – installer build will fail"
-            exit 1
           }
-          Write-Host "WiX already on PATH: $($wix.Source)"
+          # Not found — download WiX 3.14 binaries directly (no installer needed)
+          Write-Host "WiX not in standard locations — downloading WiX 3.14 binaries..."
+          $zipUrl = "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip"
+          $zipPath = "$env:TEMP\wix.zip"
+          $wixDir  = "$env:TEMP\wix314"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+          Expand-Archive -Path $zipPath -DestinationPath $wixDir -Force
+          echo "$wixDir" >> $env:GITHUB_PATH
+          Write-Host "WiX installed at: $wixDir"
 
-      # ── 6. Create native installer via jpackage ──────────────────────────────
+      # ── 7. Create native installer via jpackage ──────────────────────────────
       - name: Build ${{ matrix.pkg-type }} installer
         working-directory: backend
         shell: bash
         run: ./gradlew jpackageInstaller -Pjpackage.type=${{ matrix.pkg-type }} --no-daemon
 
-      # ── 7. List produced artifacts (debug) ───────────────────────────────────
+      # ── 8. List produced artifacts (debug) ───────────────────────────────────
       - name: List dist output
         shell: bash
         run: ls -lh backend/build/dist/
 
-      # ── 8. Upload installer to GitHub Release ────────────────────────────────
+      # ── 9. Upload installer to GitHub Release ────────────────────────────────
       - name: Upload installer to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
