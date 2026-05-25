@@ -19,10 +19,15 @@ import toast from 'react-hot-toast'
 export function ImportModal({ onClose, onImported, reImportInstance: existingInstance }) {
   const isReImport = !!existingInstance
 
-  const [step, setStep]               = useState('discover')
+  // Re-import: skip discover step, seed selected from existing instance
+  const [step, setStep]               = useState(isReImport ? 'configure' : 'discover')
   const [containers, setContainers]   = useState([])
   const [discovering, setDiscovering] = useState(false)
-  const [selected, setSelected]       = useState(null)
+  const [selected, setSelected]       = useState(
+    isReImport
+      ? { containerId: existingInstance.containerId, containerName: existingInstance.containerName }
+      : null
+  )
   const [submitting, setSubmitting]   = useState(false)
 
   // Form state — pre-filled from existing instance when re-importing
@@ -52,8 +57,8 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
     }
   }
 
-  // Auto-discover on mount
-  useEffect(() => { discover() }, [])
+  // Auto-discover on mount — skip in re-import mode
+  useEffect(() => { if (!isReImport) discover() }, [])
 
   const selectContainer = (c) => {
     setSelected(c)
@@ -135,7 +140,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
               </h2>
               {isReImport && (
                 <p className="text-xs text-amber-400/70 mt-0.5">
-                  Rebinding <span className="font-medium text-amber-300">{existingInstance.name}</span> to a new container
+                  Verifying container for <span className="font-medium text-amber-300">{existingInstance.name}</span>
                 </p>
               )}
             </div>
@@ -145,7 +150,8 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
           </button>
         </div>
 
-        {/* Step indicator */}
+        {/* Step indicator — only shown in normal import mode */}
+        {!isReImport && (
         <div className="flex items-center gap-2 px-6 pt-4 pb-1">
           {['Discover', 'Configure'].map((label, i) => {
             const active = (i === 0 && step === 'discover') || (i === 1 && step === 'configure')
@@ -168,6 +174,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
             )
           })}
         </div>
+        )}
 
         {/* ── Step 1: Discover ── */}
         {step === 'discover' && (
@@ -241,11 +248,13 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
                 <p className="text-sm text-white font-medium">{selected.containerName}</p>
                 <p className="text-xs text-gray-500 font-mono">{selected.containerId.slice(0, 12)}</p>
               </div>
+              {!isReImport && (
               <button
                 onClick={() => setStep('discover')}
                 className="ml-auto text-xs text-gray-500 hover:text-gray-300 transition-colors">
                 ← Back
               </button>
+              )}
             </div>
 
             {isReImport ? (
