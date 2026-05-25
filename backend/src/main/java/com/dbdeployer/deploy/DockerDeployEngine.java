@@ -291,6 +291,10 @@ public class DockerDeployEngine {
             if (Boolean.TRUE.equals(state.getRestarting())) return InstanceStatus.RESTARTING;
             if (Boolean.TRUE.equals(state.getRunning()))    return InstanceStatus.RUNNING;
             if (Boolean.TRUE.equals(state.getPaused()))     return InstanceStatus.STOPPED;
+            // Crashed / OOM-killed containers have a non-zero exit code
+            if (Boolean.TRUE.equals(state.getOOMKilled()))  return InstanceStatus.ERROR;
+            Long exitCode = state.getExitCodeLong();
+            if (exitCode != null && exitCode != 0)          return InstanceStatus.ERROR;
             return InstanceStatus.STOPPED;
         } catch (NotFoundException e) {
             return InstanceStatus.ERROR;
