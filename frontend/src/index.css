@@ -56,6 +56,9 @@
   --status-removed: #6d5a4c;
   --status-removed-bg: #eadfd4;
   --status-removed-border: #5a483d;
+  --status-restarting: #a07000;
+  --status-restarting-bg: #fff3c4;
+  --status-restarting-border: #7a5500;
   --status-warning: #b86600;
   --status-warning-bg: #ffe9bc;
   --status-warning-border: #8c4f00;
@@ -110,6 +113,9 @@
   --status-removed: #c8bfb2;
   --status-removed-bg: #332a21;
   --status-removed-border: #a99d8f;
+  --status-restarting: #ffd966;
+  --status-restarting-bg: #3d3000;
+  --status-restarting-border: #c9a82e;
   --status-warning: #ffc176;
   --status-warning-bg: #453316;
   --status-warning-border: #d39a50;

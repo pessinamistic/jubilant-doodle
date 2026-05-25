@@ -288,8 +288,9 @@ public class DockerDeployEngine {
         try {
             InspectContainerResponse info = docker.inspectContainerCmd(container.getContainerId()).exec();
             InspectContainerResponse.ContainerState state = info.getState();
-            if (Boolean.TRUE.equals(state.getRunning())) return InstanceStatus.RUNNING;
-            if (Boolean.TRUE.equals(state.getPaused()))  return InstanceStatus.STOPPED;
+            if (Boolean.TRUE.equals(state.getRestarting())) return InstanceStatus.RESTARTING;
+            if (Boolean.TRUE.equals(state.getRunning()))    return InstanceStatus.RUNNING;
+            if (Boolean.TRUE.equals(state.getPaused()))     return InstanceStatus.STOPPED;
             return InstanceStatus.STOPPED;
         } catch (NotFoundException e) {
             return InstanceStatus.ERROR;
