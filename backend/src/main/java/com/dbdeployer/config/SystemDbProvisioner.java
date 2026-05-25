@@ -61,9 +61,10 @@ public class SystemDbProvisioner
         try {
             docker.pingCmd().exec();
         } catch (Exception e) {
+            String dockerHost = System.getProperty("DOCKER_HOST", "(unset)");
             throw new IllegalStateException(
-                "Docker is not available. Port Wrangler requires Docker to manage the system database. " +
-                "Please start Docker and try again.", e);
+                "Docker is not available at " + dockerHost + ". Port Wrangler requires Docker to manage " +
+                "the system database. Please ensure Docker Desktop is running and try again.", e);
         }
 
         ensureContainerRunning(docker, containerName, image, hostPort, username, password, database);
