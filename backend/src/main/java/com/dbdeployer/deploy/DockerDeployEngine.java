@@ -41,25 +41,51 @@ public class DockerDeployEngine {
     private final DockerClient docker;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // DB image name → DbType mapping (order matters: more specific first)
+    // Container image name → DbType mapping (order matters: more specific first)
     private static final Map<String, DbType> IMAGE_DB_TYPE_MAP = new LinkedHashMap<>();
     static {
-        IMAGE_DB_TYPE_MAP.put("mariadb",        DbType.MARIADB);
-        IMAGE_DB_TYPE_MAP.put("postgres",        DbType.POSTGRESQL);
-        IMAGE_DB_TYPE_MAP.put("mysql",           DbType.MYSQL);
-        IMAGE_DB_TYPE_MAP.put("mongo",           DbType.MONGODB);
-        IMAGE_DB_TYPE_MAP.put("redis",           DbType.REDIS);
-        IMAGE_DB_TYPE_MAP.put("cassandra",       DbType.CASSANDRA);
-        IMAGE_DB_TYPE_MAP.put("couchdb",         DbType.COUCHDB);
-        IMAGE_DB_TYPE_MAP.put("clickhouse",      DbType.CLICKHOUSE);
-        IMAGE_DB_TYPE_MAP.put("neo4j",           DbType.NEO4J);
-        IMAGE_DB_TYPE_MAP.put("elasticsearch",   DbType.ELASTICSEARCH);
-        IMAGE_DB_TYPE_MAP.put("mssql",           DbType.MSSQL);
-        IMAGE_DB_TYPE_MAP.put("sqlserver",       DbType.MSSQL);
-        IMAGE_DB_TYPE_MAP.put("dynamodb-local",  DbType.DYNAMODB_LOCAL);
-        IMAGE_DB_TYPE_MAP.put("rabbitmq",        DbType.RABBITMQ);
-        IMAGE_DB_TYPE_MAP.put("apache/kafka",    DbType.KAFKA);
-        IMAGE_DB_TYPE_MAP.put("kafka",           DbType.KAFKA);
+        // ── Relational ────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("mariadb",            DbType.MARIADB);
+        IMAGE_DB_TYPE_MAP.put("postgres",           DbType.POSTGRESQL);
+        IMAGE_DB_TYPE_MAP.put("mysql",              DbType.MYSQL);
+        IMAGE_DB_TYPE_MAP.put("mssql",              DbType.MSSQL);
+        IMAGE_DB_TYPE_MAP.put("sqlserver",          DbType.MSSQL);
+        // ── NoSQL ─────────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("mongo",              DbType.MONGODB);
+        IMAGE_DB_TYPE_MAP.put("couchdb",            DbType.COUCHDB);
+        IMAGE_DB_TYPE_MAP.put("neo4j",              DbType.NEO4J);
+        IMAGE_DB_TYPE_MAP.put("dynamodb-local",     DbType.DYNAMODB_LOCAL);
+        // ── Cache / KV ────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("redis",              DbType.REDIS);
+        // ── Wide-column / OLAP ────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("cassandra",          DbType.CASSANDRA);
+        IMAGE_DB_TYPE_MAP.put("clickhouse",         DbType.CLICKHOUSE);
+        // ── Search ────────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("elasticsearch",      DbType.ELASTICSEARCH);
+        // ── Messaging ─────────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("rabbitmq",           DbType.RABBITMQ);
+        IMAGE_DB_TYPE_MAP.put("apache/kafka",       DbType.KAFKA);
+        IMAGE_DB_TYPE_MAP.put("kafka",              DbType.KAFKA);
+        // ── Observability ─────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("grafana/grafana",    DbType.GRAFANA);
+        IMAGE_DB_TYPE_MAP.put("grafana/loki",       DbType.LOKI);
+        IMAGE_DB_TYPE_MAP.put("grafana",            DbType.GRAFANA);   // fallback: any image containing "grafana"
+        IMAGE_DB_TYPE_MAP.put("prom/prometheus",    DbType.PROMETHEUS);
+        IMAGE_DB_TYPE_MAP.put("prometheus",         DbType.PROMETHEUS);
+        // ── Object storage ────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("minio/minio",        DbType.MINIO);
+        IMAGE_DB_TYPE_MAP.put("minio",              DbType.MINIO);
+        // ── Identity / secrets ────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("keycloak/keycloak",  DbType.KEYCLOAK);
+        IMAGE_DB_TYPE_MAP.put("keycloak",           DbType.KEYCLOAK);
+        IMAGE_DB_TYPE_MAP.put("hashicorp/vault",    DbType.VAULT);
+        IMAGE_DB_TYPE_MAP.put("vault",              DbType.VAULT);
+        // ── Web / proxy ───────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("nginx",              DbType.NGINX);
+        // ── DB admin UIs ──────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("adminer",            DbType.ADMINER);
+        IMAGE_DB_TYPE_MAP.put("pgadmin4",           DbType.PGADMIN);
+        IMAGE_DB_TYPE_MAP.put("pgadmin",            DbType.PGADMIN);
     }
 
     public DockerDeployEngine() {
@@ -321,7 +347,7 @@ public class DockerDeployEngine {
                                                            Set<String> trackedNames) {
         List<Container> running;
         try {
-            running = docker.listContainersCmd().withShowAll(false).exec();
+            running = docker.listContainersCmd().withShowAll(true).exec();
         } catch (Exception e) {
             log.warn("Could not list Docker containers for discovery: {}", e.getMessage());
             return List.of();
