@@ -1,0 +1,28 @@
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Frontend build artifacts ──────────────────────────────────────────────────
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# ── Backend build artifacts ───────────────────────────────────────────────────
+backend/build
+backend/.gradle
+backend/out
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.idea
+*.iml
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# ── Docs / misc ───────────────────────────────────────────────────────────────
+README.md
+*.md
+
+# ── Local Gradle caches (re-downloaded inside builder) ───────────────────────
+backend/gradle/wrapper/dists

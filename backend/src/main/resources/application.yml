@@ -1,13 +1,14 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
-# ── System database (auto-provisioned Postgres container on first start) ──────
-# Container: dbdeployer-system-db  |  Port: 5499  |  Never touched by the user
+# ── System database ───────────────────────────────────────────────────────────
+# Local dev:   auto-provisioned Postgres container on port 5499 (SystemDbProvisioner)
+# Docker/Compose: provided by the postgres service; set SPRING_DATASOURCE_URL env var
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5499/dbdeployer
-    username: dbdeployer
-    password: dbdeployer_internal
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5499/dbdeployer}
+    username: ${SPRING_DATASOURCE_USERNAME:dbdeployer}
+    password: ${SPRING_DATASOURCE_PASSWORD:dbdeployer_internal}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
@@ -28,15 +29,21 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
-# ── System DB provisioner config ───────────────────────────────────────────────
+# ── System DB provisioner config ──────────────────────────────────────────────
+# auto-provision: set to false when the system DB is supplied externally (e.g. docker-compose)
 dbdeployer:
   system-db:
+    auto-provision: ${DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION:true}
     container-name: dbdeployer-system-db
     image: postgres:16
     host-port: 5499
-    username: dbdeployer
-    password: dbdeployer_internal
+    username: ${SPRING_DATASOURCE_USERNAME:dbdeployer}
+    password: ${SPRING_DATASOURCE_PASSWORD:dbdeployer_internal}
     database: dbdeployer
+  cors:
+    # Comma-separated allowed origins. Defaults to dev ports when running locally.
+    # Set DBDEPLOYER_CORS_ORIGINS=* for fully open (still local-only app).
+    allowed-origins: ${DBDEPLOYER_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
   pipeline:
     step-delay-ms: 1500
 

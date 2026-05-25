@@ -35,6 +35,14 @@ public class SystemDbProvisioner
     public void initialize(ConfigurableApplicationContext ctx) {
         ConfigurableEnvironment env = ctx.getEnvironment();
 
+        // When the system DB is provided externally (e.g. docker-compose), skip provisioning.
+        boolean autoProvision = Boolean.parseBoolean(
+                env.getProperty("dbdeployer.system-db.auto-provision", "true"));
+        if (!autoProvision) {
+            log.info("SystemDbProvisioner — auto-provision disabled; skipping (external DB expected)");
+            return;
+        }
+
         String containerName = env.getProperty("dbdeployer.system-db.container-name", "dbdeployer-system-db");
         String image         = env.getProperty("dbdeployer.system-db.image",          "postgres:16");
         int    hostPort      = Integer.parseInt(env.getProperty("dbdeployer.system-db.host-port", "5499"));

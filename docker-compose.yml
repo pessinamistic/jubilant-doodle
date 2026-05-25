@@ -1,0 +1,67 @@
+services:
+
+  # ── System / config database ──────────────────────────────────────────────
+  # Stores DB Deployer's own metadata (deployment configs, container records, etc.)
+  # This is NOT the databases the user deploys — those are managed by the app itself.
+  postgres:
+    image: postgres:16
+    container_name: dbdeployer-system-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dbdeployer
+      POSTGRES_PASSWORD: dbdeployer_internal
+      POSTGRES_DB: dbdeployer
+    volumes:
+      - system-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbdeployer -d dbdeployer"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # ── DB Deployer application ───────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dbdeployer-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Point to the compose postgres service instead of localhost:5499
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dbdeployer
+      SPRING_DATASOURCE_USERNAME: dbdeployer
+      SPRING_DATASOURCE_PASSWORD: dbdeployer_internal
+
+      # Disable the SystemDbProvisioner — compose already provides Postgres
+      DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION: "false"
+
+      # Docker socket URI — bind-mounted from the host below.
+      # Colima users: the socket is at /var/run/docker.sock inside the container
+      # because we re-export the Colima socket at that path via the volume mount.
+      DOCKER_HOST: unix:///var/run/docker.sock
+
+      # Optional: set a custom CORS allowed-origins pattern (comma-separated)
+      # Defaults to * when unset (safe because the API is local-only)
+      # DBDEPLOYER_CORS_ORIGINS: "http://localhost:8080,http://myhost:8080"
+    volumes:
+      # ── Docker socket ──────────────────────────────────────────────────────
+      # Colima: the socket lives at ~/.colima/default/docker.sock on the host.
+      # We expose it at the standard /var/run/docker.sock path inside the
+      # container so the app's DockerSocketResolver picks it up automatically.
+      #
+      # If you use Docker Desktop, replace the source path with:
+      #   /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+
+      # ── Managed DB data directory ─────────────────────────────────────────
+      # Volumes for user-deployed databases live under ~/.db-deployer/data/ on
+      # the host so they survive container rebuilds and restarts.
+      - ${HOME}/.db-deployer:/root/.db-deployer
+
+volumes:
+  system-db-data:
