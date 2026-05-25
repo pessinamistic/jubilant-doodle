@@ -5,6 +5,8 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.URI;
 
+import javax.swing.JOptionPane;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -48,6 +50,7 @@ public class DockerStartupCheck implements ApplicationRunner {
 
         if (!status.available()) {
             printDockerMissingBanner(status);
+            showDockerMissingDialog(status);
             System.exit(1);
         }
 
@@ -79,6 +82,38 @@ public class DockerStartupCheck implements ApplicationRunner {
         System.err.println();
         System.err.println(SEPARATOR);
         System.err.println();
+    }
+
+    private void showDockerMissingDialog(DockerStatus status) {
+        if (GraphicsEnvironment.isHeadless()) return;
+
+        try {
+            StringBuilder message = new StringBuilder();
+            message.append("Port Wrangler requires Docker to manage database containers.\n\n")
+                    .append("Docker daemon not reachable at:\n")
+                    .append(status.dockerHost())
+                    .append("\n\n");
+
+            if (status.errorMessage() != null && !status.errorMessage().isBlank()) {
+                message.append("Error: ")
+                        .append(status.errorMessage())
+                        .append("\n\n");
+            }
+
+            message.append("How to fix (")
+                    .append(osDetector.detectOs().name())
+                    .append("):\n")
+                    .append(remediation());
+
+            JOptionPane.showMessageDialog(
+                    null,
+                    message.toString(),
+                    "Port Wrangler - Docker Required",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        } catch (RuntimeException e) {
+            log.debug("Could not render Docker remediation dialog: {}", e.getMessage());
+        }
     }
 
     private String remediation() {

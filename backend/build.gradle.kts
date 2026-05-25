@@ -1,3 +1,7 @@
+import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Sync
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
 plugins {
     java
     id("org.springframework.boot") version "3.4.2"
@@ -44,18 +48,119 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+val osName = System.getProperty("os.name", "").lowercase()
+val isWindows = osName.contains("win")
+val isMac = osName.contains("mac")
+
+val frontendDir = layout.projectDirectory.dir("../frontend")
+val embeddedStaticDir = layout.projectDirectory.dir("src/main/resources/static")
+val frontendStaticOutput = layout.buildDirectory.dir("generated/frontend-static")
+
+val syncFrontendAssets = if (frontendDir.asFile.exists()) {
+    val frontendPackageJson = frontendDir.file("package.json").asFile
+    val frontendLockFile = frontendDir.file("package-lock.json").asFile
+    val frontendNodeModules = frontendDir.dir("node_modules").asFile
+    val frontendDistDir = frontendDir.dir("dist").asFile
+
+    val npmExecutable = if (isWindows) "npm.cmd" else "npm"
+    val frontendInstallCommand = if (frontendLockFile.exists()) "ci" else "install"
+
+    val frontendInstall = tasks.register<Exec>("frontendInstall") {
+        group = "build"
+        description = "Installs frontend dependencies used for packaging."
+
+        workingDir = frontendDir.asFile
+        executable = npmExecutable
+        args(frontendInstallCommand)
+
+        inputs.file(frontendPackageJson)
+        if (frontendLockFile.exists()) {
+            inputs.file(frontendLockFile)
+        }
+        outputs.dir(frontendNodeModules)
+    }
+
+    val frontendBuild = tasks.register<Exec>("frontendBuild") {
+        group = "build"
+        description = "Builds frontend static assets for the Spring Boot jar."
+
+        dependsOn(frontendInstall)
+        workingDir = frontendDir.asFile
+        executable = npmExecutable
+        args("run", "build")
+
+        inputs.files(
+            fileTree(frontendDir.asFile) {
+                include("src/**")
+                include("public/**")
+                include("index.html")
+                include("vite.config.js")
+                include("package.json")
+                include("package-lock.json")
+            }
+        )
+        outputs.dir(frontendDistDir)
+    }
+
+    tasks.register<Sync>("syncFrontendAssets") {
+        group = "build"
+        description = "Copies frontend dist assets into the backend build directory."
+
+        dependsOn(frontendBuild)
+        from(frontendDistDir)
+        into(frontendStaticOutput)
+    }
+} else {
+    tasks.register<Sync>("syncFrontendAssets") {
+        group = "build"
+        description = "Copies prebuilt static assets when frontend source is not available."
+
+        from(embeddedStaticDir)
+        into(frontendStaticOutput)
+
+        doFirst {
+            if (!embeddedStaticDir.asFile.exists()) {
+                error(
+                    "Frontend source not found at ${frontendDir.asFile}. " +
+                        "Expected prebuilt assets at ${embeddedStaticDir.asFile}."
+                )
+            }
+            logger.lifecycle(
+                "Frontend source not found at {}. Using prebuilt static assets from {}",
+                frontendDir.asFile,
+                embeddedStaticDir.asFile
+            )
+        }
+    }
+}
+
+tasks.named<BootJar>("bootJar") {
+    dependsOn(syncFrontendAssets)
+    from(syncFrontendAssets) {
+        into("BOOT-INF/classes/static")
+    }
+}
+
 // ── jpackage — native installer (DMG on macOS, EXE on Windows) ───────────────
 // Usage:
-//   macOS:   ./gradlew jpackageInstaller -Pjpackage.type=dmg
-//   Windows: ./gradlew jpackageInstaller -Pjpackage.type=exe
+//   macOS:   ./gradlew jpackageInstaller
+//   Windows: .\\gradlew.bat jpackageInstaller
+//   Override package type: -Pjpackage.type=dmg|exe|app-image
 //
 // Uses ProcessBuilder directly — Project.exec{} was removed in Gradle 9.
 // Output lands in build/dist/.
 
-val jpackageType: String = findProperty("jpackage.type")?.toString() ?: "dmg"
+val defaultJpackageType = when {
+    isWindows -> "exe"
+    isMac -> "dmg"
+    else -> "app-image"
+}
+val jpackageType: String = findProperty("jpackage.type")?.toString() ?: defaultJpackageType
+val appVersion = version.toString().replace("-SNAPSHOT", "")
 
 tasks.register("jpackageInstaller") {
     dependsOn(tasks.named("bootJar"))
+
     doLast {
         val distDir = layout.buildDirectory.dir("dist").get().asFile
         distDir.mkdirs()
@@ -68,9 +173,7 @@ tasks.register("jpackageInstaller") {
         // Prefer JAVA_HOME env (set by actions/setup-java) over the JRE that
         // Gradle bootstrapped itself with — that one may not have jpackage.
         val javaHome    = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
-        val isWindows   = System.getProperty("os.name", "").lowercase().contains("win")
         val jpackageBin = "$javaHome/bin/jpackage${if (isWindows) ".exe" else ""}"
-        val appVersion  = project.version.toString().replace("-SNAPSHOT", "")
 
         val cmd = mutableListOf(
             jpackageBin,

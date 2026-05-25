@@ -21,16 +21,18 @@ jobs:
           - os: macos-latest
             pkg-type: dmg
             artifact-glob: '*.dmg'
+            platform: macos
           - os: windows-latest
             pkg-type: exe
             artifact-glob: '*.exe'
+            platform: windows
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Build React frontend ──────────────────────────────────────────────
+      # ── 2. Setup Node for Gradle-driven frontend packaging ───────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,22 +40,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-      # ── 3. Copy built frontend into Spring Boot static resources ─────────────
-      - name: Inject frontend into Spring Boot static resources
-        shell: bash
-        run: |
-          mkdir -p backend/src/main/resources/static
-          cp -r frontend/dist/. backend/src/main/resources/static/
-
-      # ── 4. Build Spring Boot fat JAR ─────────────────────────────────────────
+      # ── 3. Build Spring Boot fat JAR (includes frontend via Gradle tasks) ────
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
@@ -65,14 +52,14 @@ jobs:
         working-directory: backend
         run: ./gradlew bootJar -x test --no-daemon
 
-      # ── 5. Verify jpackage is available ──────────────────────────────────────
+      # ── 4. Verify jpackage is available ──────────────────────────────────────
       - name: Verify jpackage
         shell: bash
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           "$JAVA_HOME/bin/jpackage" --version
 
-      # ── 6. Install / locate WiX Toolset (Windows only) ───────────────────────
+      # ── 5. Install / locate WiX Toolset (Windows only) ───────────────────────
       - name: Setup WiX Toolset (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -101,11 +88,46 @@ jobs:
           echo "$wixDir" >> $env:GITHUB_PATH
           Write-Host "WiX installed at: $wixDir"
 
-      # ── 7. Create native installer via jpackage ──────────────────────────────
+      # ── 6. Create native installer via jpackage ──────────────────────────────
       - name: Build ${{ matrix.pkg-type }} installer
         working-directory: backend
         shell: bash
         run: ./gradlew jpackageInstaller -Pjpackage.type=${{ matrix.pkg-type }} --no-daemon
+
+      # ── 7. Normalize artifact names + generate SHA-256 checksums ─────────────
+      - name: Normalize artifact names and generate checksums
+        shell: bash
+        env:
+          ARTIFACT_GLOB: ${{ matrix.artifact-glob }}
+          PLATFORM: ${{ matrix.platform }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          dist = Path("backend/build/dist")
+          matches = sorted(dist.glob(os.environ["ARTIFACT_GLOB"]))
+          if not matches:
+              raise SystemExit(f"No installer found matching {os.environ['ARTIFACT_GLOB']} in {dist}")
+
+          artifact = matches[0]
+          version = os.environ["REF_NAME"].removeprefix("v")
+          platform = os.environ["PLATFORM"]
+          new_name = f"port-wrangler-{version}-{platform}{artifact.suffix.lower()}"
+          renamed = dist / new_name
+
+          if renamed.exists():
+              renamed.unlink()
+          artifact.rename(renamed)
+
+          digest = hashlib.sha256(renamed.read_bytes()).hexdigest()
+          checksum = dist / f"{new_name}.sha256"
+          checksum.write_text(f"{digest}  {new_name}\\n", encoding="utf-8")
+
+          print(f"Prepared {renamed.name} and {checksum.name}")
+          PY
 
       # ── 8. List produced artifacts (debug) ───────────────────────────────────
       - name: List dist output
@@ -116,6 +138,8 @@ jobs:
       - name: Upload installer to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: backend/build/dist/${{ matrix.artifact-glob }}
+          files: |
+            backend/build/dist/port-wrangler-*-${{ matrix.platform }}.${{ matrix.pkg-type }}
+            backend/build/dist/port-wrangler-*-${{ matrix.platform }}.${{ matrix.pkg-type }}.sha256
           generate_release_notes: true
           fail_on_unmatched_files: true

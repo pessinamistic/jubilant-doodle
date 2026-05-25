@@ -172,7 +172,7 @@ npm run dev
 
 #### 3. Open the portal
 
-Navigate to **http://localhost:5173** in your browser.
+Navigate to [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
@@ -183,10 +183,54 @@ docker compose up --build
 # App available at http://localhost:8080 (serves frontend from /static/)
 ```
 
-> **Colima socket override:**
-> ```bash
-> DOCKER_SOCKET=$HOME/.colima/default/docker.sock docker compose up --build
-> ```
+Colima socket override:
+
+```bash
+DOCKER_SOCKET=$HOME/.colima/default/docker.sock docker compose up --build
+```
+
+---
+
+### Option C — Native installers (macOS + Windows)
+
+Download installer builds from GitHub Releases when available.
+
+To build installers locally from source:
+
+#### macOS
+
+```bash
+cd backend
+./gradlew jpackageInstaller
+```
+
+#### Windows
+
+```powershell
+cd backend
+.\gradlew.bat jpackageInstaller
+```
+
+Optional package-type override:
+
+```bash
+./gradlew jpackageInstaller -Pjpackage.type=dmg
+./gradlew jpackageInstaller -Pjpackage.type=exe
+```
+
+Artifacts are written to `backend/build/dist/`.
+
+Expected startup behavior after installation:
+
+- If Docker is reachable, Port Wrangler starts and opens `http://localhost:8080` in your default browser.
+- If Docker is not reachable, Port Wrangler shows an OS-specific remediation message and exits.
+
+Data persistence:
+
+- macOS: `~/.db-deployer/`
+- Windows: `%USERPROFILE%\\.db-deployer\`
+
+Uninstalling the app does not delete these data directories.
 
 ---
 
@@ -396,6 +440,11 @@ The `Dockerfile` uses a 3-stage multi-stage build:
 3. **`runtime`** — minimal `eclipse-temurin:21-jre-alpine` image running the fat JAR
 
 Spring Boot auto-serves the frontend from `classpath:/static/`, so the single JAR serves the full application.
+
+For native installers, `bootJar` now drives frontend packaging directly via Gradle:
+
+- If `../frontend` exists, Gradle runs frontend dependency install + build and packages `dist/` into the jar.
+- If `../frontend` is unavailable (for example, backend-only container build contexts), Gradle packages prebuilt assets already present in `src/main/resources/static/`.
 
 ```bash
 docker build -t port-wrangler .
