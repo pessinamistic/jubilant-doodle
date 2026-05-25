@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline,
+  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline, getSystemStats,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
@@ -15,14 +15,18 @@ import {
   ClipboardCheck,
   Clock3,
   CornerUpLeft,
+  Cpu,
   Database,
   Eye,
   EyeOff,
+  ExternalLink,
   FileText,
   Folder,
   Globe,
+  HardDrive,
   Hash,
   Key,
+  Layers,
   Play,
   RefreshCw,
   Rocket,
@@ -31,15 +35,17 @@ import {
   Square,
   Trash2,
   Unlink,
+  Zap,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { PIPELINE_STATUS_TOKENS, PIPELINE_STEP_TOKENS } from '../theme/statusTokens'
 
 const TABS = [
-  { id: 'overview',       label: 'Overview',       icon: <BarChart3 className="w-4 h-4" /> },
-  { id: 'pipeline',       label: 'Pipeline',        icon: <Rocket className="w-4 h-4" /> },
-  { id: 'configuration',  label: 'Configuration',  icon: <Settings className="w-4 h-4" /> },
-  { id: 'logs',           label: 'Logs',            icon: <FileText className="w-4 h-4" /> },
+  { id: 'overview',       label: 'Overview',          icon: <BarChart3 className="w-4 h-4" /> },
+  { id: 'internals',      label: 'System Internals',  icon: <Cpu className="w-4 h-4" />, systemOnly: true },
+  { id: 'pipeline',       label: 'Pipeline',           icon: <Rocket className="w-4 h-4" /> },
+  { id: 'configuration',  label: 'Configuration',     icon: <Settings className="w-4 h-4" /> },
+  { id: 'logs',           label: 'Logs',               icon: <FileText className="w-4 h-4" /> },
 ]
 
 export function InstanceDetailPage() {
@@ -148,8 +154,10 @@ export function InstanceDetailPage() {
               <p className="text-sm text-[var(--text-muted)] mt-1">
                 {instance.dbTypeDisplay} {instance.version}
                 &nbsp;·&nbsp;
-                Port <span className="font-mono text-[var(--text-secondary)]">{instance.hostPort}</span>
-                {instance.containerName && (
+                {instance.isSystem
+                  ? <span className="text-[var(--text-secondary)]">Embedded</span>
+                  : <>Port <span className="font-mono text-[var(--text-secondary)]">{instance.hostPort}</span></>}
+                {!instance.isSystem && instance.containerName && (
                   <>&nbsp;·&nbsp;<span className="font-mono text-[var(--text-muted)] text-xs">{instance.containerName}</span></>
                 )}
               </p>
@@ -219,7 +227,7 @@ export function InstanceDetailPage() {
 
       {/* ── Tab bar ── */}
       <div className="tab-bar mb-6 w-fit animate-fade-up delay-100">
-        {TABS.map(t => (
+        {TABS.filter(t => !t.systemOnly || instance.isSystem).map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={`tab-item ${activeTab === t.id ? 'tab-active' : 'tab-inactive'}`}>
             {t.icon}
@@ -231,6 +239,7 @@ export function InstanceDetailPage() {
       {/* ── Tab content ── */}
       <div key={activeTab} className="animate-fade-up">
         {activeTab === 'overview'      && <OverviewTab      instance={instance} />}
+        {activeTab === 'internals'     && instance.isSystem && <SystemInternalsTab />}
         {activeTab === 'pipeline'      && <PipelineTab      instanceId={id} instance={instance} />}
         {activeTab === 'configuration' && <ConfigurationTab instance={instance} />}
         {activeTab === 'logs'          && <LogsTab          instanceId={id} isRunning={isRunning} />}
@@ -255,10 +264,245 @@ export function InstanceDetailPage() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+/*  System Internals Tab  (H2 embedded DB — system instance only)             */
+/* ─────────────────────────────────────────────────────────────────────────── */
+function SystemInternalsTab() {
+  const [stats, setStats]       = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
+  const [lastRefresh, setLastRefresh] = useState(null)
+
+  const fmtBytes = (bytes) => {
+    if (bytes == null) return '—'
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
+
+  const fmtUptime = (secs) => {
+    if (secs == null) return '—'
+    const d = Math.floor(secs / 86400)
+    const h = Math.floor((secs % 86400) / 3600)
+    const m = Math.floor((secs % 3600) / 60)
+    const s = secs % 60
+    if (d > 0) return `${d}d ${h}h ${m}m`
+    if (h > 0) return `${h}h ${m}m`
+    if (m > 0) return `${m}m ${s}s`
+    return `${s}s`
+  }
+
+  const fetch = useCallback(async () => {
+    try {
+      const data = await getSystemStats()
+      setStats(data)
+      setLastRefresh(new Date())
+      setError(null)
+    } catch {
+      setError('Failed to load system stats')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetch()
+    const t = setInterval(fetch, 30_000)
+    return () => clearInterval(t)
+  }, [fetch])
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-16 text-[var(--text-muted)] justify-center">
+        <div className="w-4 h-4 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin" />
+        Loading system internals…
+      </div>
+    )
+  }
+
+  if (error) {
+    return <div className="card p-6 text-center text-[var(--status-error)] text-sm">{error}</div>
+  }
+
+  const heapPct = stats?.jvm ? Math.round((stats.jvm.heapUsedMb / stats.jvm.heapMaxMb) * 100) : 0
+  const heapColor = heapPct > 85 ? 'bg-red-500' : heapPct > 60 ? 'bg-yellow-500' : 'bg-green-500'
+  const poolActive = stats?.pool?.activeConnections ?? 0
+  const poolMax    = stats?.pool?.maxSize ?? 1
+  const poolPct    = Math.round((poolActive / poolMax) * 100)
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Refresh controls ── */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[var(--text-muted)]">
+          Auto-refreshes every 30s
+          {lastRefresh && <> · Last updated {lastRefresh.toLocaleTimeString()}</>}
+        </p>
+        <button onClick={fetch} className="btn-ghost flex items-center gap-1.5 text-xs">
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh now
+        </button>
+      </div>
+
+      {/* ── Database section ── */}
+      <div>
+        <p className="section-label">Database</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 stagger-children">
+          {[
+            { label: 'Engine',      value: 'H2 Embedded',                   icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { label: 'Version',     value: stats?.db?.version ?? '—',       icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10' },
+            { label: 'File Size',   value: fmtBytes(stats?.db?.fileSizeBytes), icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+          ].map(s => (
+            <div key={s.label} className="stat-card animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 transition-all duration-200">
+              <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
+              <div>
+                <div className="text-base font-bold text-[var(--text-primary)] font-mono">{s.value}</div>
+                <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {stats?.db?.filePath && (
+          <div className="mt-3 px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
+            <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+            <span className="text-xs font-mono text-[var(--text-muted)] truncate">{stats.db.filePath}.mv.db</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Connection Pool ── */}
+      <div>
+        <p className="section-label">Connection Pool (HikariCP)</p>
+        <div className="card p-5 space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Active',   value: stats?.pool?.activeConnections ?? '—', color: 'text-green-400' },
+              { label: 'Idle',     value: stats?.pool?.idleConnections   ?? '—', color: 'text-blue-400' },
+              { label: 'Pending',  value: stats?.pool?.pendingThreads    ?? '—', color: 'text-yellow-400' },
+              { label: 'Max Size', value: stats?.pool?.maxSize           ?? '—', color: 'text-[var(--text-secondary)]' },
+            ].map(item => (
+              <div key={item.label} className="bg-white/[0.03] rounded-lg p-3 text-center">
+                <div className={`text-xl font-bold font-mono ${item.color}`}>{item.value}</div>
+                <div className="text-xs text-[var(--text-muted)] mt-1">{item.label}</div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="flex justify-between text-xs text-[var(--text-muted)] mb-1.5">
+              <span>Pool utilisation</span>
+              <span className="font-mono">{poolActive} / {poolMax} ({poolPct}%)</span>
+            </div>
+            <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${poolPct > 80 ? 'bg-red-500' : poolPct > 50 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                style={{ width: `${poolPct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Schema ── */}
+      <div>
+        <p className="section-label">Schema</p>
+        <div className="card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[var(--text-muted)]" />
+              <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Tables</span>
+            </div>
+            <span className="text-xs text-[var(--text-muted)]">
+              {stats?.schema?.tableCount ?? 0} tables · {stats?.schema?.tables?.reduce((a, t) => a + (t.rowCount ?? 0), 0).toLocaleString()} total rows
+            </span>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            {(stats?.schema?.tables ?? []).map(tbl => (
+              <div key={tbl.tableName} className="flex items-center justify-between px-5 py-3">
+                <span className="text-sm font-mono text-[var(--text-secondary)]">{tbl.tableName}</span>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[var(--text-muted)]">
+                  {(tbl.rowCount ?? 0).toLocaleString()} rows
+                </span>
+              </div>
+            ))}
+            {(!stats?.schema?.tables || stats.schema.tables.length === 0) && (
+              <p className="text-xs text-[var(--text-muted)] px-5 py-4">No table data available.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── JVM Heap + App Uptime ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* JVM Heap */}
+        <div>
+          <p className="section-label">JVM Heap</p>
+          <div className="card p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Used',  value: `${stats?.jvm?.heapUsedMb ?? '—'} MB`, color: 'text-[var(--text-primary)]' },
+                { label: 'Max',   value: `${stats?.jvm?.heapMaxMb  ?? '—'} MB`, color: 'text-[var(--text-muted)]' },
+              ].map(item => (
+                <div key={item.label} className="bg-white/[0.03] rounded-lg p-3 text-center">
+                  <div className={`text-xl font-bold font-mono ${item.color}`}>{item.value}</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">{item.label}</div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="flex justify-between text-xs text-[var(--text-muted)] mb-1.5">
+                <span>Heap usage</span>
+                <span className="font-mono">{heapPct}%</span>
+              </div>
+              <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${heapColor}`}
+                  style={{ width: `${heapPct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Application info */}
+        <div>
+          <p className="section-label">Application</p>
+          <div className="card p-5 space-y-3">
+            {[
+              { label: 'Uptime',      value: fmtUptime(stats?.app?.uptimeSeconds), icon: <Clock3 className="w-4 h-4" /> },
+              { label: 'Started At',  value: stats?.app?.startedAt ? new Date(stats.app.startedAt).toLocaleString() : '—', icon: <Zap className="w-4 h-4" /> },
+            ].map(row => (
+              <div key={row.label} className="flex items-center gap-3 py-1">
+                <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-[var(--text-muted)] shrink-0">
+                  {row.icon}
+                </div>
+                <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
+                  <span className="text-xs text-[var(--text-muted)]">{row.label}</span>
+                  <span className="text-sm font-mono text-[var(--text-secondary)] truncate">{row.value}</span>
+                </div>
+              </div>
+            ))}
+            <div className="pt-2 border-t border-white/[0.06]">
+              <button
+                onClick={() => window.open('/h2-console', '_blank')}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 transition-colors">
+                <ExternalLink className="w-4 h-4" />
+                Open H2 Console
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 /*  Overview Tab                                                               */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function OverviewTab({ instance }) {
   const isRunning = instance.status === 'RUNNING'
+  const isSystem  = instance.isSystem
 
   const uptime = (() => {
     if (!isRunning) return null
@@ -289,7 +533,7 @@ function OverviewTab({ instance }) {
       color: 'text-blue-400',
       bg: 'bg-blue-500/10',
     },
-    {
+    !isSystem && {
       label: 'Host Port',
       value: instance.hostPort,
       icon: <Globe className="w-5 h-5" />,
@@ -310,7 +554,7 @@ function OverviewTab({ instance }) {
       color: 'text-cyan-400',
       bg: 'bg-cyan-500/10',
     },
-  ]
+  ].filter(Boolean)
 
   return (
     <div className="space-y-6">
@@ -348,7 +592,9 @@ function OverviewTab({ instance }) {
               </p>
               <p className="text-sm text-[var(--text-muted)] mt-0.5">
                 {isRunning
-                  ? `Container has been running for ${uptime ?? 'unknown'}. Accepting connections on port ${instance.hostPort}.`
+                  ? isSystem
+                    ? `Embedded H2 database is running. Check the System Internals tab for live metrics.`
+                    : `Container has been running for ${uptime ?? 'unknown'}. Accepting connections on port ${instance.hostPort}.`
                   : instance.status === 'STOPPED'
                     ? 'Container is stopped. Click Start to bring it back online.'
                     : instance.status === 'DEPLOYING'
@@ -358,12 +604,18 @@ function OverviewTab({ instance }) {
             </div>
           </div>
           {isRunning && (
-            <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              {[
-                { label: 'Container', value: instance.containerName ?? '—' },
-                { label: 'Created', value: new Date(instance.createdAt).toLocaleDateString() },
-                { label: 'Last Updated', value: new Date(instance.updatedAt ?? instance.createdAt).toLocaleTimeString() },
-              ].map(item => (
+            <div className={`mt-4 grid gap-3 text-center ${isSystem ? 'grid-cols-2' : 'grid-cols-3'}`}>
+              {(isSystem
+                ? [
+                    { label: 'Engine',       value: 'H2 Embedded' },
+                    { label: 'Last Updated', value: new Date(instance.updatedAt ?? instance.createdAt).toLocaleTimeString() },
+                  ]
+                : [
+                    { label: 'Container',    value: instance.containerName ?? '—' },
+                    { label: 'Created',      value: new Date(instance.createdAt).toLocaleDateString() },
+                    { label: 'Last Updated', value: new Date(instance.updatedAt ?? instance.createdAt).toLocaleTimeString() },
+                  ]
+              ).map(item => (
                 <div key={item.label} className="bg-white/[0.03] rounded-lg p-3">
                   <div className="text-xs text-[var(--text-muted)] mb-1">{item.label}</div>
                   <div className="text-sm text-[var(--text-primary)] font-mono truncate">{item.value}</div>
@@ -374,14 +626,28 @@ function OverviewTab({ instance }) {
         </div>
       </div>
 
-      {/* Connection string quick-access */}
-      {instance.connectionString && (
+      {/* Connection string quick-access — hidden for system DB */}
+      {instance.connectionString && !isSystem && (
         <div>
           <p className="section-label">Connection String</p>
           <div className="card p-5">
             <ConnectionString value={instance.connectionString} masked={instance.connectionStringMasked} />
             <p className="text-xs text-[var(--text-muted)] mt-2">
               Use this string in your application to connect. Click the eye icon to reveal the password, or copy the full string.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* System DB hint */}
+      {isSystem && (
+        <div className="card p-5 flex items-start gap-3 border-violet-500/20 bg-violet-500/5">
+          <Cpu className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-violet-300">Embedded System Database</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              This is Port Wrangler's internal H2 database. It stores all instance metadata, pipeline history, and configuration.
+              Switch to the <strong className="text-violet-300">System Internals</strong> tab for live connection pool stats, schema row counts, JVM heap, and more.
             </p>
           </div>
         </div>
