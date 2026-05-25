@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+# ── System database (auto-provisioned Postgres container on first start) ──────
+# Container: dbdeployer-system-db  |  Port: 5499  |  Never touched by the user
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5499/dbdeployer
+    username: dbdeployer
+    password: dbdeployer_internal
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      initialization-fail-timeout: 60000   # wait up to 60s for Postgres to be ready
+      maximum-pool-size: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# ── System DB provisioner config ───────────────────────────────────────────────
+dbdeployer:
+  system-db:
+    container-name: dbdeployer-system-db
+    image: postgres:16
+    host-port: 5499
+    username: dbdeployer
+    password: dbdeployer_internal
+    database: dbdeployer
+
+logging:
+  level:
+    com.dbdeployer: INFO
+    org.hibernate.SQL: WARN
