@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getInstances, getStats, deployInstance } from '../api/client'
+import { useNavigate } from 'react-router-dom'
+import { getInstances, getStats } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { InstanceCard } from '../components/InstanceCard'
-import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
 import {
   ChevronDown,
@@ -47,10 +47,10 @@ function sortInstances(a, b) {
 }
 
 export function InstancesPage() {
+  const navigate = useNavigate()
   const [instances, setInstances]       = useState([])
   const [stats, setStats]               = useState(null)
   const [loading, setLoading]           = useState(true)
-  const [showModal, setShowModal]       = useState(false)
   const [showImport, setShowImport]     = useState(false)
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -80,19 +80,6 @@ export function InstancesPage() {
     const t = setTimeout(load, hasActive ? 3_000 : 8_000)
     return () => clearTimeout(t)
   }, [instances, load])
-
-  // handleDeploy — awaited by DeployModal so field-level errors can be shown there.
-  // Re-throws on error so the modal stays open and highlights the offending field.
-  const handleDeploy = async (data) => {
-    try {
-      await deployInstance(data)
-      toast.success(`Deploying ${data.name}… this may take a minute`)
-      load()
-    } catch (err) {
-      // Re-throw so DeployModal can show inline field errors instead of just a toast
-      throw err
-    }
-  }
 
   // Split active vs removed after applying status and name sort.
   const sortedInstances  = [...instances].sort(sortInstances)
@@ -191,7 +178,7 @@ export function InstancesPage() {
   )
 
   return (
-    <AppShell onDeploy={() => setShowModal(true)} onRefresh={load}>
+    <AppShell onRefresh={load}>
 
       {/* ── Page header ── */}
       <div className="flex items-center justify-between mb-6 animate-fade-up">
@@ -214,7 +201,7 @@ export function InstancesPage() {
             <CloudDownload className="w-4 h-4" />
             Import
           </button>
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => navigate('/deploy')} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Deploy DB
           </button>
@@ -285,9 +272,9 @@ export function InstancesPage() {
           Loading instances…
         </div>
       ) : filtered.length === 0 && activeInstances.length === 0 && !showingRemoved ? (
-        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={false} />
+        <EmptyState onDeploy={() => navigate('/deploy')} hasInstances={false} />
       ) : filtered.length === 0 ? (
-        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={true} />
+        <EmptyState onDeploy={() => navigate('/deploy')} hasInstances={true} />
       ) : (
         <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children animate-fade-up delay-200 ${showingRemoved ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}>
           {filtered.map(instance => (
@@ -334,10 +321,6 @@ export function InstancesPage() {
             )
           )}
         </section>
-      )}
-
-      {showModal && (
-        <DeployModal onClose={() => setShowModal(false)} onDeploy={handleDeploy} />
       )}
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImported={load} />

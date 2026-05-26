@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getInstances, getStats, deployInstance } from '../api/client'
+import { getInstances, getStats } from '../api/client'
 import { AppShell } from '../components/AppShell'
-import { DeployModal } from '../components/DeployModal'
 import { StatusBadge } from '../components/StatusBadge'
 import {
   CircleCheck,
@@ -17,14 +16,12 @@ import {
   Play,
   Zap,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 
 export function HomePage() {
   const [instances, setInstances] = useState([])
   const [stats, setStats]         = useState(null)
-  const [showModal, setShowModal] = useState(false)
   const navigate = useNavigate()
-  const openDeployModal = useCallback(() => setShowModal(true), [])
+  const openDeployPage = useCallback(() => navigate('/deploy'), [navigate])
 
   const load = useCallback(async () => {
     try {
@@ -43,12 +40,6 @@ export function HomePage() {
     }
   }, [load])
 
-  const handleDeploy = async (data) => {
-    await deployInstance(data)
-    toast.success(`Deploying ${data.name}…`)
-    load()
-  }
-
   const recent = [...instances]
     .filter(i => i.status !== 'REMOVED')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -65,7 +56,7 @@ export function HomePage() {
   ] : []
 
   return (
-    <AppShell onDeploy={openDeployModal} onRefresh={load}>
+    <AppShell onRefresh={load}>
 
       {/* ── Hero ── */}
       <section className="relative mb-10 pt-4 pb-8 overflow-hidden animate-fade-up">
@@ -95,7 +86,7 @@ export function HomePage() {
               using Docker - no config headaches.
             </p>
             <div className="flex items-center gap-3 flex-wrap animate-fade-up delay-200">
-              <button onClick={openDeployModal}
+              <button onClick={openDeployPage}
                 className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
                 <Plus className="w-5 h-5" />
                 Deploy a Database
@@ -117,7 +108,7 @@ export function HomePage() {
               <button
                 key={card.step}
                 type="button"
-                onClick={openDeployModal}
+                onClick={openDeployPage}
                 className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] hover:-translate-y-0.5 transition-all duration-200 text-left cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
@@ -192,7 +183,7 @@ export function HomePage() {
           <div className="card p-12 text-center animate-scale-in">
             <div className="text-4xl mb-3">🗄️</div>
             <p className="text-[var(--text-muted)] text-sm mb-4">No databases deployed yet</p>
-            <button onClick={openDeployModal} className="btn-primary inline-flex items-center gap-2">
+            <button onClick={openDeployPage} className="btn-primary inline-flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Deploy your first database
             </button>
@@ -224,7 +215,7 @@ export function HomePage() {
               <button
                 key={card.step}
                 type="button"
-                onClick={openDeployModal}
+                onClick={openDeployPage}
                 className="card p-5 flex gap-4 animate-fade-up transition-all duration-200 text-left cursor-pointer hover:bg-[var(--bg-surface-2)]"
               >
                 <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
@@ -260,9 +251,7 @@ export function HomePage() {
         </section>
       )}
 
-      {showModal && (
-        <DeployModal onClose={() => setShowModal(false)} onDeploy={handleDeploy} />
-      )}
+      {/* Removed DeployModal as per the new navigation */}
     </AppShell>
   )
 }

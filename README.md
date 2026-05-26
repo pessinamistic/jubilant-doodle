@@ -42,8 +42,11 @@ Port Wrangler lets developers spin up any of 14 popular databases locally with a
 
 ## Features
 
-- 🚀 **One-click deploy** — deploy any of 14 databases via a single form with version and credential selection
+- 🚀 **Route-based deploy workspace** — full deploy page with left-nav tool selection and right-side configuration form
 - 🔄 **Async deployment pipeline** — 4-step pipeline (pull image → create container → start container → finalise) with per-step status tracking
+- 🧭 **Global deploy navigation** — all Deploy actions now route to the dedicated deploy workspace
+- 🖼️ **Image management system** — track image availability from local Docker store and Docker Hub fallback
+- ✅ **Pre-deploy image guardrails** — block only when a tag is confirmed missing; warn-and-allow for indeterminate remote checks
 - ▶️ **Start / Stop / Remove** — full container lifecycle management from the UI
 - 📋 **Connection string generator** — auto-generates both plain and masked connection strings per DB type
 - 📜 **Live container logs** — tail the last N lines of any container's stdout/stderr
@@ -110,27 +113,32 @@ db_deployer/
 │       │   └── store/                       # DeploymentPipelineRepository, PipelineStepRepository
 │       ├── service/
 │       │   ├── DbInstanceService.java       # Business logic (deploy, start, stop, sync, import, …)
+│       │   ├── ImageValidationService.java  # Local + Docker Hub image validation decisions
+│       │   ├── DockerHubTagClient.java      # Docker Hub tag existence checks
 │       │   └── AsyncDeployer.java           # Async deployment wrapper
-│       ├── model/                           # DbInstance, DeploymentConfig, DeployedContainer, enums
-│       ├── store/                           # DbInstanceRepository, DeploymentConfigRepository, …
+│       ├── model/                           # DeploymentConfig, DeployedContainer, image tracking enums/entities
+│       ├── store/                           # Deployment repositories + image tracking repository
 │       └── config/
 │           ├── AppConfig.java               # CORS, async executor, beans
 │           ├── SystemDbProvisioner.java     # Auto-provisions system Postgres before Spring starts
 │           ├── SystemDbRegistrar.java       # Registers provisioner as ApplicationContextInitializer
 │           ├── DockerSocketResolver.java    # Detects Docker socket path (Desktop / Colima / Linux)
 │           ├── StatusSyncScheduler.java     # Scheduled Docker status sync
+│           ├── ImageTrackingScheduler.java  # Scheduled image tracking refresh
 │           └── DeploymentRecovery.java      # Recovers in-progress deployments on restart
 │
 └── frontend/                            # React 19 + Vite + TailwindCSS
     └── src/
         ├── api/client.js                # Axios API layer (all backend calls)
         ├── components/
-        │   ├── DeployModal.jsx          # DB picker + version/credential config form
         │   ├── InstanceCard.jsx         # Instance row (status, actions)
         │   ├── ConnectionString.jsx     # Masked connection string + copy button
         │   ├── StatusBadge.jsx          # Status pill (RUNNING / STOPPED / FAILED / …)
         │   └── SystemBanner.jsx         # Docker availability warning
-        └── pages/Dashboard.jsx          # Main dashboard page
+    └── pages/
+      ├── DeployPage.jsx           # Full deploy workspace (tool nav + deploy form)
+      ├── ImageManagementPage.jsx  # Source-aware image tracking and refresh UI
+      └── Dashboard.jsx            # Legacy dashboard page (not primary route)
 ```
 
 ---
@@ -256,6 +264,11 @@ dbdeployer:
     allowed-origins: ${DBDEPLOYER_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
   pipeline:
     step-delay-ms: 1500               # ms delay between pipeline steps (visual pacing)
+  image-validation:
+    scheduler-enabled: true
+    docker-hub-timeout-ms: 4000
+    local-refresh-interval-ms: 120000
+    docker-hub-refresh-interval-ms: 21600000
 ```
 
 **Key environment variables:**
@@ -302,6 +315,14 @@ All endpoints are under the `/api` prefix.
 |--------|----------------|------------------------------------------------|
 | `GET`  | `/api/catalog` | List all supported database types with metadata |
 | `GET`  | `/api/system`  | OS and tool availability info                   |
+
+### Images
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/api/images/check?dbType=POSTGRESQL&tag=16&refresh=false` | Check one tag with local Docker + Docker Hub fallback |
+| `GET`  | `/api/images/tracking` | List tracked image statuses for supported tools/tags |
+| `POST` | `/api/images/refresh?scope=all` | Manually refresh image tracking (`local`, `hub`, `all`) |
 
 ### Example: Deploy a new instance
 

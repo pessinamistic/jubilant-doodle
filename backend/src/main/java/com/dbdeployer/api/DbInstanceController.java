@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
+import com.dbdeployer.api.dto.ImageCheckResponse;
+import com.dbdeployer.api.dto.ImageToolDetailResponse;
+import com.dbdeployer.api.dto.ImageToolSummaryResponse;
 import com.dbdeployer.api.dto.ImportRequest;
 import com.dbdeployer.api.dto.InstanceResponse;
 import com.dbdeployer.api.dto.InstanceStatsResponse;
@@ -28,8 +33,10 @@ import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.api.dto.SystemDbStatsResponse;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
+import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.service.DbInstanceService;
+import com.dbdeployer.service.ImageValidationService;
 import com.dbdeployer.service.SystemDbStatsService;
 
 import jakarta.validation.Valid;
@@ -38,16 +45,21 @@ import jakarta.validation.Valid;
 @RequestMapping("/api")
 public class DbInstanceController {
 
+    private static final Logger log = LoggerFactory.getLogger(DbInstanceController.class);
+
     private final DbInstanceService       service;
     private final ConnectionStringBuilder connBuilder;
     private final SystemDbStatsService    statsService;
+    private final ImageValidationService  imageValidationService;
 
     public DbInstanceController(DbInstanceService service,
                                 ConnectionStringBuilder connBuilder,
-                                SystemDbStatsService statsService) {
+                                SystemDbStatsService statsService,
+                                ImageValidationService imageValidationService) {
         this.service      = service;
         this.connBuilder  = connBuilder;
         this.statsService = statsService;
+        this.imageValidationService = imageValidationService;
     }
 
     /** List all deployed instances */
@@ -73,7 +85,10 @@ public class DbInstanceController {
     /** Deploy a new database instance */
     @PostMapping("/instances")
     public ResponseEntity<InstanceResponse> deploy(@Valid @RequestBody DeployRequest req) {
+        log.info("[api] deploy requested: name='{}', dbType={}, version={}, hostPort={}",
+                req.name(), req.dbType(), req.version(), req.hostPort());
         DeploymentConfig config = service.deploy(req);
+        log.info("[api] deploy accepted: configId={}, name='{}'", config.getId(), config.getName());
         return ResponseEntity.accepted().body(toResponse(config));
     }
 
@@ -170,6 +185,90 @@ public class DbInstanceController {
         return DatabaseCatalog.all();
     }
 
+    /** Resolve deployable versions dynamically from the image registry for one tool. */
+    @GetMapping("/catalog/{dbType}/versions")
+    public List<String> catalogVersions(
+            @PathVariable DbType dbType,
+            @RequestParam(defaultValue = "false") boolean refresh) {
+        log.info("[api] catalog versions requested: dbType={}, refresh={}", dbType, refresh);
+        List<String> versions = imageValidationService.discoverAndTrackVersions(dbType, refresh);
+        log.info("[api] catalog versions resolved: dbType={}, count={}", dbType, versions.size());
+        return versions;
+    }
+
+    /** Check one database tool image tag against local Docker + Docker Hub fallback. */
+    @GetMapping("/images/check")
+    public ImageCheckResponse checkImage(
+            @RequestParam DbType dbType,
+            @RequestParam String tag,
+            @RequestParam(defaultValue = "false") boolean refresh) {
+        log.debug("[api] image check requested: dbType={}, tag={}, refresh={}", dbType, tag, refresh);
+        ImageCheckResponse result = imageValidationService.check(dbType, tag, refresh);
+        log.debug("[api] image check result: dbType={}, tag={}, decision={}, local={}, hub={}",
+            dbType, tag, result.decision(), result.localStatus(), result.dockerHubStatus());
+        return result;
+    }
+
+    /** Get tracked image statuses across supported catalog tools/tags. */
+    @GetMapping("/images/tracking")
+    public List<ImageCheckResponse> imageTracking() {
+        log.debug("[api] image tracking requested");
+        List<ImageCheckResponse> rows = imageValidationService.getOverview();
+        log.debug("[api] image tracking returned {} rows", rows.size());
+        return rows;
+    }
+
+    /** Lightweight per-tool image summary for card-based image home UI. */
+    @GetMapping("/images/summary")
+    public List<ImageToolSummaryResponse> imageSummary() {
+        log.debug("[api] image summary requested");
+        List<ImageToolSummaryResponse> rows = imageValidationService.getToolSummaries();
+        log.debug("[api] image summary returned {} tool rows", rows.size());
+        return rows;
+    }
+
+    /** Per-tool image details loaded on demand for drill-down pages. */
+    @GetMapping("/images/tools/{dbType}")
+    public ImageToolDetailResponse imageToolDetails(
+            @PathVariable DbType dbType,
+            @RequestParam(defaultValue = "false") boolean refresh) {
+        log.debug("[api] image tool detail requested: dbType={}, refresh={}", dbType, refresh);
+        ImageToolDetailResponse detail = imageValidationService.getToolDetails(dbType, refresh);
+        log.debug("[api] image tool detail returned: dbType={}, tags={}", dbType, detail.totalTags());
+        return detail;
+    }
+
+    /** Manually refresh image statuses for one tool only. */
+    @PostMapping("/images/tools/{dbType}/refresh")
+    public Map<String, Object> refreshImageTool(
+            @PathVariable DbType dbType,
+            @RequestParam(defaultValue = "all") String scope) {
+        log.info("[api] image tool refresh requested: dbType={}, scope={}", dbType, scope);
+        var parsedScope = ImageValidationService.RefreshScope.from(scope);
+        int updated = imageValidationService.refreshToolStatuses(dbType, parsedScope);
+        log.info("[api] image tool refresh completed: dbType={}, scope={}, updated={}",
+            dbType, parsedScope.name().toLowerCase(), updated);
+        return Map.of(
+                "dbType", dbType,
+                "scope", parsedScope.name().toLowerCase(),
+                "updated", updated
+        );
+    }
+
+    /** Manually refresh tracked image statuses. Scope: local, hub, or all. */
+    @PostMapping("/images/refresh")
+    public Map<String, Object> refreshImages(@RequestParam(defaultValue = "all") String scope) {
+        log.info("[api] image refresh requested: scope={}", scope);
+        var parsedScope = ImageValidationService.RefreshScope.from(scope);
+        int updated = imageValidationService.refresh(parsedScope);
+        log.info("[api] image refresh completed: scope={}, updated={}",
+            parsedScope.name().toLowerCase(), updated);
+        return Map.of(
+                "scope", parsedScope.name().toLowerCase(),
+                "updated", updated
+        );
+    }
+
     /** Get system info (OS, available tools) */
     @GetMapping("/system")
     public Object systemInfo() {
@@ -185,7 +284,9 @@ public class DbInstanceController {
     /** Sync container statuses from Docker */
     @PostMapping("/instances/sync")
     public ResponseEntity<Void> sync() {
+        log.info("[api] instance status sync requested");
         service.syncStatuses();
+        log.info("[api] instance status sync completed");
         return ResponseEntity.ok().build();
     }
 
@@ -193,6 +294,7 @@ public class DbInstanceController {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException e) {
+        log.warn("[api] bad request: {}", e.getMessage());
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
 

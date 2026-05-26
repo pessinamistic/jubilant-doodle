@@ -7,7 +7,7 @@ server:
 spring:
   datasource:
     # H2 file-based embedded database — no Docker image pull required
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./data/dbdeployer;DB_CLOSE_ON_EXIT=FALSE}
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./data/dbdeployer;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=10000}
     username: ${SPRING_DATASOURCE_USERNAME:dbdeployer}
     password: ${SPRING_DATASOURCE_PASSWORD:dbdeployer_internal}
     driver-class-name: org.h2.Driver
@@ -40,6 +40,11 @@ dbdeployer:
     allowed-origins: ${DBDEPLOYER_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
   pipeline:
     step-delay-ms: 1500
+  image-validation:
+    scheduler-enabled: true
+    docker-hub-timeout-ms: 4000
+    local-refresh-interval-ms: 120000
+    docker-hub-refresh-interval-ms: 21600000
 
 logging:
   level:

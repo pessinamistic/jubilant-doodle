@@ -31,6 +31,7 @@ import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.ImageValidationDecision;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.PipelineOrchestrator;
 import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
@@ -52,6 +53,7 @@ public class DbInstanceService {
     private final PipelineOrchestrator          orchestrator;
     private final DeploymentPipelineRepository  pipelineRepo;
     private final PipelineStepRepository        stepRepo;
+    private final ImageValidationService        imageValidation;
 
     public DbInstanceService(DeploymentConfigRepository configRepo,
                              DeployedContainerRepository containerRepo,
@@ -61,7 +63,8 @@ public class DbInstanceService {
                              OsDetector osDetector,
                              PipelineOrchestrator orchestrator,
                              DeploymentPipelineRepository pipelineRepo,
-                             PipelineStepRepository stepRepo) {
+                             PipelineStepRepository stepRepo,
+                             ImageValidationService imageValidation) {
         this.configRepo    = configRepo;
         this.containerRepo = containerRepo;
         this.docker        = docker;
@@ -71,6 +74,7 @@ public class DbInstanceService {
         this.orchestrator  = orchestrator;
         this.pipelineRepo  = pipelineRepo;
         this.stepRepo      = stepRepo;
+        this.imageValidation = imageValidation;
     }
 
     // ── Queries ────────────────────────────────────────────────────────────────
@@ -132,15 +136,37 @@ public class DbInstanceService {
 
     @Transactional
     public DeploymentConfig deploy(DeployRequest req) {
+        log.info("[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
+                req.name(), req.dbType(), req.version(), req.hostPort());
+
         if (configRepo.existsByName(req.name())) {
+            log.warn("[deploy] Rejecting request: name already exists '{}'", req.name());
             throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
         }
         if (configRepo.existsByHostPort(req.hostPort())) {
+            log.warn("[deploy] Rejecting request: host port {} already in use", req.hostPort());
             throw new IllegalArgumentException("Port " + req.hostPort() + " is already in use");
         }
 
         var def = DatabaseCatalog.get(req.dbType());
-        if (def == null) throw new IllegalArgumentException("Unsupported database type: " + req.dbType());
+        if (def == null) {
+            log.warn("[deploy] Rejecting request: unsupported database type {}", req.dbType());
+            throw new IllegalArgumentException("Unsupported database type: " + req.dbType());
+        }
+
+        // Validate image availability before creating any deployment or pipeline rows.
+        var imageCheck = imageValidation.checkForDeploy(req.dbType(), req.version());
+        log.info("[deploy] Image check result for {}:{} -> decision={}, local={}, hub={}, message='{}'",
+                def.dockerImage(), req.version(), imageCheck.decision(),
+                imageCheck.localStatus(), imageCheck.dockerHubStatus(), imageCheck.message());
+        if (imageCheck.decision() == ImageValidationDecision.BLOCK) {
+            log.warn("[deploy] Blocking deployment '{}' because image is not deployable: {}",
+                    req.name(), imageCheck.message());
+            throw new IllegalArgumentException(imageCheck.message());
+        }
+        if (imageCheck.decision() == ImageValidationDecision.ALLOW_WITH_WARNING) {
+            log.warn("Proceeding with deployment '{}' despite warning: {}", req.name(), imageCheck.message());
+        }
 
         // Apply catalog defaults for any credentials the user left blank
         String username     = resolveCredential(req.username(),     def, DatabaseCatalog.EnvVarType.TEXT);
@@ -174,6 +200,9 @@ public class DbInstanceService {
         // ── Create pipeline + fire async runner after commit ──
         orchestrator.createAndLaunch(config, container);
         containerRepo.save(container); // persist latestPipelineId set by orchestrator
+
+        log.info("[deploy] Accepted deployment '{}' (configId={}, containerRecordId={}, pipelineId={})",
+            config.getName(), config.getId(), container.getId(), container.getLatestPipelineId());
 
         return config;
     }
