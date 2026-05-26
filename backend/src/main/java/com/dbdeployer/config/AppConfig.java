@@ -1,6 +1,5 @@
 package com.dbdeployer.config;
 
-import com.dbdeployer.pipeline.PipelineProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -9,10 +8,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import com.dbdeployer.pipeline.PipelineProperties;
+
 @Configuration
 @EnableAsync
 @EnableScheduling
-@EnableConfigurationProperties(PipelineProperties.class)
+@EnableConfigurationProperties({PipelineProperties.class, ImageValidationProperties.class})
 public class AppConfig implements WebMvcConfigurer {
 
     /**

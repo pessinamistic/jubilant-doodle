@@ -25,14 +25,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Component
 public class DockerDeployEngine {
@@ -40,6 +41,7 @@ public class DockerDeployEngine {
     private static final Logger log = LoggerFactory.getLogger(DockerDeployEngine.class);
     private final DockerClient docker;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Map<String, ReentrantLock> imagePullLocks = new ConcurrentHashMap<>();
 
     // Container image name → DbType mapping (order matters: more specific first)
     private static final Map<String, DbType> IMAGE_DB_TYPE_MAP = new LinkedHashMap<>();
@@ -66,6 +68,9 @@ public class DockerDeployEngine {
         IMAGE_DB_TYPE_MAP.put("rabbitmq",           DbType.RABBITMQ);
         IMAGE_DB_TYPE_MAP.put("apache/kafka",       DbType.KAFKA);
         IMAGE_DB_TYPE_MAP.put("kafka",              DbType.KAFKA);
+        // ── Messaging UIs ─────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("conduktor/conduktor-console", DbType.CONDUKTOR);
+        IMAGE_DB_TYPE_MAP.put("conduktor-console",           DbType.CONDUKTOR);
         // ── Observability ─────────────────────────────────────────────────────
         IMAGE_DB_TYPE_MAP.put("grafana/grafana",    DbType.GRAFANA);
         IMAGE_DB_TYPE_MAP.put("grafana/loki",       DbType.LOKI);
@@ -107,9 +112,41 @@ public class DockerDeployEngine {
      * Blocks until the pull is complete.
      */
     public void pullImage(String image) throws Exception {
+        log.info("[docker] Pulling image {}", image);
         docker.pullImageCmd(image)
                 .start()
                 .awaitCompletion();
+        log.info("[docker] Pull complete for {}", image);
+    }
+
+    /**
+     * Ensures an image is available locally and avoids duplicate concurrent pulls
+     * for the same image:tag combination.
+     *
+     * @return true if a pull was executed, false if the image was already local
+     */
+    public boolean ensureImageAvailable(String imageName, String tag) throws Exception {
+        String normalizedImage = imageName == null ? "" : imageName.trim().toLowerCase(Locale.ROOT);
+        String normalizedTag = tag == null || tag.isBlank() ? "latest" : tag.trim().toLowerCase(Locale.ROOT);
+        String lockKey = normalizedImage + ":" + normalizedTag;
+
+        ReentrantLock lock = imagePullLocks.computeIfAbsent(lockKey, ignored -> new ReentrantLock(true));
+        lock.lock();
+        try {
+            if (isImageAvailableLocally(normalizedImage, normalizedTag)) {
+                log.info("[docker] Reusing local image {}:{}", normalizedImage, normalizedTag);
+                return false;
+            }
+
+            log.info("[docker] Local image missing, pull required for {}:{}", normalizedImage, normalizedTag);
+            pullImage(normalizedImage + ":" + normalizedTag);
+            return true;
+        } finally {
+            lock.unlock();
+            if (!lock.hasQueuedThreads()) {
+                imagePullLocks.remove(lockKey, lock);
+            }
+        }
     }
 
     /**
@@ -121,6 +158,9 @@ public class DockerDeployEngine {
         var def = DatabaseCatalog.get(config.getDbType());
         String image         = def.dockerImage() + ":" + config.getVersion();
         String containerName = "dbdeployer-" + config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-");
+
+        log.info("[docker] Creating container '{}' from image {} on hostPort={} containerPort={}",
+            containerName, image, config.getHostPort(), config.getContainerPort());
 
         container.setContainerName(containerName);
 
@@ -169,6 +209,7 @@ public class DockerDeployEngine {
                 .exec();
 
         container.setContainerId(created.getId());
+            log.info("[docker] Container created: {} ({})", containerName, created.getId());
     }
 
     /**
@@ -177,7 +218,9 @@ public class DockerDeployEngine {
      * {@code FinaliseStep} is responsible for those.
      */
     public void startContainer(DeployedContainer container) {
+        log.info("[docker] Starting container {} ({})", container.getContainerName(), container.getContainerId());
         docker.startContainerCmd(container.getContainerId()).exec();
+        log.info("[docker] Start command sent for container {} ({})", container.getContainerName(), container.getContainerId());
     }
 
     /** Check Docker is reachable on this machine */
@@ -189,6 +232,50 @@ public class DockerDeployEngine {
             log.warn("Docker not available: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Returns a normalized set of local image refs currently present in Docker,
+     * e.g. {@code postgres:16}, {@code docker.io/library/postgres:16}.
+     */
+    public Set<String> getLocalImageReferences() {
+        Set<String> refs = new HashSet<>();
+        try {
+            List<Image> images = docker.listImagesCmd().withShowAll(true).exec();
+            for (Image image : images) {
+                if (image.getRepoTags() == null) continue;
+                for (String tag : image.getRepoTags()) {
+                    if (tag == null || tag.isBlank() || "<none>:<none>".equals(tag)) continue;
+                    refs.add(tag.trim().toLowerCase(Locale.ROOT));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not list local Docker images: {}", e.getMessage());
+        }
+        return refs;
+    }
+
+    /**
+     * Fast check using an existing local refs snapshot.
+     */
+    public boolean hasLocalImage(String image, String tag, Set<String> localRefs) {
+        if (image == null || image.isBlank() || tag == null || tag.isBlank()) return false;
+        if (localRefs == null || localRefs.isEmpty()) return false;
+
+        String normalizedImage = image.trim().toLowerCase(Locale.ROOT);
+        String normalizedTag = tag.trim().toLowerCase(Locale.ROOT);
+        Set<String> candidates = localRefCandidates(normalizedImage, normalizedTag);
+        for (String candidate : candidates) {
+            if (localRefs.contains(candidate)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Live local image existence check for one image:tag pair.
+     */
+    public boolean isImageAvailableLocally(String image, String tag) {
+        return hasLocalImage(image, tag, getLocalImageReferences());
     }
 
     /**
@@ -331,13 +418,13 @@ public class DockerDeployEngine {
      * Returns the UTC time the container was last started, or null if the container
      * hasn't started or the timestamp is the Docker zero value (0001-01-01).
      */
-    public LocalDateTime getStartedAt(String containerId) {
+    public Instant getStartedAt(String containerId) {
         try {
             String raw = docker.inspectContainerCmd(containerId).exec()
                     .getState().getStartedAt();
             if (raw == null || raw.startsWith("0001")) return null;
             return OffsetDateTime.parse(raw, DateTimeFormatter.ISO_DATE_TIME)
-                    .toLocalDateTime();
+                    .toInstant();
         } catch (Exception e) {
             log.debug("Could not read startedAt for container {}: {}", containerId, e.getMessage());
             return null;
@@ -410,6 +497,37 @@ public class DockerDeployEngine {
             if (lower.contains(entry.getKey())) return entry.getValue();
         }
         return null;
+    }
+
+    private Set<String> localRefCandidates(String image, String tag) {
+        Set<String> refs = new HashSet<>();
+        refs.add(image + ":" + tag);
+
+        String trimmed = image;
+        if (trimmed.startsWith("docker.io/")) {
+            trimmed = trimmed.substring("docker.io/".length());
+        } else if (trimmed.startsWith("index.docker.io/")) {
+            trimmed = trimmed.substring("index.docker.io/".length());
+        }
+
+        refs.add(trimmed + ":" + tag);
+
+        String[] parts = trimmed.split("/");
+        boolean hasRegistryHost = parts.length > 0
+                && (parts[0].contains(".") || parts[0].contains(":") || "localhost".equals(parts[0]));
+
+        if (!hasRegistryHost) {
+            if (parts.length == 1) {
+                refs.add("library/" + parts[0] + ":" + tag);
+                refs.add("docker.io/library/" + parts[0] + ":" + tag);
+                refs.add("index.docker.io/library/" + parts[0] + ":" + tag);
+            } else {
+                refs.add("docker.io/" + trimmed + ":" + tag);
+                refs.add("index.docker.io/" + trimmed + ":" + tag);
+            }
+        }
+
+        return refs;
     }
 
     private List<String> buildEnvVars(DeploymentConfig config,

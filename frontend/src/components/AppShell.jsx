@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   ChevronLeft,
@@ -23,6 +23,7 @@ const SIDEBAR_COLLAPSED = 56
 const LS_KEY = 'sidebar-collapsed'
 
 export function AppShell({ children, onDeploy, onRefresh }) {
+  const navigate = useNavigate()
   const [syncing, setSyncing]       = useState(false)
   const [sysInfo, setSysInfo]       = useState(null)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -56,6 +57,14 @@ export function AppShell({ children, onDeploy, onRefresh }) {
     } finally {
       setSyncing(false)
     }
+  }
+
+  const goToDeploy = () => {
+    if (onDeploy) {
+      onDeploy()
+      return
+    }
+    navigate('/deploy')
   }
 
   const sidebarW = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED
@@ -112,7 +121,7 @@ export function AppShell({ children, onDeploy, onRefresh }) {
               icon={<Plus className="w-4 h-4 shrink-0" />}
               label="Deploy DB"
               collapsed={collapsed}
-              onClick={() => onDeploy?.()}
+              onClick={goToDeploy}
               primary
             />
           </div>
@@ -135,6 +144,11 @@ export function AppShell({ children, onDeploy, onRefresh }) {
             <SideNavItem
               to="/instances" icon={<Database className="w-4 h-4" />}
               label="Instances" collapsed={collapsed}
+              className="animate-fade-up delay-300"
+            />
+            <SideNavItem
+              to="/images" icon={<HardDrive className="w-4 h-4" />}
+              label="Images" collapsed={collapsed}
               className="animate-fade-up delay-300"
             />
           </nav>
@@ -179,13 +193,14 @@ export function AppShell({ children, onDeploy, onRefresh }) {
                 {sysInfo && <DockerPill info={sysInfo} />}
                 <SidebarBtn icon={<RefreshCw className={`w-4 h-4 shrink-0 ${syncing ? 'animate-spin' : ''}`} />} label="Sync statuses" collapsed={false} onClick={handleSync} disabled={syncing} />
                 <SidebarBtn icon={<ThemeIcon className="w-4 h-4 shrink-0" />} label={themeLabel} collapsed={false} onClick={cycleMode} />
-                <SidebarBtn icon={<Plus className="w-4 h-4 shrink-0" />} label="Deploy DB" collapsed={false} onClick={() => { onDeploy?.(); setMobileOpen(false) }} primary />
+                <SidebarBtn icon={<Plus className="w-4 h-4 shrink-0" />} label="Deploy DB" collapsed={false} onClick={() => { goToDeploy(); setMobileOpen(false) }} primary />
               </div>
               <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0" />
               <nav className="flex-1 space-y-0.5 px-2 animate-fade-up delay-100">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2">Navigation</p>
                 <SideNavItem to="/" icon={<House className="w-4 h-4" />} label="Home" end collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-150" />
                 <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
+                <SideNavItem to="/images" icon={<HardDrive className="w-4 h-4" />} label="Images" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
               </nav>
             </div>
           </aside>
@@ -205,7 +220,7 @@ export function AppShell({ children, onDeploy, onRefresh }) {
           <ThemeIcon className="w-3.5 h-3.5" />
           {mode === 'system' ? 'Auto' : mode === 'dark' ? 'Night' : 'Day'}
         </button>
-        <button onClick={() => onDeploy?.()} className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5">
+        <button onClick={goToDeploy} className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5">
           <Plus className="w-3.5 h-3.5" />Deploy
         </button>
       </header>

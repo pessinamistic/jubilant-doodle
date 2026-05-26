@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getInstances, deployInstance, syncStatuses } from '../api/client'
+import { useNavigate } from 'react-router-dom'
+import { getInstances, syncStatuses } from '../api/client'
 import { InstanceCard } from '../components/InstanceCard'
-import { DeployModal } from '../components/DeployModal'
 import { SystemBanner } from '../components/SystemBanner'
 import { PlusIcon, ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
@@ -9,9 +9,9 @@ import toast from 'react-hot-toast'
 const STATUS_FILTERS = ['ALL', 'RUNNING', 'STOPPED', 'DEPLOYING', 'ERROR']
 
 export function Dashboard() {
+  const navigate = useNavigate()
   const [instances, setInstances]     = useState([])
   const [loading, setLoading]         = useState(true)
-  const [showModal, setShowModal]     = useState(false)
   const [syncing, setSyncing]         = useState(false)
   const [search, setSearch]           = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -45,12 +45,6 @@ export function Dashboard() {
     }
   }
 
-  const handleDeploy = async (data) => {
-    await deployInstance(data)
-    toast.success(`Deploying ${data.name}… this may take a minute`)
-    load()
-  }
-
   const filtered = instances
     .filter(i => statusFilter === 'ALL' || i.status === statusFilter)
     .filter(i => !search || i.name.toLowerCase().includes(search.toLowerCase())
@@ -79,7 +73,7 @@ export function Dashboard() {
               <ArrowPathIcon className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
               Sync
             </button>
-            <button onClick={() => setShowModal(true)}
+            <button onClick={() => navigate('/deploy')}
               className="btn-primary flex items-center gap-1.5">
               <PlusIcon className="w-4 h-4" />
               Deploy DB
@@ -120,7 +114,7 @@ export function Dashboard() {
             <ArrowPathIcon className="w-6 h-6 animate-spin mr-2" /> Loading…
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState onDeploy={() => setShowModal(true)} hasInstances={instances.length > 0} />
+          <EmptyState onDeploy={() => navigate('/deploy')} hasInstances={instances.length > 0} />
         ) : (
           <div className="flex flex-col gap-4">
             {filtered.map(instance => (
@@ -129,10 +123,6 @@ export function Dashboard() {
           </div>
         )}
       </main>
-
-      {showModal && (
-        <DeployModal onClose={() => setShowModal(false)} onDeploy={handleDeploy} />
-      )}
     </div>
   )
 }

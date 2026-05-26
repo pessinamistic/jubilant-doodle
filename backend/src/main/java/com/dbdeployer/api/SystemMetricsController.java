@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.dbdeployer.api.dto.DeploymentActivityResponse;
 import com.dbdeployer.api.dto.MetricsHistoryResponse;
+import com.dbdeployer.config.DockerHealthChecker;
+import com.dbdeployer.config.DockerHealthChecker.DockerStatus;
 import com.dbdeployer.service.MetricsHistoryService;
 
 /**
@@ -17,6 +19,7 @@ import com.dbdeployer.service.MetricsHistoryService;
  * <ul>
  *   <li>{@code GET /api/system/metrics/history}  — Rolling 30-min JVM + pool time-series</li>
  *   <li>{@code GET /api/system/metrics/activity} — Deployment frequency + instance breakdown</li>
+ *   <li>{@code GET /api/system/docker-status}    — Live Docker daemon reachability probe</li>
  * </ul>
  */
 @RestController
@@ -25,10 +28,14 @@ public class SystemMetricsController {
 
     private final MetricsHistoryService historyService;
     private final JdbcTemplate          jdbc;
+    private final DockerHealthChecker   dockerHealthChecker;
 
-    public SystemMetricsController(MetricsHistoryService historyService, JdbcTemplate jdbc) {
-        this.historyService = historyService;
-        this.jdbc           = jdbc;
+    public SystemMetricsController(MetricsHistoryService historyService,
+                                   JdbcTemplate jdbc,
+                                   DockerHealthChecker dockerHealthChecker) {
+        this.historyService       = historyService;
+        this.jdbc                 = jdbc;
+        this.dockerHealthChecker  = dockerHealthChecker;
     }
 
     /** Last N JVM + HikariCP pool samples (one per ~30 s, up to 30-min window). */
@@ -88,5 +95,14 @@ public class SystemMetricsController {
                 ));
 
         return new DeploymentActivityResponse(byDay, byType, byStatus);
+    }
+
+    /**
+     * Live probe of the Docker daemon — useful for the UI to surface a warning
+     * banner if Docker goes down after the app has started.
+     */
+    @GetMapping("/docker-status")
+    public DockerStatus dockerStatus() {
+        return dockerHealthChecker.check();
     }
 }

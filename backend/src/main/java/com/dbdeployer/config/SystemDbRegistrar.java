@@ -1,6 +1,6 @@
 package com.dbdeployer.config;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -81,7 +81,7 @@ public class SystemDbRegistrar implements ApplicationRunner {
             container.setContainerId(null);
             container.setContainerName("h2-embedded");
             container.setStatus(InstanceStatus.RUNNING);
-            container.setStartedAt(LocalDateTime.now());
+            container.setStartedAt(Instant.now());
             containerRepo.save(container);
 
             log.info("System DB (H2 embedded, version {}) registered", h2Version);

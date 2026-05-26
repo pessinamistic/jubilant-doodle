@@ -1,0 +1,145 @@
+name: Release — Build & Publish Installers
+
+# Triggered by version tags: v1.0.0, v2.3.1, etc.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write   # required to upload assets to the GitHub Release
+
+jobs:
+  build-installer:
+    name: Build ${{ matrix.pkg-type }} installer
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            pkg-type: dmg
+            artifact-glob: '*.dmg'
+            platform: macos
+          - os: windows-latest
+            pkg-type: exe
+            artifact-glob: '*.exe'
+            platform: windows
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Setup Node for Gradle-driven frontend packaging ───────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # ── 3. Build Spring Boot fat JAR (includes frontend via Gradle tasks) ────
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build fat JAR
+        working-directory: backend
+        run: ./gradlew bootJar -x test --no-daemon
+
+      # ── 4. Verify jpackage is available ──────────────────────────────────────
+      - name: Verify jpackage
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          "$JAVA_HOME/bin/jpackage" --version
+
+      # ── 5. Install / locate WiX Toolset (Windows only) ───────────────────────
+      - name: Setup WiX Toolset (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Check standard pre-installed locations first
+          $wixPaths = @(
+            "C:\Program Files (x86)\WiX Toolset v3.11\bin",
+            "C:\Program Files\WiX Toolset v3.11\bin",
+            "C:\Program Files (x86)\WiX Toolset v3.14\bin",
+            "C:\Program Files\WiX Toolset v3.14\bin"
+          )
+          foreach ($p in $wixPaths) {
+            if (Test-Path "$p\candle.exe") {
+              echo "$p" >> $env:GITHUB_PATH
+              Write-Host "WiX found at: $p"
+              exit 0
+            }
+          }
+          # Not found — download WiX 3.14 binaries directly (no installer needed)
+          Write-Host "WiX not in standard locations — downloading WiX 3.14 binaries..."
+          $zipUrl = "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip"
+          $zipPath = "$env:TEMP\wix.zip"
+          $wixDir  = "$env:TEMP\wix314"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+          Expand-Archive -Path $zipPath -DestinationPath $wixDir -Force
+          echo "$wixDir" >> $env:GITHUB_PATH
+          Write-Host "WiX installed at: $wixDir"
+
+      # ── 6. Create native installer via jpackage ──────────────────────────────
+      - name: Build ${{ matrix.pkg-type }} installer
+        working-directory: backend
+        shell: bash
+        run: ./gradlew jpackageInstaller -Pjpackage.type=${{ matrix.pkg-type }} --no-daemon
+
+      # ── 7. Normalize artifact names + generate SHA-256 checksums ─────────────
+      - name: Normalize artifact names and generate checksums
+        shell: bash
+        env:
+          ARTIFACT_GLOB: ${{ matrix.artifact-glob }}
+          PLATFORM: ${{ matrix.platform }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          dist = Path("backend/build/dist")
+          matches = sorted(dist.glob(os.environ["ARTIFACT_GLOB"]))
+          if not matches:
+              raise SystemExit(f"No installer found matching {os.environ['ARTIFACT_GLOB']} in {dist}")
+
+          artifact = matches[0]
+          version = os.environ["REF_NAME"].removeprefix("v")
+          platform = os.environ["PLATFORM"]
+          new_name = f"port-wrangler-{version}-{platform}{artifact.suffix.lower()}"
+          renamed = dist / new_name
+
+          if renamed.exists():
+              renamed.unlink()
+          artifact.rename(renamed)
+
+          digest = hashlib.sha256(renamed.read_bytes()).hexdigest()
+          checksum = dist / f"{new_name}.sha256"
+          checksum.write_text(f"{digest}  {new_name}\\n", encoding="utf-8")
+
+          print(f"Prepared {renamed.name} and {checksum.name}")
+          PY
+
+      # ── 8. List produced artifacts (debug) ───────────────────────────────────
+      - name: List dist output
+        shell: bash
+        run: ls -lh backend/build/dist/
+
+      # ── 9. Upload installer to GitHub Release ────────────────────────────────
+      - name: Upload installer to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            backend/build/dist/port-wrangler-*-${{ matrix.platform }}.${{ matrix.pkg-type }}
+            backend/build/dist/port-wrangler-*-${{ matrix.platform }}.${{ matrix.pkg-type }}.sha256
+          generate_release_notes: true
+          fail_on_unmatched_files: true

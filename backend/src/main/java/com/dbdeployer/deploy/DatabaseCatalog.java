@@ -310,6 +310,26 @@ public class DatabaseCatalog {
                 false, false, false
         ));
 
+        CATALOG.put(DbType.CONDUKTOR, new DbDefinition(
+                DbType.CONDUKTOR,
+                "Conduktor Console",
+                "Enterprise Kafka management UI — browse topics, monitor consumer groups, manage schemas, and control access",
+                "🎛️",
+                "conduktor/conduktor-console",
+                8080,
+                List.of("1.45.1", "1.44.0", "1.43.0", "latest"),
+                List.of(
+                        new EnvVar("CDK_DATABASE_URL",              "PostgreSQL URL",         "postgresql://conduktor:secret@localhost:5432/conduktor", true,  EnvVarType.TEXT),
+                        new EnvVar("CDK_ORGANIZATION_NAME",         "Organization Name",      "my-org",          false, EnvVarType.TEXT),
+                        new EnvVar("CDK_CLUSTERS_0_ID",             "Kafka Cluster ID",       "local-kafka",     false, EnvVarType.TEXT),
+                        new EnvVar("CDK_CLUSTERS_0_NAME",           "Kafka Cluster Name",     "local-kafka",     false, EnvVarType.TEXT),
+                        new EnvVar("CDK_CLUSTERS_0_BOOTSTRAPSERVERS", "Kafka Bootstrap Servers", "localhost:9092", false, EnvVarType.TEXT)
+                ),
+                "http://localhost:{port}",
+                "/var/conduktor",
+                false, false, false
+        ));
+
         // ── Observability ─────────────────────────────────────────────────────
 
         CATALOG.put(DbType.GRAFANA, new DbDefinition(

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getInstances, getStats, deployInstance } from '../api/client'
+import { useNavigate } from 'react-router-dom'
+import { getInstances, getStats } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { InstanceCard } from '../components/InstanceCard'
-import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
 import {
   ChevronDown,
@@ -17,10 +17,11 @@ import {
   Search,
   Trash2,
   TriangleAlert,
+  Unlink,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const STATUS_FILTERS = ['ALL', 'RUNNING', 'RESTARTING', 'STOPPED', 'DEPLOYING', 'REMOVING', 'ERROR', 'REMOVED']
+const STATUS_FILTERS = ['ALL', 'RUNNING', 'RESTARTING', 'STOPPED', 'DEPLOYING', 'REMOVING', 'ERROR', 'REMOVED', 'UNTRACKED']
 
 const STATUS_SORT_ORDER = {
   RUNNING: 0,
@@ -30,6 +31,7 @@ const STATUS_SORT_ORDER = {
   REMOVING: 4,
   ERROR: 5,
   REMOVED: 6,
+  UNTRACKED: 7,
 }
 
 function getStatusSortOrder(status) {
@@ -47,14 +49,15 @@ function sortInstances(a, b) {
 }
 
 export function InstancesPage() {
+  const navigate = useNavigate()
   const [instances, setInstances]       = useState([])
   const [stats, setStats]               = useState(null)
   const [loading, setLoading]           = useState(true)
-  const [showModal, setShowModal]       = useState(false)
   const [showImport, setShowImport]     = useState(false)
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
-  const [showRemoved, setShowRemoved]   = useState(false)
+  const [showRemoved, setShowRemoved]     = useState(false)
+  const [showUntracked, setShowUntracked] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -81,23 +84,11 @@ export function InstancesPage() {
     return () => clearTimeout(t)
   }, [instances, load])
 
-  // handleDeploy — awaited by DeployModal so field-level errors can be shown there.
-  // Re-throws on error so the modal stays open and highlights the offending field.
-  const handleDeploy = async (data) => {
-    try {
-      await deployInstance(data)
-      toast.success(`Deploying ${data.name}… this may take a minute`)
-      load()
-    } catch (err) {
-      // Re-throw so DeployModal can show inline field errors instead of just a toast
-      throw err
-    }
-  }
-
-  // Split active vs removed after applying status and name sort.
-  const sortedInstances  = [...instances].sort(sortInstances)
-  const activeInstances  = sortedInstances.filter(i => i.status !== 'REMOVED')
-  const removedInstances = sortedInstances.filter(i => i.status === 'REMOVED')
+  // Split active vs removed vs untracked after applying status and name sort.
+  const sortedInstances    = [...instances].sort(sortInstances)
+  const activeInstances    = sortedInstances.filter(i => i.status !== 'REMOVED' && i.status !== 'UNTRACKED')
+  const removedInstances   = sortedInstances.filter(i => i.status === 'REMOVED')
+  const untrackedInstances = sortedInstances.filter(i => i.status === 'UNTRACKED')
 
   const statCards = stats ? [
     {
@@ -173,13 +164,23 @@ export function InstancesPage() {
       bg: 'bg-[var(--status-removed-bg)]',
       border: 'border-[var(--status-removed-border)]',
     },
+    {
+      label: 'Untracked',
+      filter: 'UNTRACKED',
+      value: stats.untracked ?? 0,
+      icon: <Unlink className="w-4 h-4" />,
+      color: (stats.untracked ?? 0) > 0 ? 'text-[var(--status-untracked)]' : 'text-[var(--status-stopped)]',
+      bg: 'bg-[var(--status-untracked-bg)]',
+      border: 'border-[var(--status-untracked-border)]',
+    },
   ] : []
 
-  // When REMOVED filter is active, show removed list; otherwise show active list
-  const showingRemoved = statusFilter === 'REMOVED'
+  // When REMOVED or UNTRACKED filter is active, show the respective list
+  const showingRemoved   = statusFilter === 'REMOVED'
+  const showingUntracked = statusFilter === 'UNTRACKED'
 
-  const filtered = (showingRemoved ? removedInstances : activeInstances)
-    .filter(i => showingRemoved || statusFilter === 'ALL' || i.status === statusFilter)
+  const filtered = (showingRemoved ? removedInstances : showingUntracked ? untrackedInstances : activeInstances)
+    .filter(i => showingRemoved || showingUntracked || statusFilter === 'ALL' || i.status === statusFilter)
     .filter(i => !search
       || i.name.toLowerCase().includes(search.toLowerCase())
       || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase()))
@@ -190,8 +191,14 @@ export function InstancesPage() {
     || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const filteredUntracked = untrackedInstances.filter(i =>
+    !search
+    || i.name.toLowerCase().includes(search.toLowerCase())
+    || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
+  )
+
   return (
-    <AppShell onDeploy={() => setShowModal(true)} onRefresh={load}>
+    <AppShell onRefresh={load}>
 
       {/* ── Page header ── */}
       <div className="flex items-center justify-between mb-6 animate-fade-up">
@@ -202,6 +209,7 @@ export function InstancesPage() {
               <>
                 {stats.total} active &nbsp;·&nbsp; {stats.running} running
                 {stats.removed > 0 && <> &nbsp;·&nbsp; {stats.removed} removed</>}
+                {(stats.untracked ?? 0) > 0 && <> &nbsp;·&nbsp; {stats.untracked} untracked</>}
               </>
             ) : 'Loading…'}
           </p>
@@ -214,7 +222,7 @@ export function InstancesPage() {
             <CloudDownload className="w-4 h-4" />
             Import
           </button>
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => navigate('/deploy')} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Deploy DB
           </button>
@@ -285,15 +293,55 @@ export function InstancesPage() {
           Loading instances…
         </div>
       ) : filtered.length === 0 && activeInstances.length === 0 && !showingRemoved ? (
-        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={false} />
+        <EmptyState onDeploy={() => navigate('/deploy')} hasInstances={false} />
       ) : filtered.length === 0 ? (
-        <EmptyState onDeploy={() => setShowModal(true)} hasInstances={true} />
+        <EmptyState onDeploy={() => navigate('/deploy')} hasInstances={true} />
       ) : (
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children animate-fade-up delay-200 ${showingRemoved ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children animate-fade-up delay-200 ${(showingRemoved || showingUntracked) ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}>
           {filtered.map(instance => (
             <InstanceCard key={instance.id} instance={instance} onRefresh={load} className="animate-fade-up" />
           ))}
         </div>
+      )}
+
+      {/* ── Untracked section ── */}
+      {!loading && !showingUntracked && (filteredUntracked.length > 0 || untrackedInstances.length > 0) && (
+        <section className="mt-10">
+          <button
+            onClick={() => setShowUntracked(v => !v)}
+            className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-3 group"
+          >
+            <div className="flex items-center justify-center w-5 h-5 rounded-[4px] border" style={{
+              background: 'var(--status-untracked-bg)',
+              borderColor: 'var(--status-untracked-border)',
+            }}>
+              <Unlink className="w-3 h-3" style={{ color: 'var(--status-untracked)' }} />
+            </div>
+            <span className="font-medium">Untracked</span>
+            <span className="text-xs px-1.5 py-0.5 rounded-full border" style={{
+              color: 'var(--text-muted)',
+              background: 'var(--bg-surface-2)',
+              borderColor: 'var(--border-strong)',
+            }}>
+              {untrackedInstances.length}
+            </span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${showUntracked ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {showUntracked && (
+            filteredUntracked.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] pl-1">No untracked instances match the current search.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 opacity-60 hover:opacity-80 transition-opacity">
+                {filteredUntracked.map(instance => (
+                  <InstanceCard key={instance.id} instance={instance} onRefresh={load} />
+                ))}
+              </div>
+            )
+          )}
+        </section>
       )}
 
       {/* ── Removed section (only shown when not already filtering by REMOVED) ── */}
@@ -334,10 +382,6 @@ export function InstancesPage() {
             )
           )}
         </section>
-      )}
-
-      {showModal && (
-        <DeployModal onClose={() => setShowModal(false)} onDeploy={handleDeploy} />
       )}
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImported={load} />

@@ -1,25 +1,31 @@
 package com.dbdeployer.pipeline;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
-import com.dbdeployer.pipeline.model.*;
+import com.dbdeployer.pipeline.model.DeployErrorCode;
+import com.dbdeployer.pipeline.model.DeploymentPipeline;
+import com.dbdeployer.pipeline.model.PipelineStatus;
+import com.dbdeployer.pipeline.model.PipelineStep;
+import com.dbdeployer.pipeline.model.StepStatus;
+import com.dbdeployer.pipeline.model.StepType;
 import com.dbdeployer.pipeline.step.DeployStep;
 import com.dbdeployer.pipeline.step.StepExecutionException;
 import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
 import com.dbdeployer.store.DeployedContainerRepository;
 import com.dbdeployer.store.DeploymentConfigRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Executes a deploy pipeline asynchronously, step by step.
@@ -74,7 +80,7 @@ public class PipelineRunner {
 
         // ── Mark pipeline RUNNING ──
         pipeline.setStatus(PipelineStatus.RUNNING);
-        pipeline.setStartedAt(LocalDateTime.now());
+        pipeline.setStartedAt(Instant.now());
         pipelineRepo.save(pipeline);
 
         boolean failed = false;
@@ -88,7 +94,7 @@ public class PipelineRunner {
 
             // ── Step: RUNNING ──
             step.setStatus(StepStatus.RUNNING);
-            step.setStartedAt(LocalDateTime.now());
+            step.setStartedAt(Instant.now());
             stepRepo.save(step);
 
             // ── Inter-step delay (cosmetic) ──
@@ -110,7 +116,7 @@ public class PipelineRunner {
                 String msg = impl.execute(config, container);
                 step.setStatus(StepStatus.SUCCESS);
                 step.setMessage(msg);
-                step.setCompletedAt(LocalDateTime.now());
+                step.setCompletedAt(Instant.now());
                 stepRepo.save(step);
                 // Persist any container mutations made by this step
                 containerRepo.save(container);
@@ -133,7 +139,7 @@ public class PipelineRunner {
 
         // ── Finalise pipeline ──
         pipeline.setStatus(failed ? PipelineStatus.FAILED : PipelineStatus.SUCCESS);
-        pipeline.setCompletedAt(LocalDateTime.now());
+        pipeline.setCompletedAt(Instant.now());
         pipelineRepo.save(pipeline);
 
         if (failed) {
@@ -156,7 +162,7 @@ public class PipelineRunner {
     private void markStepFailed(PipelineStep step, DeployErrorCode code, String message) {
         step.setStatus(StepStatus.FAILED);
         step.setMessage("[" + code + "] " + message);
-        step.setCompletedAt(LocalDateTime.now());
+        step.setCompletedAt(Instant.now());
         stepRepo.save(step);
     }
 }

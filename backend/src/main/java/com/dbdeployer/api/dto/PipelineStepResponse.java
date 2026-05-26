@@ -1,10 +1,10 @@
 package com.dbdeployer.api.dto;
 
+import java.time.Instant;
+
 import com.dbdeployer.pipeline.model.PipelineStep;
 import com.dbdeployer.pipeline.model.StepStatus;
 import com.dbdeployer.pipeline.model.StepType;
-
-import java.time.LocalDateTime;
 
 public record PipelineStepResponse(
         String id,
@@ -12,8 +12,8 @@ public record PipelineStepResponse(
         int stepOrder,
         StepStatus status,
         String message,
-        LocalDateTime startedAt,
-        LocalDateTime completedAt
+        Instant startedAt,
+        Instant completedAt
 ) {
     public static PipelineStepResponse from(PipelineStep s) {
         return new PipelineStepResponse(

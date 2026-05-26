@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline,
+  getInstance, startInstance, stopInstance, removeInstance, untrackInstance, reTrackInstance, getLogs, getPipeline,
   getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { ConnectionString } from '../components/ConnectionString'
-import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
+import { ConfirmModal } from '../components/ConfirmModal'
 import {
   Activity,
   ArrowLeft,
@@ -29,6 +29,7 @@ import {
   Hash,
   Key,
   Layers,
+  Link2,
   Play,
   RefreshCw,
   Rocket,
@@ -70,8 +71,9 @@ export function InstanceDetailPage() {
   const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [busy, setBusy]           = useState(false)
-  const [showDeployModal, setShowDeployModal] = useState(false)
   const [showReImport, setShowReImport] = useState(false)
+  const [showConfirmUntrack, setShowConfirmUntrack] = useState(false)
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -95,7 +97,6 @@ export function InstanceDetailPage() {
   }, [load])
 
   const handle = (fn, label, redirectAfter = false) => async () => {
-    if (!confirm(`${label} "${instance?.name}"?`)) return
     setBusy(true)
     try {
       await fn(id)
@@ -106,17 +107,6 @@ export function InstanceDetailPage() {
       toast.error(e.response?.data?.error ?? `${label} failed`)
     } finally {
       setBusy(false)
-    }
-  }
-
-  const handleDeploy = async (data) => {
-    try {
-      await deployInstance(data)
-      toast.success(`Deploying ${data.name}… this may take a minute`)
-      load()
-    } catch (err) {
-      // Allow DeployModal to map backend errors to inline field-level messages.
-      throw err
     }
   }
 
@@ -133,13 +123,14 @@ export function InstanceDetailPage() {
 
   if (!instance) return null
 
-  const isRunning = instance.status === 'RUNNING'
-  const isStopped = instance.status === 'STOPPED'
-  const isRemoved = instance.status === 'REMOVED'
-  const isBusy    = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
+  const isRunning   = instance.status === 'RUNNING'
+  const isStopped   = instance.status === 'STOPPED'
+  const isRemoved   = instance.status === 'REMOVED'
+  const isUntracked = instance.status === 'UNTRACKED'
+  const isBusy      = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
 
   return (
-    <AppShell onDeploy={() => setShowDeployModal(true)} onRefresh={load}>
+    <AppShell onRefresh={load}>
       {/* ── Breadcrumb ── */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6 animate-slide-down">
         <Link to="/instances" className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1">
@@ -211,7 +202,7 @@ export function InstanceDetailPage() {
                 <Square className="w-4 h-4" /> Stop
               </button>
             )}
-            {/* Re-import: only for imported instances that have been untracked */}
+            {/* Re-import: only for imported instances that have been removed (container gone) */}
             {!instance.isSystem && instance.isImported && isRemoved && (
               <button
                 onClick={() => setShowReImport(true)}
@@ -219,20 +210,48 @@ export function InstanceDetailPage() {
                 <CornerUpLeft className="w-4 h-4" /> Re-import
               </button>
             )}
-            {/* Remove/Untrack: hidden when already removed */}
-            {!instance.isSystem && !isRemoved && (
+            {/* Re-track: untracked imported instances */}
+            {!instance.isSystem && isUntracked && (
               <button
-                onClick={handle(removeInstance, instance.isImported ? 'Untrack' : 'Remove', true)}
+                onClick={async () => {
+                  setBusy(true)
+                  try {
+                    await reTrackInstance(id)
+                    toast.success('Re-track successful')
+                    load()
+                  } catch (e) {
+                    toast.error(e.response?.data?.error ?? 'Re-track failed')
+                  } finally { setBusy(false) }
+                }}
                 disabled={isBusy}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 ${
-                  instance.isImported
-                    ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
-                    : 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20'
-                }`}>
-                {instance.isImported
-                  ? <><Unlink className="w-4 h-4" /> Untrack</>
-                  : <><Trash2 className="w-4 h-4" /> Remove</>
-                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors disabled:opacity-40">
+                <Link2 className="w-4 h-4" /> Re-track
+              </button>
+            )}
+            {/* Untrack + Remove: both shown for imported instances, hidden when removed or untracked */}
+            {!instance.isSystem && !isRemoved && !isUntracked && instance.isImported && (
+              <>
+                <button
+                  onClick={() => setShowConfirmUntrack(true)}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-40">
+                  <Unlink className="w-4 h-4" /> Untrack
+                </button>
+                <button
+                  onClick={() => setShowConfirmRemove(true)}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40">
+                  <Trash2 className="w-4 h-4" /> Remove
+                </button>
+              </>
+            )}
+            {/* Remove: non-imported instances */}
+            {!instance.isSystem && !isRemoved && !isUntracked && !instance.isImported && (
+              <button
+                onClick={() => setShowConfirmRemove(true)}
+                disabled={isBusy}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40">
+                <Trash2 className="w-4 h-4" /> Remove
               </button>
             )}
           </div>
@@ -268,12 +287,40 @@ export function InstanceDetailPage() {
         />
       )}
 
-      {showDeployModal && (
-        <DeployModal
-          onClose={() => setShowDeployModal(false)}
-          onDeploy={handleDeploy}
+      {/* Untrack modal — imported containers only */}
+      {showConfirmUntrack && (
+        <ConfirmModal
+          open={showConfirmUntrack}
+          variant="warning"
+          icon={<Unlink className="w-5 h-5" />}
+          title={`Untrack "${instance.name}"?`}
+          message="The Docker container will not be stopped or removed. It will only stop being managed by Port Wrangler. You can re-track it at any time."
+          confirmLabel="Untrack"
+          onConfirm={() => {
+            setShowConfirmUntrack(false)
+            handle(untrackInstance, 'Untrack', false)()
+          }}
+          onCancel={() => setShowConfirmUntrack(false)}
         />
       )}
+
+      {/* Remove modal */}
+      {showConfirmRemove && (
+        <ConfirmModal
+          open={showConfirmRemove}
+          variant="danger"
+          title={`Remove "${instance.name}"?`}
+          message="This will stop and permanently delete the Docker container. Any data not stored in a volume will be lost."
+          confirmLabel="Remove"
+          requiredConfirmText={instance.name}
+          onConfirm={() => {
+            setShowConfirmRemove(false)
+            handle(removeInstance, 'Remove', true)()
+          }}
+          onCancel={() => setShowConfirmRemove(false)}
+        />
+      )}
+
     </AppShell>
   )
 }

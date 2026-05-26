@@ -1,5 +1,16 @@
 package com.dbdeployer.config;
 
+import java.time.Instant;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.InstanceStatus;
@@ -9,16 +20,6 @@ import com.dbdeployer.pipeline.model.StepStatus;
 import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
 import com.dbdeployer.store.DeployedContainerRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * Startup recovery pass that resolves entities stuck in transitional states.
@@ -106,18 +107,18 @@ public class DeploymentRecovery implements ApplicationRunner {
                 if (step.getStatus() == StepStatus.RUNNING) {
                     step.setStatus(StepStatus.FAILED);
                     step.setMessage("Recovered: app restarted while step was running");
-                    step.setCompletedAt(LocalDateTime.now());
+                    step.setCompletedAt(Instant.now());
                     stepRepo.save(step);
                 } else if (step.getStatus() == StepStatus.PENDING) {
                     step.setStatus(StepStatus.SKIPPED);
-                    step.setCompletedAt(LocalDateTime.now());
+                    step.setCompletedAt(Instant.now());
                     stepRepo.save(step);
                 }
             });
 
             pipeline.setStatus(PipelineStatus.FAILED);
             pipeline.setErrorMessage("Recovered: app restarted while pipeline was running");
-            pipeline.setCompletedAt(LocalDateTime.now());
+            pipeline.setCompletedAt(Instant.now());
             pipelineRepo.save(pipeline);
         }
 
