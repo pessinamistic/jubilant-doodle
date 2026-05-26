@@ -20,6 +20,12 @@ public class ImageValidationProperties {
     /** When true, background refresh jobs are enabled. */
     private boolean schedulerEnabled = true;
 
+    /**
+     * Maximum number of concurrent Docker Hub checkTag HTTP calls during a batch refresh.
+     * Keeps the app from hammering the public API and hitting 429 rate-limit responses.
+     */
+    private int hubRequestConcurrency = 10;
+
     public int getDockerHubTimeoutMs() { return dockerHubTimeoutMs; }
     public void setDockerHubTimeoutMs(int dockerHubTimeoutMs) { this.dockerHubTimeoutMs = dockerHubTimeoutMs; }
 
@@ -31,4 +37,7 @@ public class ImageValidationProperties {
 
     public boolean isSchedulerEnabled() { return schedulerEnabled; }
     public void setSchedulerEnabled(boolean schedulerEnabled) { this.schedulerEnabled = schedulerEnabled; }
+
+    public int getHubRequestConcurrency() { return hubRequestConcurrency; }
+    public void setHubRequestConcurrency(int hubRequestConcurrency) { this.hubRequestConcurrency = hubRequestConcurrency; }
 }

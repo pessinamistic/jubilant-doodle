@@ -1,8 +1,17 @@
 package com.dbdeployer.model;
 
-import jakarta.persistence.*;
+import java.time.Instant;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 /**
  * Tracks the Docker runtime state for one deployment of a {@link DeploymentConfig}.
@@ -42,31 +51,31 @@ public class DeployedContainer {
 
     /** When the Docker container was last started. Used to compute uptime. */
     @Column(name = "started_at")
-    private LocalDateTime startedAt;
+    private Instant startedAt;
 
     /** Set when the container transitions to {@link InstanceStatus#REMOVED}. */
     @Column(name = "removed_at")
-    private LocalDateTime removedAt;
+    private Instant removedAt;
 
     /** ID of the most recent {@link com.dbdeployer.pipeline.model.DeploymentPipeline} for this container. */
     @Column(name = "latest_pipeline_id")
     private String latestPipelineId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = Instant.now();
+        if (updatedAt == null) updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 
     // ── Getters & Setters ──────────────────────────────────────────────────────
@@ -89,18 +98,18 @@ public class DeployedContainer {
     public String getDataDirectory() { return dataDirectory; }
     public void setDataDirectory(String dataDirectory) { this.dataDirectory = dataDirectory; }
 
-    public LocalDateTime getStartedAt() { return startedAt; }
-    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
+    public Instant getStartedAt() { return startedAt; }
+    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
 
-    public LocalDateTime getRemovedAt() { return removedAt; }
-    public void setRemovedAt(LocalDateTime removedAt) { this.removedAt = removedAt; }
+    public Instant getRemovedAt() { return removedAt; }
+    public void setRemovedAt(Instant removedAt) { this.removedAt = removedAt; }
 
     public String getLatestPipelineId() { return latestPipelineId; }
     public void setLatestPipelineId(String latestPipelineId) { this.latestPipelineId = latestPipelineId; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

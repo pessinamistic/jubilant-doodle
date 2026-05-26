@@ -27,6 +27,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: UTC
 
   jackson:
     serialization:
@@ -45,6 +47,7 @@ dbdeployer:
     docker-hub-timeout-ms: 4000
     local-refresh-interval-ms: 120000
     docker-hub-refresh-interval-ms: 21600000
+    hub-request-concurrency: 10
 
 logging:
   level:

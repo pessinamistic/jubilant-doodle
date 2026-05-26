@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -68,6 +68,9 @@ public class DockerDeployEngine {
         IMAGE_DB_TYPE_MAP.put("rabbitmq",           DbType.RABBITMQ);
         IMAGE_DB_TYPE_MAP.put("apache/kafka",       DbType.KAFKA);
         IMAGE_DB_TYPE_MAP.put("kafka",              DbType.KAFKA);
+        // ── Messaging UIs ─────────────────────────────────────────────────────
+        IMAGE_DB_TYPE_MAP.put("conduktor/conduktor-console", DbType.CONDUKTOR);
+        IMAGE_DB_TYPE_MAP.put("conduktor-console",           DbType.CONDUKTOR);
         // ── Observability ─────────────────────────────────────────────────────
         IMAGE_DB_TYPE_MAP.put("grafana/grafana",    DbType.GRAFANA);
         IMAGE_DB_TYPE_MAP.put("grafana/loki",       DbType.LOKI);
@@ -415,13 +418,13 @@ public class DockerDeployEngine {
      * Returns the UTC time the container was last started, or null if the container
      * hasn't started or the timestamp is the Docker zero value (0001-01-01).
      */
-    public LocalDateTime getStartedAt(String containerId) {
+    public Instant getStartedAt(String containerId) {
         try {
             String raw = docker.inspectContainerCmd(containerId).exec()
                     .getState().getStartedAt();
             if (raw == null || raw.startsWith("0001")) return null;
             return OffsetDateTime.parse(raw, DateTimeFormatter.ISO_DATE_TIME)
-                    .toLocalDateTime();
+                    .toInstant();
         } catch (Exception e) {
             log.debug("Could not read startedAt for container {}: {}", containerId, e.getMessage());
             return null;

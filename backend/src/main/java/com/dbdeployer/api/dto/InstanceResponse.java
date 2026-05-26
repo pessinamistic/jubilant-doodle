@@ -1,11 +1,12 @@
 package com.dbdeployer.api.dto;
 
-import com.dbdeployer.model.DeployedContainer;
-import com.dbdeployer.model.DeploymentConfig;
+import java.time.Instant;
+
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
+import com.dbdeployer.model.DeployedContainer;
+import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
-import java.time.LocalDateTime;
 
 public record InstanceResponse(
         String id,
@@ -25,11 +26,11 @@ public record InstanceResponse(
         String dataDirectory,
         String connectionString,        // real — for copying
         String connectionStringMasked,  // masked — for display
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt,
-        LocalDateTime startedAt,        // time the container was last started (for uptime)
+        Instant createdAt,
+        Instant updatedAt,
+        Instant startedAt,        // time the container was last started (for uptime)
         boolean isSystem,               // true = system DB — hide stop/remove actions
-        boolean isImported,             // true = imported container — remove only untracks, does not delete
+        boolean isImported,             // true = imported container — untrack keeps container alive
         String latestPipelineId         // ID of the most recent deploy pipeline, if any
 ) {
     /**

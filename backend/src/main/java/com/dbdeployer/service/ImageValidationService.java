@@ -9,6 +9,12 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
@@ -19,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.dbdeployer.api.dto.ImageCheckResponse;
 import com.dbdeployer.api.dto.ImageToolDetailResponse;
 import com.dbdeployer.api.dto.ImageToolSummaryResponse;
+import com.dbdeployer.config.ImageValidationProperties;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DbType;
@@ -52,15 +59,18 @@ public class ImageValidationService {
     private final ImageTagVersionService imageTagVersionService;
     private final ImageTrackingStatusRepository trackingRepo;
     private final ReentrantLock trackingWriteLock = new ReentrantLock(true);
+    private final Semaphore hubCallSemaphore;
 
     public ImageValidationService(DockerDeployEngine docker,
                                   DockerHubTagClient dockerHub,
                                   ImageTagVersionService imageTagVersionService,
-                                  ImageTrackingStatusRepository trackingRepo) {
+                                  ImageTrackingStatusRepository trackingRepo,
+                                  ImageValidationProperties props) {
         this.docker = docker;
         this.dockerHub = dockerHub;
         this.imageTagVersionService = imageTagVersionService;
         this.trackingRepo = trackingRepo;
+        this.hubCallSemaphore = new Semaphore(Math.max(1, props.getHubRequestConcurrency()), true);
     }
 
     @Transactional
@@ -194,78 +204,89 @@ public class ImageValidationService {
 
     @Transactional
     public int refreshAllStatuses() {
-        log.info("[image-refresh] Starting full refresh for all deployable tools");
-        return withTrackingWriteLock(() -> {
-            int updated = 0;
-            for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
-                for (String tag : resolveVersions(def, false)) {
-                    evaluateAndPersist(def.type(), tag, true, true);
-                    updated++;
-                }
+        log.info("[image-refresh] Starting full parallel refresh for all deployable tools");
+        // Pre-fetch the local image snapshot once — reused by all tags to avoid N Docker queries.
+        Set<String> localRefs = docker.getLocalImageReferences();
+
+        List<Callable<ImageRefreshResult>> tasks = new ArrayList<>();
+        for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
+            for (String tag : resolveVersions(def, false)) {
+                tasks.add(() -> computeRefreshResult(def.type(), tag, true, true, localRefs));
             }
-            log.info("[image-refresh] Completed full refresh: updated {} tags", updated);
-            return updated;
-        });
+        }
+
+        List<ImageRefreshResult> results = runParallel(tasks);
+        withTrackingWriteLock(() -> { persistAll(results); return null; });
+        log.info("[image-refresh] Completed full parallel refresh: updated {} tags", results.size());
+        return results.size();
     }
 
     @Transactional
     public int refreshToolStatuses(DbType dbType, RefreshScope scope) {
-        log.info("[image-refresh] Starting tool refresh: dbType={}, scope={}", dbType, scope);
-        return withTrackingWriteLock(() -> {
-            DatabaseCatalog.DbDefinition def = requireDeployableDefinition(dbType);
-            int updated = 0;
+        log.info("[image-refresh] Starting parallel tool refresh: dbType={}, scope={}", dbType, scope);
+        DatabaseCatalog.DbDefinition def = requireDeployableDefinition(dbType);
 
-            Set<String> localRefs = scope == RefreshScope.LOCAL ? docker.getLocalImageReferences() : null;
-            boolean includeHub = scope != RefreshScope.LOCAL;
-            boolean forceHubCheck = scope != RefreshScope.LOCAL;
+        // Pre-fetch local refs once for the whole batch (needed for LOCAL and ALL scopes).
+        Set<String> localRefs = (scope != RefreshScope.HUB)
+                ? docker.getLocalImageReferences()
+                : null;
+        boolean includeHub = scope != RefreshScope.LOCAL;
+        boolean forceHubCheck = scope != RefreshScope.LOCAL;
+        boolean isHubManaged = dockerHub.resolveDockerHubRepository(def.dockerImage()) != null;
 
-            for (String tag : resolveVersions(def, true)) {
-                if (scope == RefreshScope.HUB && dockerHub.resolveDockerHubRepository(def.dockerImage()) == null) {
-                    // Non-Hub images have no remote refresh source.
-                    evaluateAndPersist(def.type(), tag, false, false, null);
-                } else {
-                    evaluateAndPersist(def.type(), tag, includeHub, forceHubCheck, localRefs);
-                }
-                updated++;
+        List<Callable<ImageRefreshResult>> tasks = new ArrayList<>();
+        for (String tag : resolveVersions(def, true)) {
+            if (scope == RefreshScope.HUB && !isHubManaged) {
+                // Non-Hub image: just refresh local state, no HTTP call.
+                tasks.add(() -> computeRefreshResult(def.type(), tag, false, false, localRefs));
+            } else {
+                tasks.add(() -> computeRefreshResult(def.type(), tag, includeHub, forceHubCheck, localRefs));
             }
-            log.info("[image-refresh] Completed tool refresh: dbType={}, scope={}, updated={} tags",
-                    dbType, scope, updated);
-            return updated;
-        });
+        }
+
+        List<ImageRefreshResult> results = runParallel(tasks);
+        withTrackingWriteLock(() -> { persistAll(results); return null; });
+        log.info("[image-refresh] Completed parallel tool refresh: dbType={}, scope={}, updated={} tags",
+                dbType, scope, results.size());
+        return results.size();
     }
 
     @Transactional
     public int refreshLocalStatuses() {
-        log.debug("[image-refresh] Starting local-only refresh for all tools");
-        return withTrackingWriteLock(() -> {
-            Set<String> localRefs = docker.getLocalImageReferences();
-            int updated = 0;
-            for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
-                for (String tag : resolveVersions(def, false)) {
-                    evaluateAndPersist(def.type(), tag, false, false, localRefs);
-                    updated++;
-                }
+        log.debug("[image-refresh] Starting parallel local-only refresh for all tools");
+        // Single Docker daemon query; snapshot shared across all tasks.
+        Set<String> localRefs = docker.getLocalImageReferences();
+
+        List<Callable<ImageRefreshResult>> tasks = new ArrayList<>();
+        for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
+            for (String tag : resolveVersions(def, false)) {
+                tasks.add(() -> computeRefreshResult(def.type(), tag, false, false, localRefs));
             }
-            log.debug("[image-refresh] Completed local-only refresh: updated {} tags", updated);
-            return updated;
-        });
+        }
+
+        List<ImageRefreshResult> results = runParallel(tasks);
+        withTrackingWriteLock(() -> { persistAll(results); return null; });
+        log.debug("[image-refresh] Completed parallel local-only refresh: updated {} tags", results.size());
+        return results.size();
     }
 
     @Transactional
     public int refreshDockerHubStatuses() {
-        log.debug("[image-refresh] Starting Docker Hub refresh for hub-managed tools");
-        return withTrackingWriteLock(() -> {
-            int updated = 0;
-            for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
-                if (dockerHub.resolveDockerHubRepository(def.dockerImage()) == null) continue;
-                for (String tag : resolveVersions(def, false)) {
-                    evaluateAndPersist(def.type(), tag, true, true);
-                    updated++;
-                }
+        log.debug("[image-refresh] Starting parallel Docker Hub refresh for hub-managed tools");
+        Set<String> localRefs = docker.getLocalImageReferences();
+
+        List<Callable<ImageRefreshResult>> tasks = new ArrayList<>();
+        for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
+            if (dockerHub.resolveDockerHubRepository(def.dockerImage()) == null) continue;
+            for (String tag : resolveVersions(def, false)) {
+                tasks.add(() -> computeRefreshResult(def.type(), tag, true, true, localRefs));
             }
-            log.debug("[image-refresh] Completed Docker Hub refresh: updated {} tags", updated);
-            return updated;
-        });
+        }
+
+        List<ImageRefreshResult> results = runParallel(tasks);
+        withTrackingWriteLock(() -> { persistAll(results); return null; });
+        log.debug("[image-refresh] Completed parallel Docker Hub refresh: updated {} tags", results.size());
+        return results.size();
     }
 
     @Transactional
@@ -287,6 +308,134 @@ public class ImageValidationService {
         } finally {
             trackingWriteLock.unlock();
         }
+    }
+
+    /**
+     * Holds all computed state for a single (dbType, tag) pair before it is written to the DB.
+     * Produced by {@link #computeRefreshResult} outside the write lock and consumed by
+     * {@link #persistAll} inside the write lock.
+     */
+    private record ImageRefreshResult(
+            DbType dbType,
+            String image,
+            String tag,
+            boolean dockerHubManaged,
+            ImageAvailabilityState localStatus,
+            ImageAvailabilityState dockerHubStatus,
+            LocalDateTime dockerHubCheckedAt,
+            ImageValidationDecision decision,
+            String message,
+            LocalDateTime now
+    ) {}
+
+    /**
+     * Pure IO path — reads, checks, and decides for one (dbType, tag) but does NOT write to DB.
+     * Safe to run in a virtual thread without holding {@code trackingWriteLock}.
+     * Docker Hub calls are throttled by {@link #hubCallSemaphore}.
+     */
+    private ImageRefreshResult computeRefreshResult(DbType dbType,
+                                                    String rawTag,
+                                                    boolean includeHub,
+                                                    boolean forceHubCheck,
+                                                    Set<String> localRefs) {
+        String tag = normalizeTag(rawTag);
+        DatabaseCatalog.DbDefinition def = DatabaseCatalog.get(dbType);
+        if (def == null || def.dockerImage() == null) {
+            throw new IllegalArgumentException("Unsupported deployable database type: " + dbType);
+        }
+
+        String image = def.dockerImage();
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<ImageTrackingStatus> existing = trackingRepo.findByDbTypeAndImageNameAndImageTag(dbType, image, tag);
+        boolean dockerHubManaged = dockerHub.resolveDockerHubRepository(image) != null;
+
+        ImageAvailabilityState localStatus = checkLocalStatus(image, tag, localRefs);
+
+        ImageAvailabilityState dockerHubStatus = !dockerHubManaged
+                ? ImageAvailabilityState.NOT_APPLICABLE
+                : existing.map(ImageTrackingStatus::getDockerHubStatus)
+                          .orElse(ImageAvailabilityState.UNKNOWN);
+
+        LocalDateTime dockerHubCheckedAt = existing.map(ImageTrackingStatus::getDockerHubCheckedAt).orElse(null);
+
+        if (includeHub && dockerHubManaged && (forceHubCheck || localStatus != ImageAvailabilityState.AVAILABLE)) {
+            hubCallSemaphore.acquireUninterruptibly();
+            try {
+                DockerHubTagClient.HubTagResult hubResult = dockerHub.checkTag(image, tag);
+                dockerHubStatus = hubResult.status();
+                dockerHubCheckedAt = now;
+            } finally {
+                hubCallSemaphore.release();
+            }
+        }
+
+        DecisionResult decisionResult = decide(localStatus, dockerHubStatus, dockerHubManaged, image, tag);
+
+        log.debug("[image-check] {}:{} decision={}, local={}, hub={}, includeHub={}, forceHubCheck={}",
+                dbType, tag, decisionResult.decision(), localStatus, dockerHubStatus, includeHub, forceHubCheck);
+
+        return new ImageRefreshResult(
+                dbType, image, tag, dockerHubManaged,
+                localStatus, dockerHubStatus, dockerHubCheckedAt,
+                decisionResult.decision(), decisionResult.message(), now
+        );
+    }
+
+    /**
+     * Batch DB write — must be called inside {@link #withTrackingWriteLock}.
+     * Merges computed results with any existing rows and calls {@code saveAll} in one round-trip.
+     */
+    private void persistAll(List<ImageRefreshResult> results) {
+        if (results.isEmpty()) return;
+
+        // Collect any existing rows we'll be updating to avoid extra queries per row.
+        List<ImageTrackingStatus> toSave = new ArrayList<>(results.size());
+        for (ImageRefreshResult r : results) {
+            Optional<ImageTrackingStatus> existing = trackingRepo
+                    .findByDbTypeAndImageNameAndImageTag(r.dbType(), r.image(), r.tag());
+            ImageTrackingStatus row = existing.orElseGet(ImageTrackingStatus::new);
+            if (row.getId() == null) row.setId(UUID.randomUUID().toString());
+            row.setDbType(r.dbType());
+            row.setImageName(r.image());
+            row.setImageTag(r.tag());
+            row.setDockerHubManaged(r.dockerHubManaged());
+            row.setLocalStatus(r.localStatus());
+            row.setDockerHubStatus(r.dockerHubStatus());
+            row.setDecision(r.decision());
+            row.setMessage(r.message());
+            row.setLocalCheckedAt(r.now());
+            row.setDockerHubCheckedAt(r.dockerHubCheckedAt());
+            toSave.add(row);
+        }
+        trackingRepo.saveAll(toSave);
+    }
+
+    /**
+     * Runs {@code tasks} in parallel using one virtual thread per task (Java 21).
+     * Any task that throws logs a warning and is excluded from the result list.
+     */
+    private <T> List<T> runParallel(List<Callable<T>> tasks) {
+        if (tasks.isEmpty()) return List.of();
+        List<T> results = new ArrayList<>(tasks.size());
+        try (ExecutorService vt = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<T>> futures = vt.invokeAll(tasks);
+            for (Future<T> f : futures) {
+                try {
+                    results.add(f.get());
+                } catch (ExecutionException ex) {
+                    log.warn("[image-refresh] Task failed, skipping: {}", ex.getCause().getMessage(), ex.getCause());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    log.warn("[image-refresh] Refresh interrupted");
+                    break;
+                }
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.warn("[image-refresh] invokeAll interrupted");
+        }
+        return results;
     }
 
     private Collection<DatabaseCatalog.DbDefinition> deployableCatalog() {

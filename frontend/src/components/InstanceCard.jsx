@@ -6,6 +6,7 @@ import {
   Check,
   Clock3,
   ExternalLink,
+  Link2,
   Pencil,
   Play,
   Square,
@@ -13,7 +14,7 @@ import {
   Unlink,
   X,
 } from 'lucide-react'
-import { startInstance, stopInstance, removeInstance, renameInstance } from '../api/client'
+import { startInstance, stopInstance, removeInstance, untrackInstance, reTrackInstance, renameInstance } from '../api/client'
 import { INSTANCE_STATUS_TOKENS } from '../theme/statusTokens'
 import toast from 'react-hot-toast'
 
@@ -22,7 +23,8 @@ export function InstanceCard({ instance, onRefresh }) {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput]     = useState('')
   const [savingName, setSavingName]   = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [showConfirm, setShowConfirm]             = useState(false)
+  const [showUntrackConfirm, setShowUntrackConfirm] = useState(false)
   const inputRef = useRef(null)
   const navigate = useNavigate()
 
@@ -31,6 +33,7 @@ export function InstanceCard({ instance, onRefresh }) {
   const isRunning   = instance.status === 'RUNNING'
   const isStopped   = instance.status === 'STOPPED'
   const isDeploying = instance.status === 'DEPLOYING'
+  const isUntracked = instance.status === 'UNTRACKED'
   const isBusy      = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
   const isImported  = instance.isImported
 
@@ -56,7 +59,31 @@ export function InstanceCard({ instance, onRefresh }) {
 
   const handleRemoveConfirm = async () => {
     setShowConfirm(false)
-    await action(removeInstance, isImported ? 'Untrack' : 'Remove')()
+    await action(removeInstance, 'Remove')()
+  }
+
+  const handleUntrackClick = (e) => {
+    e.stopPropagation()
+    setShowUntrackConfirm(true)
+  }
+
+  const handleUntrackConfirm = async () => {
+    setShowUntrackConfirm(false)
+    await action(untrackInstance, 'Untrack')()
+  }
+
+  const handleReTrackConfirm = async (e) => {
+    e?.stopPropagation()
+    setBusy(true)
+    try {
+      await reTrackInstance(instance.id)
+      toast.success('Re-track successful')
+      onRefresh()
+    } catch (err) {
+      toast.error(err.response?.data?.error ?? 'Re-track failed')
+    } finally {
+      setBusy(false)
+    }
   }
 
   // ── Inline rename ───────────────────────────────────────────────────────────
@@ -102,20 +129,7 @@ export function InstanceCard({ instance, onRefresh }) {
   })()
 
   // ── Confirm modal config ────────────────────────────────────────────────────
-  const confirmConfig = isImported
-    ? {
-        variant: 'warning',
-        icon: <Unlink className="w-5 h-5" />,
-        title: `Untrack "${instance.name}"?`,
-        message: 'The Docker container will not be stopped or removed. It will only stop being managed by Port Wrangler.',
-        confirmLabel: 'Untrack',
-      }
-    : {
-        variant: 'danger',
-        title: `Remove "${instance.name}"?`,
-        message: 'This will stop and permanently delete the Docker container. Any data not stored in a volume will be lost.',
-        confirmLabel: 'Remove',
-      }
+  // (separate modals for untrack and remove — no shared confirmConfig object)
 
   return (
     <>
@@ -268,28 +282,72 @@ export function InstanceCard({ instance, onRefresh }) {
 
               <div className="flex-1" />
 
-              <ActionBtn
-                icon={isImported
-                  ? <Unlink className="w-3.5 h-3.5" />
-                  : <Trash2 className="w-3.5 h-3.5" />
-                }
-                label={isImported ? 'Untrack' : 'Remove'}
-                color={isImported
-                  ? 'text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] border-[var(--status-warning-border)]'
-                  : 'text-[var(--status-error)] hover:bg-[var(--status-error-bg)] border-[var(--status-error-border)]'
-                }
-                onClick={handleRemoveClick}
-                disabled={isBusy || isDeploying}
-              />
+              {/* Re-track (shown when UNTRACKED) */}
+              {isUntracked && (
+                <ActionBtn
+                  icon={<Link2 className="w-3.5 h-3.5" />}
+                  label="Re-track"
+                  color="text-[var(--status-untracked)] hover:bg-[var(--status-untracked-bg)] border-[var(--status-untracked-border)]"
+                  onClick={handleReTrackConfirm}
+                  disabled={isBusy}
+                />
+              )}
+
+              {/* Untrack + Remove (imported, not yet untracked) */}
+              {isImported && !isUntracked && (
+                <>
+                  <ActionBtn
+                    icon={<Unlink className="w-3.5 h-3.5" />}
+                    label="Untrack"
+                    color="text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] border-[var(--status-warning-border)]"
+                    onClick={handleUntrackClick}
+                    disabled={isBusy || isDeploying}
+                  />
+                  <ActionBtn
+                    icon={<Trash2 className="w-3.5 h-3.5" />}
+                    label="Remove"
+                    color="text-[var(--status-error)] hover:bg-[var(--status-error-bg)] border-[var(--status-error-border)]"
+                    onClick={handleRemoveClick}
+                    disabled={isBusy || isDeploying}
+                  />
+                </>
+              )}
+
+              {/* Remove only (non-imported, not untracked) */}
+              {!isImported && !isUntracked && (
+                <ActionBtn
+                  icon={<Trash2 className="w-3.5 h-3.5" />}
+                  label="Remove"
+                  color="text-[var(--status-error)] hover:bg-[var(--status-error-bg)] border-[var(--status-error-border)]"
+                  onClick={handleRemoveClick}
+                  disabled={isBusy || isDeploying}
+                />
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Confirmation modal — rendered outside the card so it's not clipped */}
+      {/* Untrack confirmation modal */}
+      <ConfirmModal
+        open={showUntrackConfirm}
+        variant="warning"
+        icon={<Unlink className="w-5 h-5" />}
+        title={`Untrack "${instance.name}"?`}
+        message="The Docker container will not be stopped or removed. It will only stop being managed by Port Wrangler. You can re-track it at any time."
+        confirmLabel="Untrack"
+        onConfirm={handleUntrackConfirm}
+        onCancel={() => setShowUntrackConfirm(false)}
+      />
+
+      {/* Remove confirmation modal */}
       <ConfirmModal
         open={showConfirm}
-        {...confirmConfig}
+        variant="danger"
+        title={`Remove "${instance.name}"?`}
+        message="This will stop and permanently delete the Docker container. Any data not stored in a volume will be lost."
+        confirmLabel="Remove"
+        requiredConfirmText={isImported ? instance.name : undefined}
         onConfirm={handleRemoveConfirm}
         onCancel={() => setShowConfirm(false)}
       />

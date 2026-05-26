@@ -1,8 +1,16 @@
 package com.dbdeployer.pipeline.model;
 
-import jakarta.persistence.*;
+import java.time.Instant;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 /**
  * One step within a {@link DeploymentPipeline}.
@@ -40,10 +48,10 @@ public class PipelineStep {
     private String message;
 
     @Column(name = "started_at")
-    private LocalDateTime startedAt;
+    private Instant startedAt;
 
     @Column(name = "completed_at")
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
     // ── Getters & Setters ──────────────────────────────────────────────────────
 
@@ -65,9 +73,9 @@ public class PipelineStep {
     public String getMessage()                   { return message; }
     public void   setMessage(String msg)         { this.message = msg; }
 
-    public LocalDateTime getStartedAt()          { return startedAt; }
-    public void          setStartedAt(LocalDateTime t) { this.startedAt = t; }
+    public Instant getStartedAt()          { return startedAt; }
+    public void    setStartedAt(Instant t)  { this.startedAt = t; }
 
-    public LocalDateTime getCompletedAt()        { return completedAt; }
-    public void          setCompletedAt(LocalDateTime t) { this.completedAt = t; }
+    public Instant getCompletedAt()         { return completedAt; }
+    public void    setCompletedAt(Instant t){ this.completedAt = t; }
 }

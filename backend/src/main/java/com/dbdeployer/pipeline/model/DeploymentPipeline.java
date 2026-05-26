@@ -1,8 +1,14 @@
 package com.dbdeployer.pipeline.model;
 
-import jakarta.persistence.*;
+import java.time.Instant;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 /**
  * Persisted record of a single deploy pipeline run for one {@link com.dbdeployer.model.DeploymentConfig}.
@@ -35,17 +41,17 @@ public class DeploymentPipeline {
     private String errorMessage;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "started_at")
-    private LocalDateTime startedAt;
+    private Instant startedAt;
 
     @Column(name = "completed_at")
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = Instant.now();
     }
 
     // ── Getters & Setters ──────────────────────────────────────────────────────
@@ -65,12 +71,12 @@ public class DeploymentPipeline {
     public String getErrorMessage()                      { return errorMessage; }
     public void   setErrorMessage(String errorMessage)   { this.errorMessage = errorMessage; }
 
-    public LocalDateTime getCreatedAt()                  { return createdAt; }
-    public void          setCreatedAt(LocalDateTime t)   { this.createdAt = t; }
+    public Instant getCreatedAt()                  { return createdAt; }
+    public void    setCreatedAt(Instant t)          { this.createdAt = t; }
 
-    public LocalDateTime getStartedAt()                  { return startedAt; }
-    public void          setStartedAt(LocalDateTime t)   { this.startedAt = t; }
+    public Instant getStartedAt()                  { return startedAt; }
+    public void    setStartedAt(Instant t)          { this.startedAt = t; }
 
-    public LocalDateTime getCompletedAt()                { return completedAt; }
-    public void          setCompletedAt(LocalDateTime t) { this.completedAt = t; }
+    public Instant getCompletedAt()                { return completedAt; }
+    public void    setCompletedAt(Instant t)        { this.completedAt = t; }
 }

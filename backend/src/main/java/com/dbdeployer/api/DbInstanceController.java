@@ -118,6 +118,19 @@ public class DbInstanceController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Untrack an imported instance — marks it UNTRACKED without touching the Docker container */
+    @PostMapping("/instances/{id}/untrack")
+    public ResponseEntity<Void> untrack(@PathVariable String id) {
+        service.untrackInstance(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Re-track a previously untracked instance — restores it to its live Docker status */
+    @PostMapping("/instances/{id}/retrack")
+    public InstanceResponse retrack(@PathVariable String id) {
+        return toResponse(service.reTrackInstance(id));
+    }
+
     /** Get container logs */
     @GetMapping("/instances/{id}/logs")
     public Map<String, String> logs(@PathVariable String id,
