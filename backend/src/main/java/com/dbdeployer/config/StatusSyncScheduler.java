@@ -8,14 +8,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class StatusSyncScheduler {
 
-    private final DbInstanceService service;
+  private final DbInstanceService service;
 
-    public StatusSyncScheduler(DbInstanceService service) {
-        this.service = service;
-    }
+  public StatusSyncScheduler(DbInstanceService service) {
+    this.service = service;
+  }
 
-    @Scheduled(fixedDelay = 30_000)
-    public void sync() {
-        service.syncStatuses();
-    }
+  @Scheduled(fixedDelay = 30_000)
+  public void sync() {
+    service.syncStatuses();
+  }
 }

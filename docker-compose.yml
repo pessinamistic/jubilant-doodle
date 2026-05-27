@@ -1,18 +1,53 @@
 services:
 
+  # ── System database (Postgres 16) ─────────────────────────────────────────
+  # Provides Port Wrangler's own metadata store (instances, pipelines, etc.).
+  # In standalone mode (java -jar or ./gradlew bootRun) the SystemDbProvisioner
+  # ApplicationContextInitializer handles this automatically — you DON'T need
+  # docker-compose for local dev.  This service is only for the compose stack.
+  postgres:
+    image: postgres:16-alpine
+    container_name: dbdeployer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dbdeployer
+      POSTGRES_USER: dbdeployer
+      POSTGRES_PASSWORD: dbdeployer_internal
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbdeployer -d dbdeployer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # ── DB Deployer application ───────────────────────────────────────────────
-  # The system database is now an embedded H2 file — no external Postgres needed.
+  # In compose mode the system Postgres is provided by the service above,
+  # so SystemDbProvisioner auto-provisioning is disabled.
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: dbdeployer-app
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
       # Docker socket URI — bind-mounted from the host below.
       DOCKER_HOST: unix:///var/run/docker.sock
+
+      # Disable the standalone auto-provisioner; compose provides Postgres above.
+      DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION: "false"
+
+      # Connect to the compose postgres service via internal network.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dbdeployer
+      SPRING_DATASOURCE_USERNAME: dbdeployer
+      SPRING_DATASOURCE_PASSWORD: dbdeployer_internal
 
       # Optional: set a custom CORS allowed-origins pattern (comma-separated)
       # DBDEPLOYER_CORS_ORIGINS: "http://localhost:8080,http://myhost:8080"
@@ -31,7 +66,6 @@ services:
       # the host so they survive container rebuilds and restarts.
       - ${HOME}/.db-deployer:/root/.db-deployer
 
-      # ── H2 system database persistence ───────────────────────────────────
-      # Stores the embedded H2 .mv.db file so Port Wrangler's own metadata
-      # (instances, pipelines) survives container restarts and rebuilds.
-      - ${HOME}/.db-deployer/system:/app/data
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  db-data:

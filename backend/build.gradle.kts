@@ -5,6 +5,7 @@ import org.springframework.boot.gradle.tasks.bundling.BootJar
 plugins {
     java
     id("org.springframework.boot") version "3.4.2"
+    id("com.diffplug.spotless") version "8.0.0"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -27,7 +28,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // H2 embedded database (system config store — zero-download, auto-provisions itself)
+    // PostgreSQL driver — used by the auto-provisioned system DB container (SystemDbProvisioner)
+    runtimeOnly("org.postgresql:postgresql")
+
+    // Liquibase — manages schema migrations (replaces ddl-auto: update)
+    implementation("org.liquibase:liquibase-core")
+
+    // H2 — TEMPORARY: only needed to run the one-shot H2→Postgres data migrator.
+    // Remove this line (and H2DataMigrator.java) once existing data has been migrated.
     runtimeOnly("com.h2database:h2")
 
     // Docker Java SDK (zerodep transport has native Unix socket support on macOS/Linux/Windows)
@@ -201,5 +209,24 @@ tasks.register("jpackageInstaller") {
             .start()
         val exitCode = process.waitFor()
         if (exitCode != 0) error("jpackage failed with exit code $exitCode")
+    }
+}
+
+spotless {
+    java {
+        googleJavaFormat("1.25.2")
+        target("src/main/java/**/*.java", "src/test/java/**/*.java")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    groovyGradle {
+        target("*.gradle")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format("misc") {
+        target("*.md", ".gitignore", ".github/**/*.yml")
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 }

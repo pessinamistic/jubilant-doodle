@@ -281,6 +281,8 @@ dbdeployer:
 | `SPRING_DATASOURCE_PASSWORD`          | `dbdeployer_internal`                         | System DB password                                   |
 | `DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION` | `true`                                        | Set to `false` when system DB is externally provided |
 | `DBDEPLOYER_CORS_ORIGINS`             | `http://localhost:5173,...`                   | Comma-separated allowed CORS origins                 |
+| `DBDEPLOYER_API_LOG_VERBOSE`          | `false`                                       | Verbose backend API request logging (`/api/**`)      |
+| `VITE_API_LOG_LEVEL`                  | `verbose` in dev / `basic` in prod            | Frontend API console logging (`off`, `basic`, `verbose`) |
 | `DOCKER_HOST`                         | auto-detected                                 | Docker socket URI (`unix:///var/run/docker.sock`)    |
 
 ---

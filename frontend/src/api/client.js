@@ -2,6 +2,93 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api' })
 
+const rawApiLogLevel = (import.meta.env.VITE_API_LOG_LEVEL ?? (import.meta.env.DEV ? 'verbose' : 'basic'))
+  .toLowerCase()
+
+const apiLoggingEnabled = rawApiLogLevel !== 'off'
+const apiLoggingVerbose = rawApiLogLevel === 'verbose'
+
+const SENSITIVE_KEY_PATTERN = /(password|token|secret|authorization|connectionstring|masked)/i
+
+const nowMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now())
+
+function scrub(value) {
+  if (value == null) return value
+  if (typeof value === 'string') return value.length > 500 ? `${value.slice(0, 500)}...` : value
+  if (Array.isArray(value)) return value.map(scrub)
+  if (typeof value === 'object') {
+	return Object.fromEntries(
+	  Object.entries(value).map(([k, v]) => [k, SENSITIVE_KEY_PATTERN.test(k) ? '[REDACTED]' : scrub(v)])
+	)
+  }
+  return value
+}
+
+function requestLabel(config) {
+  const method = (config.method ?? 'get').toUpperCase()
+  const path = config.url ?? ''
+  return `${method} ${path}`
+}
+
+api.interceptors.request.use(
+  (config) => {
+	config.metadata = { ...(config.metadata ?? {}), startedAt: nowMs() }
+
+	if (apiLoggingEnabled) {
+	  const label = requestLabel(config)
+	  if (apiLoggingVerbose) {
+		console.info('[api:req]', label, {
+		  params: scrub(config.params),
+		  data: scrub(config.data)
+		})
+	  } else {
+		console.info('[api:req]', label)
+	  }
+	}
+
+	return config
+  },
+  (error) => Promise.reject(error)
+)
+
+api.interceptors.response.use(
+  (response) => {
+	if (apiLoggingEnabled) {
+	  const label = requestLabel(response.config)
+	  const startedAt = response.config?.metadata?.startedAt
+	  const durationMs = typeof startedAt === 'number' ? Math.round(nowMs() - startedAt) : -1
+
+	  if (apiLoggingVerbose) {
+		console.info('[api:res]', label, {
+		  status: response.status,
+		  durationMs,
+		  data: scrub(response.data)
+		})
+	  } else {
+		console.info('[api:res]', `${label} -> ${response.status} (${durationMs}ms)`)
+	  }
+	}
+
+	return response
+  },
+  (error) => {
+	if (apiLoggingEnabled) {
+	  const config = error?.config ?? {}
+	  const label = requestLabel(config)
+	  const startedAt = config?.metadata?.startedAt
+	  const durationMs = typeof startedAt === 'number' ? Math.round(nowMs() - startedAt) : -1
+	  const status = error?.response?.status ?? 'NETWORK_ERROR'
+
+	  console.error('[api:err]', `${label} -> ${status} (${durationMs}ms)`, {
+		data: scrub(error?.response?.data),
+		message: error?.message
+	  })
+	}
+
+	return Promise.reject(error)
+  }
+)
+
 export const getInstances  = ()        => api.get('/instances').then(r => r.data)
 export const getStats      = ()        => api.get('/instances/stats').then(r => r.data)
 export const getInstance   = (id)      => api.get(`/instances/${id}`).then(r => r.data)

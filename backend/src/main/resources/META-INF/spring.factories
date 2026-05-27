@@ -1,1 +1,4 @@
-# SystemDbProvisioner removed — system database is now embedded H2 (no Docker provisioning needed)
+# SystemDbProvisioner runs before Spring beans are created to ensure the system Postgres
+# container is up and accepting connections before HikariCP attempts to connect.
+org.springframework.context.ApplicationContextInitializer=\
+  com.dbdeployer.config.SystemDbProvisioner
