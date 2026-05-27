@@ -68,23 +68,23 @@ public class ConfigTemplateService {
    */
   @Transactional
   public DeploymentConfig deployFromTemplate(String templateId, DeployFromTemplateRequest req) {
-    DeploymentConfig t = getById(templateId);
+    DeploymentConfig deploymentConfig = getById(templateId);
 
     DeployRequest deployReq =
         new DeployRequest(
             req.instanceName(),
-            t.getDbType(),
-            t.getVersion(),
+            deploymentConfig.getDbType(),
+            deploymentConfig.getVersion(),
             req.hostPort(),
-            t.getUsername(),
-            t.getPassword(),
-            t.getDatabaseName(),
-            t.getExtraEnvJson());
+            deploymentConfig.getUsername(),
+            deploymentConfig.getPassword(),
+            deploymentConfig.getDatabaseName(),
+            deploymentConfig.getExtraEnvJson());
 
     DeploymentConfig config = instanceService.deploy(deployReq, templateId);
 
-    t.setDeployCount(t.getDeployCount() + 1);
-    configRepo.save(t);
+    deploymentConfig.setDeployCount(deploymentConfig.getDeployCount() + 1);
+    configRepo.save(deploymentConfig);
 
     return config;
   }

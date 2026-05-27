@@ -1,9 +1,12 @@
 package com.dbdeployer.service;
 
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.api.dto.ImportRequest;
 import com.dbdeployer.api.dto.InstanceStatsResponse;
+import com.dbdeployer.api.dto.PipelineResponse;
+import com.dbdeployer.api.dto.PipelineStepResponse;
 import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.deploy.BrewDeployEngine;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
@@ -118,35 +121,31 @@ public class DbInstanceService {
   }
 
   /** Live Docker container metrics snapshot for a non-system instance. */
-  public com.dbdeployer.api.dto.ContainerMetricsResponse getContainerMetrics(String configId) {
+  public ContainerMetricsResponse getContainerMetrics(String configId) {
     DeploymentConfig config = getById(configId);
     DeployedContainer container = config.getContainer();
     if (container == null || container.getContainerId() == null) {
-      return com.dbdeployer.api.dto.ContainerMetricsResponse.unavailable();
+      return ContainerMetricsResponse.unavailable();
     }
     return docker.getContainerMetrics(container.getContainerId(), config.getHostPort());
   }
 
   /** Returns the most recent pipeline for an instance (or null if none exists). */
-  public com.dbdeployer.api.dto.PipelineResponse getLatestPipeline(String configId) {
+  public PipelineResponse getLatestPipeline(String configId) {
     return pipelineRepo
         .findTopByConfigIdOrderByCreatedAtDesc(configId)
         .map(
             p -> {
               var steps =
                   stepRepo.findByPipelineIdOrderByStepOrderAsc(p.getId()).stream()
-                      .map(com.dbdeployer.api.dto.PipelineStepResponse::from)
+                      .map(PipelineStepResponse::from)
                       .toList();
-              return com.dbdeployer.api.dto.PipelineResponse.from(p, steps);
+              return PipelineResponse.from(p, steps);
             })
         .orElse(null);
   }
 
   // ── Deploy ─────────────────────────────────────────────────────────────────
-
-  public DeploymentConfig deploy(DeployRequest req) {
-    return deploy(req, null);
-  }
 
   @Transactional
   public DeploymentConfig deploy(DeployRequest req, String templateId) {

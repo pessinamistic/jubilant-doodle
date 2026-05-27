@@ -80,7 +80,7 @@ public class DbInstanceController {
         req.dbType(),
         req.version(),
         req.hostPort());
-    DeploymentConfig config = service.deploy(req);
+    DeploymentConfig config = service.deploy(req, null);
     log.info("[api] deploy accepted: configId={}, name='{}'", config.getId(), config.getName());
     return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
   }
