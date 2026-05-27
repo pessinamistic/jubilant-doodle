@@ -30,7 +30,9 @@ public record InstanceResponse(
     Instant startedAt, // time the container was last started (for uptime)
     boolean isSystem, // true = system DB — hide stop/remove actions
     boolean isImported, // true = imported container — untrack keeps container alive
-    String latestPipelineId // ID of the most recent deploy pipeline, if any
+    String latestPipelineId, // ID of the most recent deploy pipeline, if any
+    String templateId, // nullable — ID of the ConfigTemplate this was launched from
+    String templateName // nullable — denormalized display name of the source template
     ) {
   /**
    * Build an {@link InstanceResponse} from the two-table model. {@code container} may be {@code
@@ -42,7 +44,9 @@ public record InstanceResponse(
       String connectionString,
       String connectionStringMasked,
       String displayName,
-      String icon) {
+      String icon,
+      String templateId,
+      String templateName) {
     return new InstanceResponse(
         config.getId(),
         config.getName(),
@@ -66,6 +70,8 @@ public record InstanceResponse(
         container != null ? container.getStartedAt() : null,
         config.isSystem(),
         config.isImported(),
-        container != null ? container.getLatestPipelineId() : null);
+        container != null ? container.getLatestPipelineId() : null,
+        templateId,
+        templateName);
   }
 }

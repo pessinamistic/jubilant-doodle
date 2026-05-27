@@ -11,6 +11,7 @@ import {
   Moon,
   Plus,
   RefreshCw,
+  SlidersHorizontal,
   Sun,
   X,
 } from 'lucide-react'
@@ -38,7 +39,9 @@ export function AppShell({ children, onDeploy, onRefresh }) {
     : `Theme: ${mode === 'dark' ? 'Night' : 'Day'}`
 
   useEffect(() => {
-    getSystemInfo().then(setSysInfo).catch(() => {})
+    let active = true
+    getSystemInfo().then(info => { if (active) setSysInfo(info) }).catch(() => {})
+    return () => { active = false }
   }, [])
 
   const toggle = () =>
@@ -142,6 +145,11 @@ export function AppShell({ children, onDeploy, onRefresh }) {
               className="animate-fade-up delay-200"
             />
             <SideNavItem
+              to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />}
+              label="Configurations" collapsed={collapsed}
+              className="animate-fade-up delay-250"
+            />
+            <SideNavItem
               to="/instances" icon={<Database className="w-4 h-4" />}
               label="Instances" collapsed={collapsed}
               className="animate-fade-up delay-300"
@@ -199,6 +207,7 @@ export function AppShell({ children, onDeploy, onRefresh }) {
               <nav className="flex-1 space-y-0.5 px-2 animate-fade-up delay-100">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2">Navigation</p>
                 <SideNavItem to="/" icon={<House className="w-4 h-4" />} label="Home" end collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-150" />
+                <SideNavItem to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />} label="Configurations" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-175" />
                 <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
                 <SideNavItem to="/images" icon={<HardDrive className="w-4 h-4" />} label="Images" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
               </nav>

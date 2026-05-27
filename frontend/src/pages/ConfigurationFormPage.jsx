@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertCircle, Eye, EyeOff, Info, RefreshCw, Rocket, Save } from 'lucide-react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { AlertCircle, Eye, EyeOff, Info, RefreshCw, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { AppShell } from '../components/AppShell'
-import { checkImageStatus, createTemplate, deployInstance, getCatalog, getCatalogVersions } from '../api/client'
+import { createTemplate, getCatalog, getCatalogVersions, getTemplate, updateTemplate } from '../api/client'
 
 const DEFAULT_PORTS = {
   POSTGRESQL: 5432,
@@ -56,7 +56,7 @@ function parseFieldError(errMsg) {
   if (lower.includes('port') && (lower.includes('in use') || lower.includes('already'))) {
     return { field: 'hostPort', message: errMsg }
   }
-  if (lower.includes('image tag does not exist') || lower.includes('image') && lower.includes('not found')) {
+  if (lower.includes('image tag does not exist') || (lower.includes('image') && lower.includes('not found'))) {
     return { field: 'version', message: errMsg }
   }
   return { field: null, message: errMsg }
@@ -69,7 +69,8 @@ function buildInitialForm(def, versions = def.versions) {
   const initialVersion = versions?.[0] ?? def.versions?.[0] ?? 'latest'
 
   return {
-    name: def.displayName.toLowerCase().replace(/\s+/g, '-') + '-1',
+    name: def.displayName.toLowerCase().replace(/\s+/g, '-') + '-template',
+    description: '',
     version: initialVersion,
     hostPort: DEFAULT_PORTS[def.type] ?? def.defaultPort,
     username: def.supportsUsername ? usernameDefault : '',
@@ -84,9 +85,11 @@ function buildExtraEnv(def) {
     .map(e => ({ key: e.name, value: e.placeholder, label: e.label }))
 }
 
-export function DeployPage() {
+export function ConfigurationFormPage() {
   const navigate = useNavigate()
+  const { id: editId } = useParams()           // present on /configurations/:id/edit
   const [searchParams, setSearchParams] = useSearchParams()
+  const isEditMode = Boolean(editId)
 
   const [catalog, setCatalog] = useState([])
   const [loadingCatalog, setLoadingCatalog] = useState(true)
@@ -99,11 +102,7 @@ export function DeployPage() {
   const [extraEnv, setExtraEnv] = useState([])
   const [fieldErrors, setFieldErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-  const [savingConfig, setSavingConfig] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  const [imageStatus, setImageStatus] = useState(null)
-  const [checkingImage, setCheckingImage] = useState(false)
 
   const deployableCatalog = useMemo(() => catalog.filter(d => d.dockerImage && d.versions?.length), [catalog])
   const selected = useMemo(() => deployableCatalog.find(d => d.type === selectedType) ?? null, [deployableCatalog, selectedType])
@@ -116,14 +115,10 @@ export function DeployPage() {
 
   const loadVersions = async (dbType, refresh = false) => {
     if (!dbType) return []
-
     if (!refresh) {
       const cached = versionsByType[dbType]
-      if (cached?.length) {
-        return cached
-      }
+      if (cached?.length) return cached
     }
-
     setLoadingVersionType(dbType)
     try {
       const versions = await getCatalogVersions(dbType, refresh)
@@ -133,46 +128,23 @@ export function DeployPage() {
       }
       return []
     } catch {
-      if (refresh) {
-        toast.error('Failed to refresh versions from registry')
-      }
+      if (refresh) toast.error('Failed to refresh versions from registry')
       return []
     } finally {
       setLoadingVersionType(current => (current === dbType ? null : current))
     }
   }
 
-  const runImageCheck = async (dbType, tag, refresh = false) => {
-    setCheckingImage(true)
-    try {
-      const status = await checkImageStatus(dbType, tag, refresh)
-      setImageStatus(status)
-      return status
-    } catch {
-      const fallback = {
-        decision: 'ALLOW_WITH_WARNING',
-        message: 'Could not check image status right now',
-        localStatus: 'UNKNOWN',
-        dockerHubStatus: 'UNKNOWN',
-      }
-      setImageStatus(fallback)
-      return fallback
-    } finally {
-      setCheckingImage(false)
-    }
-  }
-
-  const applySelection = (def, updateUrl = true) => {
+  const applySelection = (def, updateUrl = true, overrides = {}) => {
     if (!def) return
     const initialVersions = versionsByType[def.type]?.length ? versionsByType[def.type] : def.versions
-    const initial = buildInitialForm(def, initialVersions)
+    const initial = { ...buildInitialForm(def, initialVersions), ...overrides }
 
     selectedTypeRef.current = def.type
     setSelectedType(def.type)
     setForm(initial)
-    setExtraEnv(buildExtraEnv(def))
+    setExtraEnv(overrides._extraEnv ?? buildExtraEnv(def))
     setFieldErrors({})
-    setImageStatus(null)
     setShowPassword(false)
 
     if (updateUrl) {
@@ -181,116 +153,88 @@ export function DeployPage() {
       setSearchParams(params, { replace: true })
     }
 
-    void runImageCheck(def.type, initial.version, false)
-
     void loadVersions(def.type, false).then((versions) => {
-      if (!versions?.length) {
-        return
-      }
-      if (selectedTypeRef.current !== def.type) {
-        return
-      }
-
+      if (!versions?.length || selectedTypeRef.current !== def.type) return
       setForm(prev => {
         if (!prev) return prev
         const nextVersion = versions.includes(prev.version) ? prev.version : versions[0]
         return nextVersion === prev.version ? prev : { ...prev, version: nextVersion }
       })
-
-      const nextVersion = versions.includes(initial.version) ? initial.version : versions[0]
-      void runImageCheck(def.type, nextVersion, false)
     })
   }
 
+  // ── Bootstrap ──────────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true
-    getCatalog()
-      .then((defs) => {
-        if (!active) return
-        setCatalog(defs)
 
-        const requested = searchParams.get('tool')
+    const bootstrap = async () => {
+      try {
+        const [defs, existingTemplate] = await Promise.all([
+          getCatalog(),
+          isEditMode ? getTemplate(editId) : Promise.resolve(null),
+        ])
+        if (!active) return
+
+        setCatalog(defs)
         const deployable = defs.filter(d => d.dockerImage && d.versions?.length)
         const byType = Object.fromEntries(deployable.map(def => [def.type, def]))
-        const resolved = requested && byType[requested] ? byType[requested] : deployable[0]
-        if (resolved) applySelection(resolved, false)
-      })
-      .catch(() => toast.error('Failed to load catalog'))
-      .finally(() => {
-        if (active) setLoadingCatalog(false)
-      })
 
+        if (isEditMode && existingTemplate) {
+          const def = byType[existingTemplate.dbType]
+          if (def) {
+            const extraEnvFromTemplate = existingTemplate.extraEnvJson
+              ? Object.entries(JSON.parse(existingTemplate.extraEnvJson)).map(([key, value]) => {
+                  const envDef = def.credentialEnvVars.find(e => e.name === key)
+                  return { key, value, label: envDef?.label ?? key }
+                })
+              : buildExtraEnv(def)
+            applySelection(def, false, {
+              name: existingTemplate.name,
+              description: existingTemplate.description ?? '',
+              version: existingTemplate.version,
+              hostPort: existingTemplate.hostPort,
+              username: existingTemplate.username ?? '',
+              password: existingTemplate.password ?? '',
+              databaseName: existingTemplate.databaseName ?? '',
+              _extraEnv: extraEnvFromTemplate,
+            })
+          }
+        } else {
+          const requested = searchParams.get('tool')
+          const resolved = requested && byType[requested] ? byType[requested] : deployable[0]
+          if (resolved) applySelection(resolved, false)
+        }
+      } catch {
+        toast.error(isEditMode ? 'Failed to load template' : 'Failed to load catalog')
+      } finally {
+        if (active) setLoadingCatalog(false)
+      }
+    }
+
+    bootstrap()
     return () => { active = false }
-    // Intentionally run once for initial catalog bootstrap.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const onSelectTool = (def) => {
-    applySelection(def, true)
-  }
+  const onSelectTool = (def) => applySelection(def, true)
 
   const updateField = (key, value) => {
     setForm(prev => ({ ...prev, [key]: value }))
     if (fieldErrors[key]) setFieldErrors(prev => ({ ...prev, [key]: undefined }))
   }
 
-  const refreshImageCheck = async () => {
-    if (!selected || !form?.version) return
-    try {
-      await runImageCheck(selected.type, form.version, true)
-      toast.success('Image status refreshed')
-    } catch {
-      toast.error('Failed to refresh image status')
-    }
-  }
-
   const refreshVersions = async () => {
     if (!selected || !form) return
     const versions = await loadVersions(selected.type, true)
-    if (!versions.length) {
-      toast.error('No versions returned from registry')
-      return
-    }
-
+    if (!versions.length) { toast.error('No versions returned from registry'); return }
     const nextVersion = versions.includes(form.version) ? form.version : versions[0]
     updateField('version', nextVersion)
-    await runImageCheck(selected.type, nextVersion, true)
     toast.success('Versions refreshed from registry')
-  }
-
-  const handleSaveConfig = async () => {
-    if (!selected || !form) return
-    setSavingConfig(true)
-    const extraEnvJson = extraEnv.length
-      ? JSON.stringify(Object.fromEntries(extraEnv.map(env => [env.key, env.value])))
-      : null
-    try {
-      await createTemplate({
-        name: form.name,
-        description: null,
-        dbType: selected.type,
-        version: form.version,
-        hostPort: form.hostPort,
-        username: form.username || null,
-        password: form.password || null,
-        databaseName: form.databaseName || null,
-        extraEnvJson,
-      })
-      toast.success('Saved as configuration template')
-    } catch (err) {
-      toast.error(err?.response?.data?.error ?? err?.message ?? 'Save failed')
-    } finally {
-      setSavingConfig(false)
-    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!selected || !form) return
-    if (imageStatus?.decision === 'BLOCK') {
-      setFieldErrors({ version: imageStatus.message || 'Selected image tag is not deployable' })
-      return
-    }
 
     setFieldErrors({})
     setSubmitting(true)
@@ -299,12 +243,29 @@ export function DeployPage() {
       ? JSON.stringify(Object.fromEntries(extraEnv.map(env => [env.key, env.value])))
       : null
 
+    const payload = {
+      name: form.name,
+      description: form.description || null,
+      dbType: selected.type,
+      version: form.version,
+      hostPort: form.hostPort,
+      username: form.username || null,
+      password: form.password || null,
+      databaseName: form.databaseName || null,
+      extraEnvJson,
+    }
+
     try {
-      await deployInstance({ ...form, dbType: selected.type, extraEnvJson })
-      toast.success(`Deploying ${form.name}… this may take a minute`)
-      navigate('/instances')
+      if (isEditMode) {
+        await updateTemplate(editId, payload)
+        toast.success('Configuration updated')
+      } else {
+        await createTemplate(payload)
+        toast.success('Configuration saved')
+      }
+      navigate('/configurations')
     } catch (err) {
-      const message = err?.response?.data?.error ?? err?.message ?? 'Deploy failed'
+      const message = err?.response?.data?.error ?? err?.message ?? 'Save failed'
       const parsed = parseFieldError(message)
       if (parsed.field) setFieldErrors({ [parsed.field]: parsed.message })
       else setFieldErrors({ _form: parsed.message })
@@ -316,17 +277,25 @@ export function DeployPage() {
   return (
     <AppShell>
       <div className="mb-5 animate-fade-up">
-        <h1 className="text-xl font-semibold text-(--text-primary)">Deploy Database</h1>
-        <p className="text-sm text-(--text-muted) mt-0.5">Select a tool from the left and launch a configured instance from this workspace.</p>
+        <h1 className="text-xl font-semibold text-(--text-primary)">
+          {isEditMode ? 'Edit Configuration' : 'New Configuration'}
+        </h1>
+        <p className="text-sm text-(--text-muted) mt-0.5">
+          {isEditMode
+            ? 'Update this reusable configuration template.'
+            : 'Save a reusable configuration blueprint. Deploy it as many times as you like from the Configurations page.'}
+        </p>
       </div>
 
       {loadingCatalog ? (
         <div className="card p-10 text-(--text-muted) flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-(--status-deploying) border-t-transparent rounded-full animate-spin" />
-          Loading deployment catalog…
+          Loading catalog…
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-5 items-start">
+
+          {/* ── Tool picker ── */}
           <aside className="card p-3 max-h-[72vh] overflow-auto animate-fade-up">
             <p className="text-xs font-bold uppercase tracking-widest text-(--text-muted) mb-2 px-2">Supported Tools</p>
             <div className="space-y-4">
@@ -368,14 +337,15 @@ export function DeployPage() {
             </div>
           </aside>
 
+          {/* ── Form ── */}
           <section className="card p-5 animate-fade-up delay-100">
             {!selected || !form ? (
-              <p className="text-sm text-(--text-muted)">Select a tool from the left navigation to configure deployment.</p>
+              <p className="text-sm text-(--text-muted)">Select a tool from the left to configure a template.</p>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <h2 className="text-lg font-semibold text-(--text-primary) flex items-center gap-2">
-                    <Rocket className="w-4 h-4" />
+                    <span className="text-xl">{selected.icon}</span>
                     {selected.displayName}
                   </h2>
                   <p className="text-sm text-(--text-muted) flex items-center gap-1 mt-1">
@@ -385,7 +355,9 @@ export function DeployPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Instance Name" required error={fieldErrors.name}>
+
+                  {/* Template Name */}
+                  <Field label="Template Name" required error={fieldErrors.name}>
                     <input
                       type="text"
                       required
@@ -395,15 +367,12 @@ export function DeployPage() {
                     />
                   </Field>
 
+                  {/* Version */}
                   <Field label="Version" required error={fieldErrors.version}>
                     <div className="space-y-1.5">
                       <select
                         value={form.version}
-                        onChange={e => {
-                          const version = e.target.value
-                          updateField('version', version)
-                          void runImageCheck(selected.type, version, false)
-                        }}
+                        onChange={e => updateField('version', e.target.value)}
                         className={`input ${fieldErrors.version ? 'input-error' : ''}`}
                       >
                         {selectedVersions.map(version => <option key={version}>{version}</option>)}
@@ -427,7 +396,8 @@ export function DeployPage() {
                     </div>
                   </Field>
 
-                  <Field label="Host Port" required error={fieldErrors.hostPort}>
+                  {/* Default Host Port */}
+                  <Field label="Default Host Port" required error={fieldErrors.hostPort}>
                     <input
                       type="number"
                       required
@@ -440,10 +410,9 @@ export function DeployPage() {
                   </Field>
 
                   {selected.supportsUsername && (
-                    <Field label="Username" required>
+                    <Field label="Username">
                       <input
                         type="text"
-                        required
                         value={form.username}
                         onChange={e => updateField('username', e.target.value)}
                         className="input"
@@ -452,11 +421,10 @@ export function DeployPage() {
                   )}
 
                   {selected.supportsPassword && (
-                    <Field label="Password" required>
+                    <Field label="Password">
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
-                          required
                           value={form.password}
                           onChange={e => updateField('password', e.target.value)}
                           className="input pr-9"
@@ -473,10 +441,9 @@ export function DeployPage() {
                   )}
 
                   {selected.supportsDatabase && (
-                    <Field label="Database Name" required>
+                    <Field label="Database Name">
                       <input
                         type="text"
-                        required
                         value={form.databaseName}
                         onChange={e => updateField('databaseName', e.target.value)}
                         className="input"
@@ -484,6 +451,17 @@ export function DeployPage() {
                     </Field>
                   )}
                 </div>
+
+                {/* Description — full width */}
+                <Field label="Description (optional)">
+                  <input
+                    type="text"
+                    value={form.description}
+                    onChange={e => updateField('description', e.target.value)}
+                    placeholder="e.g. Production-like Postgres config for the orders service"
+                    className="input"
+                  />
+                </Field>
 
                 {extraEnv.length > 0 && (
                   <div>
@@ -507,51 +485,6 @@ export function DeployPage() {
                   </div>
                 )}
 
-                <div className="rounded-lg border p-3" style={{
-                  background: 'var(--bg-surface-2)',
-                  borderColor: 'var(--border-soft)',
-                }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-(--text-muted) mb-1">Image Status</p>
-                      {checkingImage ? (
-                        <p className="text-sm text-(--text-muted) flex items-center gap-2">
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          Checking {selected.dockerImage}:{form.version}…
-                        </p>
-                      ) : imageStatus ? (
-                        <>
-                          <p className="text-sm font-medium text-(--text-primary)">{imageStatus.message}</p>
-                          <p className="text-xs text-(--text-muted) mt-1">
-                            Local: {imageStatus.localStatus} · Docker Hub: {imageStatus.dockerHubStatus} · Decision: {imageStatus.decision}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-(--text-muted)">No status yet</p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={refreshImageCheck}
-                      className="btn-secondary text-xs"
-                      disabled={checkingImage}
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${checkingImage ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </button>
-                  </div>
-                  {imageStatus?.decision === 'BLOCK' && (
-                    <p className="text-xs mt-2" style={{ color: 'var(--status-error)' }}>
-                      Deployment is blocked until you pick a valid image tag.
-                    </p>
-                  )}
-                  {imageStatus?.decision === 'ALLOW_WITH_WARNING' && (
-                    <p className="text-xs mt-2" style={{ color: 'var(--status-warning)' }}>
-                      Proceeding may still fail if the image tag is not available remotely.
-                    </p>
-                  )}
-                </div>
-
                 {fieldErrors._form && (
                   <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--status-error)' }} />
@@ -560,29 +493,17 @@ export function DeployPage() {
                 )}
 
                 <div className="flex items-center justify-end gap-2 pt-1">
-                  <button type="button" onClick={() => navigate('/instances')} className="btn-secondary">Cancel</button>
-                  <button
-                    type="button"
-                    onClick={handleSaveConfig}
-                    disabled={savingConfig || submitting}
-                    className="btn-secondary flex items-center gap-2 disabled:opacity-60"
-                  >
-                    {savingConfig
-                      ? <div className="w-4 h-4 border-2 border-(--border-strong) border-t-transparent rounded-full animate-spin" />
-                      : <Save className="w-4 h-4" />
-                    }
-                    {savingConfig ? 'Saving…' : 'Save as Config'}
-                  </button>
+                  <button type="button" onClick={() => navigate('/configurations')} className="btn-secondary">Cancel</button>
                   <button
                     type="submit"
                     className="btn-primary flex items-center gap-2 disabled:opacity-60"
-                    disabled={submitting || imageStatus?.decision === 'BLOCK'}
+                    disabled={submitting}
                   >
                     {submitting
                       ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <Rocket className="w-4 h-4" />
+                      : <Save className="w-4 h-4" />
                     }
-                    {submitting ? 'Launching…' : `Launch ${selected.displayName}`}
+                    {submitting ? 'Saving…' : isEditMode ? 'Update Configuration' : 'Save Configuration'}
                   </button>
                 </div>
               </form>

@@ -21,7 +21,7 @@ import {
   Database,
   Eye,
   EyeOff,
-  ExternalLink,
+
   FileText,
   Folder,
   Globe,
@@ -35,6 +35,7 @@ import {
   Rocket,
   Server,
   Settings,
+  SlidersHorizontal,
   Square,
   Timer,
   Trash2,
@@ -489,11 +490,12 @@ function SystemInternalsTab() {
       {/* ── Database ── */}
       <div>
         <p className="section-label">Database</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 stagger-children">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
           {[
-            { label: 'Engine',    value: 'H2 Embedded',                      icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { label: 'Version',   value: stats?.db?.version ?? '—',          icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
-            { label: 'File Size', value: fmtBytes(stats?.db?.fileSizeBytes), icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { label: 'Engine',    value: stats?.db?.type ?? 'PostgreSQL',                              icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { label: 'Version',   value: stats?.db?.version ?? '—',                                   icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
+            { label: 'DB Size',   value: fmtBytes(stats?.db?.dbSizeBytes),                            icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { label: 'Host',      value: stats?.db?.host ? `${stats.db.host}:${stats.db.port}` : '—', icon: <Globe className="w-5 h-5" />,    color: 'text-green-400',  bg: 'bg-green-500/10'  },
           ].map(s => (
             <div key={s.label} className="stat-card animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 transition-all duration-200">
               <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
@@ -504,10 +506,10 @@ function SystemInternalsTab() {
             </div>
           ))}
         </div>
-        {stats?.db?.filePath && (
+        {stats?.db?.databaseName && (
           <div className="mt-3 px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
-            <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-            <span className="text-xs font-mono text-[var(--text-muted)] truncate">{stats.db.filePath}.mv.db</span>
+            <Database className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+            <span className="text-xs font-mono text-[var(--text-muted)] truncate">Database: <span className="text-[var(--text-secondary)]">{stats.db.databaseName}</span></span>
           </div>
         )}
       </div>
@@ -554,6 +556,44 @@ function SystemInternalsTab() {
                   <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v}`, 'Active']} />
                   <Line type="monotone" dataKey="poolActive" stroke="#8b5cf6" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#8b5cf6' }} />
                 </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* PostgreSQL active connections over time */}
+            <div className="card p-5">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Database className="w-3.5 h-3.5" /> PostgreSQL Active Connections
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <LineChart data={samples} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis dataKey="timestamp" {...AXIS_STYLE} tickFormatter={fmtTime} interval="preserveStartEnd" />
+                  <YAxis {...AXIS_STYLE} domain={[0, 'auto']} allowDecimals={false} width={36} />
+                  <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v}`, 'pg_stat_activity']} />
+                  <Line type="monotone" dataKey="pgActiveConns" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#10b981' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* PostgreSQL DB size over time */}
+            <div className="card p-5">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <HardDrive className="w-3.5 h-3.5" /> PostgreSQL DB Size (MB)
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <AreaChart data={samples} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="pgSizeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis dataKey="timestamp" {...AXIS_STYLE} tickFormatter={fmtTime} interval="preserveStartEnd" />
+                  <YAxis {...AXIS_STYLE} domain={['auto', 'auto']} unit=" MB" width={54} />
+                  <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v} MB`, 'DB Size']} />
+                  <Area type="monotone" dataKey="pgDbSizeMb" stroke="#f59e0b" strokeWidth={2} fill="url(#pgSizeGrad)" dot={false} activeDot={{ r: 3, fill: '#f59e0b' }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -714,14 +754,11 @@ function SystemInternalsTab() {
               </div>
             ))}
             <div className="pt-2 border-t border-white/[0.06]">
-              <a
-                href="/h2-console"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 transition-colors no-underline">
-                <ExternalLink className="w-4 h-4" />
-                Open H2 Console
-              </a>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[var(--text-muted)] bg-white/[0.03] border border-white/[0.06] font-mono">
+                <Server className="w-3.5 h-3.5 shrink-0 text-green-400" />
+                <span>postgresql://</span>
+                <span className="text-[var(--text-secondary)]">{stats?.db?.host ?? 'localhost'}:{stats?.db?.port ?? 5499}/{stats?.db?.databaseName ?? 'dbdeployer'}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1390,6 +1427,29 @@ function ConfigurationTab({ instance }) {
 
   return (
     <div className="space-y-5">
+      {/* Source Template banner */}
+      {instance.templateId && (
+        <div className="card p-4 flex items-center gap-3 border-(--border-strong) animate-fade-up">
+          <SlidersHorizontal className="w-5 h-5 shrink-0" style={{ color: 'var(--status-deploying)' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-(--text-muted) uppercase tracking-widest font-bold">Source Template</p>
+            {instance.templateName
+              ? <p className="text-sm font-semibold text-(--text-primary) truncate">{instance.templateName}</p>
+              : <p className="text-sm text-(--text-muted) italic">Template was deleted</p>
+            }
+          </div>
+          {instance.templateName && (
+            <Link
+              to="/configurations"
+              className="btn-secondary text-xs flex items-center gap-1.5 shrink-0"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              View Configurations
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Connection string full widget */}
       {instance.connectionString && (
         <div className="card p-5">

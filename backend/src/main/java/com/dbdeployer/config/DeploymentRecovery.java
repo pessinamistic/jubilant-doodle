@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  *       pipeline FAILED, mark RUNNING steps FAILED, mark PENDING steps SKIPPED.
  * </ol>
  *
- * Runs at Order(3) — after SystemDbRegistrar (Order 2).
+ * Runs at Order(3) — after SystemDbRegistrar (Order 1) and H2DataMigrator (Order 2).
  */
 @Component
 @Order(3)

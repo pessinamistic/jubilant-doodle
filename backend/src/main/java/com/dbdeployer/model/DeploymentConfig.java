@@ -62,7 +62,7 @@ public class DeploymentConfig {
   private String extraEnvJson;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "deploy_method", nullable = false)
+  @Column(name = "deploy_method")
   private DeployMethod deployMethod;
 
   /** True for the auto-provisioned system Postgres — cannot be stopped/removed by users. */
@@ -75,6 +75,25 @@ public class DeploymentConfig {
    */
   @Column(name = "is_imported", nullable = false, columnDefinition = "boolean default false")
   private boolean isImported = false;
+
+  /**
+   * Optional reference back to the {@link ConfigTemplate} this instance was launched from.
+   * No FK constraint — the template may be deleted while instances remain.
+   */
+  @Column(name = "template_id")
+  private String templateId;
+
+  /** When true this row is a reusable configuration blueprint, not a live deployment. */
+  @Column(name = "is_template", nullable = false)
+  private boolean isTemplate = false;
+
+  /** Human-readable description (populated for templates, null for plain instances). */
+  @Column(name = "description")
+  private String description;
+
+  /** Number of instances launched from this template row. Always 0 for non-template rows. */
+  @Column(name = "deploy_count", nullable = false)
+  private int deployCount = 0;
 
   /**
    * The current (or last) deployment state for this config. Cascade ALL so saving/deleting the
@@ -232,5 +251,37 @@ public class DeploymentConfig {
 
   public void setUpdatedAt(Instant updatedAt) {
     this.updatedAt = updatedAt;
+  }
+
+  public String getTemplateId() {
+    return templateId;
+  }
+
+  public void setTemplateId(String templateId) {
+    this.templateId = templateId;
+  }
+
+  public boolean isTemplate() {
+    return isTemplate;
+  }
+
+  public void setTemplate(boolean template) {
+    this.isTemplate = template;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public int getDeployCount() {
+    return deployCount;
+  }
+
+  public void setDeployCount(int deployCount) {
+    this.deployCount = deployCount;
   }
 }

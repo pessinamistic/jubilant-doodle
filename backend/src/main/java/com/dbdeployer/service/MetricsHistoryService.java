@@ -10,6 +10,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import javax.sql.DataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -26,10 +27,12 @@ public class MetricsHistoryService {
   private static final int WINDOW_SECONDS = MAX_SAMPLES * 30;
 
   private final DataSource dataSource;
+  private final JdbcTemplate jdbc;
   private final Deque<MetricSample> ring = new ArrayDeque<>(MAX_SAMPLES + 1);
 
   public MetricsHistoryService(DataSource dataSource) {
     this.dataSource = dataSource;
+    this.jdbc = new JdbcTemplate(dataSource);
   }
 
   /** Called every 30 seconds after a 5-second initial delay. */
@@ -56,7 +59,21 @@ public class MetricsHistoryService {
     String ts =
         Instant.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
-    ring.addLast(new MetricSample(ts, heapUsed, heapMax, heapPct, poolActive, poolMax, poolPct));
+    double pgDbSizeMb = 0.0;
+    int pgActiveConns = 0;
+    try {
+      Double sizeResult = jdbc.queryForObject(
+          "SELECT pg_database_size(current_database()) / (1024.0 * 1024.0)", Double.class);
+      if (sizeResult != null) pgDbSizeMb = Math.round(sizeResult * 100.0) / 100.0;
+      Integer connResult = jdbc.queryForObject(
+          "SELECT count(*)::int FROM pg_stat_activity WHERE datname = current_database() AND state IS NOT NULL",
+          Integer.class);
+      if (connResult != null) pgActiveConns = connResult;
+    } catch (Exception ignored) {
+      // Non-fatal: Postgres metrics default to 0 if unavailable
+    }
+
+    ring.addLast(new MetricSample(ts, heapUsed, heapMax, heapPct, poolActive, poolMax, poolPct, pgDbSizeMb, pgActiveConns));
     while (ring.size() > MAX_SAMPLES) ring.removeFirst();
   }
 

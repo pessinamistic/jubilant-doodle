@@ -12,13 +12,16 @@ import com.dbdeployer.api.dto.InstanceStatsResponse;
 import com.dbdeployer.api.dto.PipelineResponse;
 import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.api.dto.SystemDbStatsResponse;
+import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployedContainer;
+import com.dbdeployer.service.ConfigTemplateService;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
-import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.service.DbInstanceService;
 import com.dbdeployer.service.ImageValidationService;
 import com.dbdeployer.service.SystemDbStatsService;
+import com.dbdeployer.store.DeploymentConfigRepository;
 import jakarta.validation.Valid;
 import java.util.Collection;
 import java.util.List;
@@ -48,16 +51,22 @@ public class DbInstanceController {
   private final ConnectionStringBuilder connBuilder;
   private final SystemDbStatsService statsService;
   private final ImageValidationService imageValidationService;
+  private final ConfigTemplateService templateService;
+  private final DeploymentConfigRepository configRepo;
 
   public DbInstanceController(
       DbInstanceService service,
       ConnectionStringBuilder connBuilder,
       SystemDbStatsService statsService,
-      ImageValidationService imageValidationService) {
+      ImageValidationService imageValidationService,
+      ConfigTemplateService templateService,
+      DeploymentConfigRepository configRepo) {
     this.service = service;
     this.connBuilder = connBuilder;
     this.statsService = statsService;
     this.imageValidationService = imageValidationService;
+    this.templateService = templateService;
+    this.configRepo = configRepo;
   }
 
   /** List all deployed instances */
@@ -317,6 +326,24 @@ public class DbInstanceController {
     String icon = def != null ? def.icon() : "🗄️";
     String conn = connBuilder.build(config);
     String masked = connBuilder.buildMasked(config);
-    return InstanceResponse.from(config, config.getContainer(), conn, masked, display, icon);
+    String templateId = config.getTemplateId();
+    String templateName = templateId != null
+        ? configRepo.findById(templateId).map(t -> t.getName()).orElse(null)
+        : null;
+    return InstanceResponse.from(config, config.getContainer(), conn, masked, display, icon, templateId, templateName);
+  }
+
+  private InstanceResponse toResponse(DeployedContainer container) {
+    DeploymentConfig config = container.getConfig();
+    var def = DatabaseCatalog.get(config.getDbType());
+    String display = def != null ? def.displayName() : config.getDbType().name();
+    String icon = def != null ? def.icon() : "🗄️";
+    String conn = connBuilder.build(config);
+    String masked = connBuilder.buildMasked(config);
+    String templateId = config.getTemplateId();
+    String templateName = templateId != null
+        ? configRepo.findById(templateId).map(t -> t.getName()).orElse(null)
+        : null;
+    return InstanceResponse.from(config, container, conn, masked, display, icon, templateId, templateName);
   }
 }

@@ -16,8 +16,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -28,10 +27,15 @@ import org.springframework.core.env.ConfigurableEnvironment;
  * Flow: 1. Connect to Docker daemon 2. If container doesn't exist → pull postgres:16 + create it 3.
  * If container exists but stopped → start it 4. Poll port 5499 until Postgres is ready (max 60 s)
  */
+@Slf4j
 public class SystemDbProvisioner
     implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
-  private static final Logger log = LoggerFactory.getLogger(SystemDbProvisioner.class);
+  public static final String RUNTIME_CONTAINER_ID_PROPERTY =
+      "dbdeployer.system-db.runtime.container-id";
+  public static final String RUNTIME_CONTAINER_NAME_PROPERTY =
+      "dbdeployer.system-db.runtime.container-name";
+  public static final String RUNTIME_HOST_PORT_PROPERTY = "dbdeployer.system-db.runtime.host-port";
 
   @Override
   public void initialize(ConfigurableApplicationContext ctx) {
@@ -73,8 +77,16 @@ public class SystemDbProvisioner
           e);
     }
 
-    ensureContainerRunning(
+    SystemContainerState containerState =
+        ensureContainerRunning(
         docker, containerName, image, hostPort, username, password, database, dataDir);
+
+    if (containerState.containerId() != null && !containerState.containerId().isBlank()) {
+      System.setProperty(RUNTIME_CONTAINER_ID_PROPERTY, containerState.containerId());
+    }
+    System.setProperty(RUNTIME_CONTAINER_NAME_PROPERTY, containerName);
+    System.setProperty(RUNTIME_HOST_PORT_PROPERTY, String.valueOf(hostPort));
+
     waitForPostgres(hostPort, 60);
 
     log.info("System Postgres is ready at localhost:{}", hostPort);
@@ -82,7 +94,7 @@ public class SystemDbProvisioner
 
   // ── Container lifecycle ────────────────────────────────────────────────────
 
-  private void ensureContainerRunning(
+  private SystemContainerState ensureContainerRunning(
       DockerClient docker,
       String containerName,
       String image,
@@ -97,16 +109,18 @@ public class SystemDbProvisioner
 
       if (Boolean.TRUE.equals(running)) {
         log.info("System DB container '{}' is already running", containerName);
-        return;
+        return new SystemContainerState(info.getId());
       }
 
       log.info("System DB container '{}' exists but is stopped — starting it", containerName);
       docker.startContainerCmd(containerName).exec();
+      return new SystemContainerState(docker.inspectContainerCmd(containerName).exec().getId());
 
     } catch (NotFoundException e) {
       // Container doesn't exist at all — create it from scratch
       createAndStartContainer(
           docker, containerName, image, hostPort, username, password, database, dataDir);
+      return new SystemContainerState(docker.inspectContainerCmd(containerName).exec().getId());
     }
   }
 
@@ -139,7 +153,7 @@ public class SystemDbProvisioner
 
     ExposedPort containerPort = ExposedPort.tcp(5432);
     Ports portBindings = new Ports();
-    portBindings.bind(containerPort, Ports.Binding.bindPort(5499));
+    portBindings.bind(containerPort, Ports.Binding.bindPort(hostPort));
 
     Volume pgDataVolume = new Volume("/var/lib/postgresql/data");
 
@@ -242,4 +256,6 @@ public class SystemDbProvisioner
             .build();
     return DockerClientImpl.getInstance(config, httpClient);
   }
+
+  private record SystemContainerState(String containerId) {}
 }

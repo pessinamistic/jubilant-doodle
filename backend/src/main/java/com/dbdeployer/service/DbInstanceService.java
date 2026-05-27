@@ -78,9 +78,9 @@ public class DbInstanceService {
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
-  /** Returns all configs (including removed ones — frontend decides what to show). */
-  public List<DeploymentConfig> listAll() {
-    return configRepo.findAll();
+  /** Returns all deployed instances (excludes template rows). */
+  public List<DeployedContainer> listAll() {
+    return containerRepo.findAll();
   }
 
   /** Aggregate status counts across all instances. Derived directly from the DB. */
@@ -113,7 +113,7 @@ public class DbInstanceService {
 
   public DeploymentConfig getById(String id) {
     return configRepo
-        .findById(id)
+        .findByIdAndIsTemplateFalse(id)
         .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
   }
 
@@ -144,8 +144,12 @@ public class DbInstanceService {
 
   // ── Deploy ─────────────────────────────────────────────────────────────────
 
-  @Transactional
   public DeploymentConfig deploy(DeployRequest req) {
+    return deploy(req, null);
+  }
+
+  @Transactional
+  public DeploymentConfig deploy(DeployRequest req, String templateId) {
     log.info(
         "[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
         req.name(),
@@ -209,6 +213,7 @@ public class DbInstanceService {
     config.setDatabaseName(databaseName);
     config.setDeployMethod(DeployMethod.DOCKER);
     config.setExtraEnvJson(req.extraEnvJson());
+    config.setTemplateId(templateId);
     configRepo.save(config);
 
     // ── Container row ── (starts as DEPLOYING; pipeline transitions it)

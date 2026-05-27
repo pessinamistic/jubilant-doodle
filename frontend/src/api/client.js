@@ -131,3 +131,11 @@ export const getImageToolDetails = (dbType, refresh=false) =>
 
 export const refreshImageTool = (dbType, scope='all') =>
 	api.post(`/images/tools/${dbType}/refresh`, null, { params: { scope } }).then(r => r.data)
+
+// ── Config Templates ───────────────────────────────────────────────────────
+export const getTemplates      = ()           => api.get('/templates').then(r => r.data)
+export const getTemplate       = (id)         => api.get(`/templates/${id}`).then(r => r.data)
+export const createTemplate    = (data)       => api.post('/templates', data).then(r => r.data)
+export const updateTemplate    = (id, data)   => api.put(`/templates/${id}`, data).then(r => r.data)
+export const deleteTemplate    = (id)         => api.delete(`/templates/${id}`)
+export const deployFromTemplate = (id, data)  => api.post(`/templates/${id}/deploy`, data).then(r => r.data)
