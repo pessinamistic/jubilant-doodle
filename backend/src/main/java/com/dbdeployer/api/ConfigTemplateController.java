@@ -4,8 +4,6 @@ import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.api.dto.ConfigTemplateResponse;
 import com.dbdeployer.api.dto.DeployFromTemplateRequest;
 import com.dbdeployer.api.dto.InstanceResponse;
-import com.dbdeployer.deploy.ConnectionStringBuilder;
-import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.service.ConfigTemplateService;
 import jakarta.validation.Valid;
@@ -27,12 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ConfigTemplateController {
 
   private final ConfigTemplateService templateService;
-  private final ConnectionStringBuilder connBuilder;
+  private final InstanceResponseAssembler responseAssembler;
 
   public ConfigTemplateController(
-      ConfigTemplateService templateService, ConnectionStringBuilder connBuilder) {
+      ConfigTemplateService templateService, InstanceResponseAssembler responseAssembler) {
     this.templateService = templateService;
-    this.connBuilder = connBuilder;
+    this.responseAssembler = responseAssembler;
   }
 
   /** List all saved configuration templates, newest first. */
@@ -76,21 +74,7 @@ public class ConfigTemplateController {
   public ResponseEntity<InstanceResponse> deploy(
       @PathVariable String id, @Valid @RequestBody DeployFromTemplateRequest req) {
     DeploymentConfig config = templateService.deployFromTemplate(id, req);
-    var def = DatabaseCatalog.get(config.getDbType());
-    String display = def != null ? def.displayName() : config.getDbType().name();
-    String icon = def != null ? def.icon() : "🗄️";
-    String templateName = templateService.getById(id).getName();
-    return ResponseEntity.accepted()
-        .body(
-            InstanceResponse.from(
-                config,
-                config.getContainer(),
-                connBuilder.build(config),
-                connBuilder.buildMasked(config),
-                display,
-                icon,
-                id,
-                templateName));
+    return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

@@ -77,8 +77,8 @@ public class DeploymentConfig {
   private boolean isImported = false;
 
   /**
-   * Optional reference back to the {@link ConfigTemplate} this instance was launched from.
-   * No FK constraint — the template may be deleted while instances remain.
+   * Optional reference back to the {@link ConfigTemplate} this instance was launched from. No FK
+   * constraint — the template may be deleted while instances remain.
    */
   @Column(name = "template_id")
   private String templateId;

@@ -62,18 +62,30 @@ public class MetricsHistoryService {
     double pgDbSizeMb = 0.0;
     int pgActiveConns = 0;
     try {
-      Double sizeResult = jdbc.queryForObject(
-          "SELECT pg_database_size(current_database()) / (1024.0 * 1024.0)", Double.class);
+      Double sizeResult =
+          jdbc.queryForObject(
+              "SELECT pg_database_size(current_database()) / (1024.0 * 1024.0)", Double.class);
       if (sizeResult != null) pgDbSizeMb = Math.round(sizeResult * 100.0) / 100.0;
-      Integer connResult = jdbc.queryForObject(
-          "SELECT count(*)::int FROM pg_stat_activity WHERE datname = current_database() AND state IS NOT NULL",
-          Integer.class);
+      Integer connResult =
+          jdbc.queryForObject(
+              "SELECT count(*)::int FROM pg_stat_activity WHERE datname = current_database() AND state IS NOT NULL",
+              Integer.class);
       if (connResult != null) pgActiveConns = connResult;
     } catch (Exception ignored) {
       // Non-fatal: Postgres metrics default to 0 if unavailable
     }
 
-    ring.addLast(new MetricSample(ts, heapUsed, heapMax, heapPct, poolActive, poolMax, poolPct, pgDbSizeMb, pgActiveConns));
+    ring.addLast(
+        new MetricSample(
+            ts,
+            heapUsed,
+            heapMax,
+            heapPct,
+            poolActive,
+            poolMax,
+            poolPct,
+            pgDbSizeMb,
+            pgActiveConns));
     while (ring.size() > MAX_SAMPLES) ring.removeFirst();
   }
 

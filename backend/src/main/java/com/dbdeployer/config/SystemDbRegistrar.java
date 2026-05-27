@@ -156,7 +156,9 @@ public class SystemDbRegistrar implements ApplicationRunner {
     String fromSystemProperty =
         System.getProperty(SystemDbProvisioner.RUNTIME_CONTAINER_NAME_PROPERTY, "").trim();
     if (!fromSystemProperty.isBlank()) return fromSystemProperty;
-    return runtimeContainerName != null && !runtimeContainerName.isBlank() ? runtimeContainerName : null;
+    return runtimeContainerName != null && !runtimeContainerName.isBlank()
+        ? runtimeContainerName
+        : null;
   }
 
   private String resolvePostgresVersion() {

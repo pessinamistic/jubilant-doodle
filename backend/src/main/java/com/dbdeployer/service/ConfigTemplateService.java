@@ -29,8 +29,7 @@ public class ConfigTemplateService {
   public DeploymentConfig getById(String id) {
     return configRepo
         .findByIdAndIsTemplateTrue(id)
-        .orElseThrow(
-            () -> new IllegalArgumentException("Configuration template not found: " + id));
+        .orElseThrow(() -> new IllegalArgumentException("Configuration template not found: " + id));
   }
 
   @Transactional
@@ -50,8 +49,7 @@ public class ConfigTemplateService {
   public DeploymentConfig update(String id, ConfigTemplateRequest req) {
     DeploymentConfig t = getById(id);
     if (configRepo.existsByNameAndIsTemplateTrueAndIdNot(req.name(), id)) {
-      throw new IllegalArgumentException(
-          "A template named '" + req.name() + "' already exists");
+      throw new IllegalArgumentException("A template named '" + req.name() + "' already exists");
     }
     applyRequest(t, req);
     return configRepo.save(t);
@@ -64,9 +62,9 @@ public class ConfigTemplateService {
   }
 
   /**
-   * Deploy a new instance from a saved template. The caller supplies a unique instance name and
-   * the desired host port (the two per-deployment overrides). All other fields come from the
-   * template. Increments deployCount on the template after a successful dispatch.
+   * Deploy a new instance from a saved template. The caller supplies a unique instance name and the
+   * desired host port (the two per-deployment overrides). All other fields come from the template.
+   * Increments deployCount on the template after a successful dispatch.
    */
   @Transactional
   public DeploymentConfig deployFromTemplate(String templateId, DeployFromTemplateRequest req) {

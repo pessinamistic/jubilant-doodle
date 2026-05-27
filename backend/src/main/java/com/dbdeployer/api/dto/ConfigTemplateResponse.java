@@ -1,8 +1,8 @@
 package com.dbdeployer.api.dto;
 
 import com.dbdeployer.deploy.DatabaseCatalog;
-import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeploymentConfig;
 import java.time.Instant;
 
 public record ConfigTemplateResponse(

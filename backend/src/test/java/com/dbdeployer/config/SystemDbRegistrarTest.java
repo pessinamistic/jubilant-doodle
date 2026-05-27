@@ -32,7 +32,8 @@ class SystemDbRegistrarTest {
   @Test
   void run_createsSystemRowsOnce_andEnrichesContainerId() {
     when(configRepo.findById(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.empty());
-    when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.empty());
+    when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID))
+        .thenReturn(Optional.empty());
     when(jdbc.queryForObject("SELECT version()", String.class))
         .thenReturn("PostgreSQL 16.3 on aarch64-unknown-linux-musl");
 
@@ -53,7 +54,8 @@ class SystemDbRegistrarTest {
     assertThat(savedConfig.getDeployMethod()).isEqualTo(DeployMethod.DOCKER);
     assertThat(savedConfig.getVersion()).isEqualTo("16.3");
 
-    ArgumentCaptor<DeployedContainer> containerCaptor = ArgumentCaptor.forClass(DeployedContainer.class);
+    ArgumentCaptor<DeployedContainer> containerCaptor =
+        ArgumentCaptor.forClass(DeployedContainer.class);
     verify(containerRepo).save(containerCaptor.capture());
     DeployedContainer savedContainer = containerCaptor.getValue();
     assertThat(savedContainer.getContainerId()).isEqualTo("abcdef1234567890");
@@ -95,4 +97,3 @@ class SystemDbRegistrarTest {
     verify(containerRepo, never()).save(any(DeployedContainer.class));
   }
 }
-

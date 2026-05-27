@@ -79,7 +79,7 @@ public class SystemDbProvisioner
 
     SystemContainerState containerState =
         ensureContainerRunning(
-        docker, containerName, image, hostPort, username, password, database, dataDir);
+            docker, containerName, image, hostPort, username, password, database, dataDir);
 
     if (containerState.containerId() != null && !containerState.containerId().isBlank()) {
       System.setProperty(RUNTIME_CONTAINER_ID_PROPERTY, containerState.containerId());
