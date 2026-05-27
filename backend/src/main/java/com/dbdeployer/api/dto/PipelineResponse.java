@@ -7,25 +7,25 @@ import java.time.Instant;
 import java.util.List;
 
 public record PipelineResponse(
-    String id,
-    String configId,
-    PipelineStatus status,
-    DeployErrorCode errorCode,
-    String errorMessage,
-    Instant createdAt,
-    Instant startedAt,
-    Instant completedAt,
-    List<PipelineStepResponse> steps) {
-  public static PipelineResponse from(DeploymentPipeline p, List<PipelineStepResponse> steps) {
-    return new PipelineResponse(
-        p.getId(),
-        p.getConfigId(),
-        p.getStatus(),
-        p.getErrorCode(),
-        p.getErrorMessage(),
-        p.getCreatedAt(),
-        p.getStartedAt(),
-        p.getCompletedAt(),
-        steps);
-  }
+        String id,
+        String configId,
+        PipelineStatus status,
+        DeployErrorCode errorCode,
+        String errorMessage,
+        Instant createdAt,
+        Instant startedAt,
+        Instant completedAt,
+        List<PipelineStepResponse> steps) {
+    public static PipelineResponse from(DeploymentPipeline p, List<PipelineStepResponse> steps) {
+        return new PipelineResponse(
+                p.getId(),
+                p.getConfigId(),
+                p.getStatus(),
+                p.getErrorCode(),
+                p.getErrorMessage(),
+                p.getCreatedAt(),
+                p.getStartedAt(),
+                p.getCompletedAt(),
+                steps);
+    }
 }

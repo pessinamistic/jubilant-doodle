@@ -8,14 +8,14 @@ import java.util.List;
  */
 public record MetricsHistoryResponse(List<MetricSample> samples, int windowSeconds) {
 
-  public record MetricSample(
-      String timestamp, // ISO-8601
-      long heapUsedMb,
-      long heapMaxMb,
-      int heapPct,
-      int poolActive,
-      int poolMax,
-      int poolPct,
-      double pgDbSizeMb,
-      int pgActiveConns) {}
+    public record MetricSample(
+            String timestamp, // ISO-8601
+            long heapUsedMb,
+            long heapMaxMb,
+            int heapPct,
+            int poolActive,
+            int poolMax,
+            int poolPct,
+            double pgDbSizeMb,
+            int pgActiveConns) {}
 }

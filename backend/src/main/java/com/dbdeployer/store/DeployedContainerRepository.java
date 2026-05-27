@@ -10,18 +10,21 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeployedContainerRepository extends JpaRepository<DeployedContainer, String> {
-  Optional<DeployedContainer> findByConfigId(String configId);
+    Optional<DeployedContainer> findByConfigId(String configId);
 
-  boolean existsByContainerId(String containerId);
+    boolean existsByContainerId(String containerId);
 
-  Optional<DeployedContainer> findByContainerId(String containerId);
+    Optional<DeployedContainer> findByContainerId(String containerId);
 
-  /** All containers not yet REMOVED — used by the status sync scheduler. */
-  List<DeployedContainer> findByStatusNot(InstanceStatus status);
+    /** All containers not yet REMOVED — used by the status sync scheduler. */
+    List<DeployedContainer> findByStatusNot(InstanceStatus status);
 
-  /** All containers not in any of the given statuses — used by the status sync scheduler. */
-  List<DeployedContainer> findByStatusNotIn(Collection<InstanceStatus> statuses);
+    /**
+     * All containers not in any of the given statuses — used by the status sync
+     * scheduler.
+     */
+    List<DeployedContainer> findByStatusNotIn(Collection<InstanceStatus> statuses);
 
-  /** All containers in a specific status — used by DeploymentRecovery. */
-  List<DeployedContainer> findByStatus(InstanceStatus status);
+    /** All containers in a specific status — used by DeploymentRecovery. */
+    List<DeployedContainer> findByStatus(InstanceStatus status);
 }

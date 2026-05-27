@@ -10,53 +10,59 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Checks whether the Docker daemon is reachable on the current machine by performing a real {@code
- * ping} against the socket resolved by {@link DockerSocketResolver}. This is deliberately separate
- * from {@link com.dbdeployer.deploy.OsDetector#isDockerAvailable()}, which only tests whether the
- * {@code docker} CLI binary is on the PATH — not whether the daemon is actually running.
+ * Checks whether the Docker daemon is reachable on the current machine by
+ * performing a real {@code
+ * ping} against the socket resolved by {@link DockerSocketResolver}. This is
+ * deliberately separate from
+ * {@link com.dbdeployer.deploy.OsDetector#isDockerAvailable()}, which only
+ * tests whether the {@code docker} CLI binary is on the PATH — not whether the
+ * daemon is actually running.
  */
 @Component
 public class DockerHealthChecker {
 
-  private static final Logger log = LoggerFactory.getLogger(DockerHealthChecker.class);
+    private static final Logger log = LoggerFactory.getLogger(DockerHealthChecker.class);
 
-  /**
-   * Result of a Docker daemon reachability probe.
-   *
-   * @param available {@code true} when the daemon replied to a ping
-   * @param dockerHost the socket URI that was probed
-   * @param errorMessage non-null only when {@code available} is {@code false}
-   */
-  public record DockerStatus(boolean available, String dockerHost, String errorMessage) {}
+    /**
+     * Result of a Docker daemon reachability probe.
+     *
+     * @param available
+     *            {@code true} when the daemon replied to a ping
+     * @param dockerHost
+     *            the socket URI that was probed
+     * @param errorMessage
+     *            non-null only when {@code available} is {@code false}
+     */
+    public record DockerStatus(boolean available, String dockerHost, String errorMessage) {}
 
-  /**
-   * Attempts to ping the Docker daemon. Never throws — all failures are captured in the returned
-   * {@link DockerStatus}.
-   */
-  public DockerStatus check() {
-    String socketUri = DockerSocketResolver.resolve();
-    log.debug("Probing Docker daemon at {}", socketUri);
+    /**
+     * Attempts to ping the Docker daemon. Never throws — all failures are captured
+     * in the returned {@link DockerStatus}.
+     */
+    public DockerStatus check() {
+        String socketUri = DockerSocketResolver.resolve();
+        log.debug("Probing Docker daemon at {}", socketUri);
 
-    try (var httpClient =
-        new ZerodepDockerHttpClient.Builder()
-            .dockerHost(URI.create(socketUri))
-            .connectionTimeout(Duration.ofSeconds(5))
-            .responseTimeout(Duration.ofSeconds(10))
-            .build()) {
+        try (var httpClient = new ZerodepDockerHttpClient.Builder()
+                .dockerHost(URI.create(socketUri))
+                .connectionTimeout(Duration.ofSeconds(5))
+                .responseTimeout(Duration.ofSeconds(10))
+                .build()) {
 
-      var config =
-          DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost(socketUri).build();
+            var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
+                    .withDockerHost(socketUri)
+                    .build();
 
-      try (var client = DockerClientImpl.getInstance(config, httpClient)) {
-        client.pingCmd().exec();
-        log.debug("Docker daemon ping succeeded");
-        return new DockerStatus(true, socketUri, null);
-      }
+            try (var client = DockerClientImpl.getInstance(config, httpClient)) {
+                client.pingCmd().exec();
+                log.debug("Docker daemon ping succeeded");
+                return new DockerStatus(true, socketUri, null);
+            }
 
-    } catch (Exception e) {
-      String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-      log.debug("Docker daemon ping failed: {}", msg);
-      return new DockerStatus(false, socketUri, msg);
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            log.debug("Docker daemon ping failed: {}", msg);
+            return new DockerStatus(false, socketUri, msg);
+        }
     }
-  }
 }

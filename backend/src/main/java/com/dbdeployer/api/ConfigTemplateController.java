@@ -24,61 +24,68 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/templates")
 public class ConfigTemplateController {
 
-  private final ConfigTemplateService templateService;
-  private final InstanceResponseAssembler responseAssembler;
+    private final ConfigTemplateService templateService;
+    private final InstanceResponseAssembler responseAssembler;
 
-  public ConfigTemplateController(
-      ConfigTemplateService templateService, InstanceResponseAssembler responseAssembler) {
-    this.templateService = templateService;
-    this.responseAssembler = responseAssembler;
-  }
+    public ConfigTemplateController(
+            ConfigTemplateService templateService, InstanceResponseAssembler responseAssembler) {
+        this.templateService = templateService;
+        this.responseAssembler = responseAssembler;
+    }
 
-  /** List all saved configuration templates, newest first. */
-  @GetMapping
-  public List<ConfigTemplateResponse> list() {
-    return templateService.listAll().stream().map(ConfigTemplateResponse::from).toList();
-  }
+    /** List all saved configuration templates, newest first. */
+    @GetMapping
+    public List<ConfigTemplateResponse> list() {
+        return templateService.listAll().stream()
+                .map(ConfigTemplateResponse::from)
+                .toList();
+    }
 
-  /** Get a single template by ID. */
-  @GetMapping("/{id}")
-  public ConfigTemplateResponse get(@PathVariable String id) {
-    return ConfigTemplateResponse.from(templateService.getById(id));
-  }
+    /** Get a single template by ID. */
+    @GetMapping("/{id}")
+    public ConfigTemplateResponse get(@PathVariable String id) {
+        return ConfigTemplateResponse.from(templateService.getById(id));
+    }
 
-  /** Save a new configuration template (no Docker action). */
-  @PostMapping
-  public ResponseEntity<ConfigTemplateResponse> create(
-      @Valid @RequestBody ConfigTemplateRequest req) {
-    return ResponseEntity.ok(ConfigTemplateResponse.from(templateService.create(req)));
-  }
+    /** Save a new configuration template (no Docker action). */
+    @PostMapping
+    public ResponseEntity<ConfigTemplateResponse> create(@Valid @RequestBody ConfigTemplateRequest req) {
+        return ResponseEntity.ok(ConfigTemplateResponse.from(templateService.create(req)));
+    }
 
-  /** Update an existing template. Does not affect instances already deployed from it. */
-  @PutMapping("/{id}")
-  public ConfigTemplateResponse update(
-      @PathVariable String id, @Valid @RequestBody ConfigTemplateRequest req) {
-    return ConfigTemplateResponse.from(templateService.update(id, req));
-  }
+    /**
+     * Update an existing template. Does not affect instances already deployed from
+     * it.
+     */
+    @PutMapping("/{id}")
+    public ConfigTemplateResponse update(@PathVariable String id, @Valid @RequestBody ConfigTemplateRequest req) {
+        return ConfigTemplateResponse.from(templateService.update(id, req));
+    }
 
-  /** Delete a template. Deployed instances retain their templateId value but carry on. */
-  @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable String id) {
-    templateService.delete(id);
-    return ResponseEntity.noContent().build();
-  }
+    /**
+     * Delete a template. Deployed instances retain their templateId value but carry
+     * on.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        templateService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 
-  /**
-   * Deploy a new instance from this template. The request supplies the per-deployment overrides
-   * (instance name + host port). Returns 202 Accepted with the new instance response.
-   */
-  @PostMapping("/{id}/deploy")
-  public ResponseEntity<InstanceResponse> deploy(
-      @PathVariable String id, @Valid @RequestBody DeployFromTemplateRequest req) {
-    DeploymentConfig config = templateService.deployFromTemplate(id, req);
-    return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
-  }
+    /**
+     * Deploy a new instance from this template. The request supplies the
+     * per-deployment overrides (instance name + host port). Returns 202 Accepted
+     * with the new instance response.
+     */
+    @PostMapping("/{id}/deploy")
+    public ResponseEntity<InstanceResponse> deploy(
+            @PathVariable String id, @Valid @RequestBody DeployFromTemplateRequest req) {
+        DeploymentConfig config = templateService.deployFromTemplate(id, req);
+        return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
+    }
 
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
-    return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-  }
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+    }
 }

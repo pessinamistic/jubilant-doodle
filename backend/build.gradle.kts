@@ -216,7 +216,9 @@ tasks.register("jpackageInstaller") {
 
 spotless {
     java {
-        googleJavaFormat("1.25.2")
+        //eclipse().configFile("spotless.eclipseformat.xml")
+        // googleJavaFormat("1.25.2")
+        palantirJavaFormat()
         target("src/main/java/**/*.java", "src/test/java/**/*.java")
         trimTrailingWhitespace()
         endWithNewline()

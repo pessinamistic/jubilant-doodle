@@ -12,36 +12,33 @@ import org.springframework.stereotype.Component;
 @Component
 public class InstanceResponseAssembler {
 
-  private final ConnectionStringBuilder connBuilder;
-  private final DeploymentConfigRepository configRepo;
+    private final ConnectionStringBuilder connBuilder;
+    private final DeploymentConfigRepository configRepo;
 
-  public InstanceResponseAssembler(
-      ConnectionStringBuilder connBuilder, DeploymentConfigRepository configRepo) {
-    this.connBuilder = connBuilder;
-    this.configRepo = configRepo;
-  }
+    public InstanceResponseAssembler(ConnectionStringBuilder connBuilder, DeploymentConfigRepository configRepo) {
+        this.connBuilder = connBuilder;
+        this.configRepo = configRepo;
+    }
 
-  public InstanceResponse fromConfig(DeploymentConfig config) {
-    return build(config, config.getContainer());
-  }
+    public InstanceResponse fromConfig(DeploymentConfig config) {
+        return build(config, config.getContainer());
+    }
 
-  public InstanceResponse fromContainer(DeployedContainer container) {
-    return build(container.getConfig(), container);
-  }
+    public InstanceResponse fromContainer(DeployedContainer container) {
+        return build(container.getConfig(), container);
+    }
 
-  private InstanceResponse build(DeploymentConfig config, DeployedContainer container) {
-    var def = DatabaseCatalog.get(config.getDbType());
-    String display = def != null ? def.displayName() : config.getDbType().name();
-    String icon = def != null ? def.icon() : "🗄️";
-    String conn = connBuilder.build(config);
-    String masked = connBuilder.buildMasked(config);
-    String templateId = config.getTemplateId();
-    String templateName =
-        templateId != null
-            ? configRepo.findById(templateId).map(t -> t.getName()).orElse(null)
-            : null;
+    private InstanceResponse build(DeploymentConfig config, DeployedContainer container) {
+        var def = DatabaseCatalog.get(config.getDbType());
+        String display = def != null ? def.displayName() : config.getDbType().name();
+        String icon = def != null ? def.icon() : "🗄️";
+        String conn = connBuilder.build(config);
+        String masked = connBuilder.buildMasked(config);
+        String templateId = config.getTemplateId();
+        String templateName = templateId != null
+                ? configRepo.findById(templateId).map(t -> t.getName()).orElse(null)
+                : null;
 
-    return InstanceResponse.from(
-        config, container, conn, masked, display, icon, templateId, templateName);
-  }
+        return InstanceResponse.from(config, container, conn, masked, display, icon, templateId, templateName);
+    }
 }
