@@ -58,10 +58,10 @@ export function HomePage() {
   ] : []
 
   return (
-    <AppShell onRefresh={load}>
+    <AppShell onRefresh={load} fullWidthTop>
 
       {/* ── Hero ── */}
-      <section className="relative mb-10 pt-4 pb-8 overflow-hidden animate-fade-up">
+      <section className="relative mb-10 pt-4 pb-8 overflow-x-clip animate-fade-up">
         <div className="absolute -top-20 left-1/3 w-[600px] h-[300px] rounded-full blur-3xl pointer-events-none" style={{ background: 'color-mix(in srgb, var(--accent) 16%, transparent)' }} />
         <div className="absolute -top-10 left-1/4 w-[300px] h-[200px] rounded-full blur-2xl pointer-events-none" style={{ background: 'color-mix(in srgb, var(--status-deploying) 12%, transparent)' }} />
 

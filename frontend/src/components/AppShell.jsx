@@ -24,7 +24,7 @@ const SIDEBAR_EXPANDED = 224
 const SIDEBAR_COLLAPSED = 56
 const LS_KEY = 'sidebar-collapsed'
 
-export function AppShell({ children, onDeploy, onRefresh }) {
+export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }) {
   const navigate = useNavigate()
   const [syncing, setSyncing]       = useState(false)
   const [sysInfo, setSysInfo]       = useState(null)
@@ -246,12 +246,12 @@ export function AppShell({ children, onDeploy, onRefresh }) {
         style={{ marginLeft: sidebarW }}
         className="hidden lg:block min-h-screen transition-[margin-left] duration-200 ease-in-out"
       >
-        <div className="px-8 py-8">{children}</div>
+        <div className={`px-8 ${fullWidthTop ? 'pb-8' : 'py-8'}`}>{children}</div>
       </main>
 
       {/* ── Mobile main ── */}
       <main className="lg:hidden min-h-screen pt-14">
-        <div className="px-5 py-6">{children}</div>
+        <div className={`px-5 ${fullWidthTop ? 'pb-6' : 'py-6'}`}>{children}</div>
       </main>
     </div>
   )
