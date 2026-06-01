@@ -639,11 +639,12 @@ public class DockerDeployEngine {
         }
 
         // ── 3. Memory ────────────────────────────────────────────────────────
-        long memUsage = 0, memLimit = 0;
+        long memUsage = 0, memLimit = 0, memMaxUsage = 0;
         double memPercent = 0.0;
         try {
             MemoryStatsConfig mem = stats.getMemoryStats();
             memLimit = mem.getLimit() != null ? mem.getLimit() : 0;
+            memMaxUsage = mem.getMaxUsage() != null ? mem.getMaxUsage() : 0;
             long rawUsage = mem.getUsage() != null ? mem.getUsage() : 0;
             // subtract page cache (Linux); Docker Desktop on macOS may not have cache stats
             long cache = 0L;
@@ -659,8 +660,35 @@ public class DockerDeployEngine {
             log.debug("Memory calc failed for {}: {}", containerId, e.getMessage());
         }
 
+        // ── 3b. CPU throttling ──────────────────────────────────────────────
+        double cpuThrottledPct = 0.0;
+        try {
+            var currCpu = stats.getCpuStats();
+            var prevCpu = stats.getPreCpuStats();
+            if (currCpu != null && prevCpu != null
+                    && currCpu.getThrottlingData() != null
+                    && prevCpu.getThrottlingData() != null) {
+                Long currT = currCpu.getThrottlingData().getThrottledTime();
+                Long prevT = prevCpu.getThrottlingData().getThrottledTime();
+                Long currP = currCpu.getThrottlingData().getPeriods();
+                Long prevP = prevCpu.getThrottlingData().getPeriods();
+                if (currT != null && prevT != null && currP != null && prevP != null) {
+                    long periodDelta = currP - prevP;
+                    long throttleDelta = currT - prevT;
+                    // throttledTime is in ns; periods × ~100ms each.
+                    if (periodDelta > 0) {
+                        double avgPeriodNs = 100_000_000.0; // default 100ms
+                        cpuThrottledPct = Math.min(
+                                100.0,
+                                ((double) throttleDelta / (periodDelta * avgPeriodNs)) * 100.0);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
         // ── 4. Network I/O ───────────────────────────────────────────────────
-        long netRx = 0, netTx = 0, netRxPkts = 0, netTxPkts = 0;
+        long netRx = 0, netTx = 0, netRxPkts = 0, netTxPkts = 0, netRxErr = 0, netTxErr = 0;
         try {
             Map<String, StatisticNetworksConfig> nets = stats.getNetworks();
             if (nets != null) {
@@ -669,6 +697,8 @@ public class DockerDeployEngine {
                     netTx += n.getTxBytes() != null ? n.getTxBytes() : 0;
                     netRxPkts += n.getRxPackets() != null ? n.getRxPackets() : 0;
                     netTxPkts += n.getTxPackets() != null ? n.getTxPackets() : 0;
+                    netRxErr += n.getRxErrors() != null ? n.getRxErrors() : 0;
+                    netTxErr += n.getTxErrors() != null ? n.getTxErrors() : 0;
                 }
             }
         } catch (Exception e) {
@@ -676,7 +706,7 @@ public class DockerDeployEngine {
         }
 
         // ── 5. Block I/O ─────────────────────────────────────────────────────
-        long blkRead = 0, blkWrite = 0;
+        long blkRead = 0, blkWrite = 0, blkReadOps = 0, blkWriteOps = 0;
         try {
             BlkioStatsConfig blkio = stats.getBlkioStats();
             if (blkio != null && blkio.getIoServiceBytesRecursive() != null) {
@@ -684,6 +714,13 @@ public class DockerDeployEngine {
                     if (e.getValue() == null) continue;
                     if ("Read".equalsIgnoreCase(e.getOp())) blkRead += e.getValue();
                     if ("Write".equalsIgnoreCase(e.getOp())) blkWrite += e.getValue();
+                }
+            }
+            if (blkio != null && blkio.getIoServicedRecursive() != null) {
+                for (BlkioStatEntry e : blkio.getIoServicedRecursive()) {
+                    if (e.getValue() == null) continue;
+                    if ("Read".equalsIgnoreCase(e.getOp())) blkReadOps += e.getValue();
+                    if ("Write".equalsIgnoreCase(e.getOp())) blkWriteOps += e.getValue();
                 }
             }
         } catch (Exception e) {
@@ -699,18 +736,39 @@ public class DockerDeployEngine {
         } catch (Exception ignored) {
         }
 
-        // ── 7. Inspect (restart count + image + state) ───────────────────────
+        // ── 7. Inspect (restart count + image + state + health + uptime) ────
         int restartCount = 0;
         String image = null;
         String containerState = "unknown";
+        String healthStatus = "none";
+        boolean oomKilled = false;
+        String startedAtIso = null;
+        long uptimeSecs = 0;
+        long pidsLimit = 0;
         try {
             InspectContainerResponse inspect =
                     docker.inspectContainerCmd(containerId).exec();
             restartCount = inspect.getRestartCount() != null ? inspect.getRestartCount() : 0;
             image = inspect.getConfig() != null ? inspect.getConfig().getImage() : null;
-            containerState = inspect.getState() != null && inspect.getState().getStatus() != null
-                    ? inspect.getState().getStatus()
-                    : "unknown";
+            var st = inspect.getState();
+            if (st != null) {
+                containerState = st.getStatus() != null ? st.getStatus() : "unknown";
+                oomKilled = Boolean.TRUE.equals(st.getOOMKilled());
+                startedAtIso = st.getStartedAt();
+                if (Boolean.TRUE.equals(st.getRunning()) && startedAtIso != null) {
+                    try {
+                        long startMs = Instant.parse(startedAtIso).toEpochMilli();
+                        uptimeSecs = Math.max(0, (System.currentTimeMillis() - startMs) / 1000);
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (st.getHealth() != null && st.getHealth().getStatus() != null) {
+                    healthStatus = st.getHealth().getStatus();
+                }
+            }
+            if (inspect.getHostConfig() != null && inspect.getHostConfig().getPidsLimit() != null) {
+                pidsLimit = Math.max(0L, inspect.getHostConfig().getPidsLimit());
+            }
         } catch (Exception e) {
             log.debug("Inspect failed for {}: {}", containerId, e.getMessage());
         }
@@ -732,20 +790,70 @@ public class DockerDeployEngine {
                 true,
                 Math.round(cpuPercent * 100.0) / 100.0,
                 cpuCores,
+                Math.round(cpuThrottledPct * 100.0) / 100.0,
                 memUsage,
+                memMaxUsage,
                 memLimit,
                 Math.round(memPercent * 100.0) / 100.0,
                 netRx,
                 netTx,
                 netRxPkts,
                 netTxPkts,
+                netRxErr,
+                netTxErr,
                 blkRead,
                 blkWrite,
+                blkReadOps,
+                blkWriteOps,
                 pids,
+                pidsLimit,
                 restartCount,
                 image,
                 containerState,
+                healthStatus,
+                oomKilled,
+                startedAtIso,
+                uptimeSecs,
                 portReachable,
-                portLatencyMs);
+                portLatencyMs,
+                java.util.Map.of());
+    }
+
+    // ── Container exec ─────────────────────────────────────────────────────────
+
+    /**
+     * Runs a command inside a container and returns combined stdout/stderr as a
+     * string, or {@code null} if the exec failed or exited non-zero. Times out
+     * after {@code timeoutSeconds}. Used by {@link ToolMetricsProbe}.
+     *
+     * <p>The {@code cmd} array is passed as-is to the Docker exec API and is
+     * never expanded by a shell, so each element is treated as an opaque
+     * argument — preventing command injection.
+     */
+    public String execCapture(String containerId, String[] cmd, int timeoutSeconds) {
+        if (containerId == null || cmd == null || cmd.length == 0) return null;
+        try {
+            var created = docker.execCreateCmd(containerId)
+                    .withCmd(cmd)
+                    .withAttachStdout(true)
+                    .withAttachStderr(true)
+                    .exec();
+            var buf = new java.io.ByteArrayOutputStream();
+            boolean finished = docker.execStartCmd(created.getId())
+                    .exec(new ResultCallback.Adapter<Frame>() {
+                        @Override
+                        public void onNext(Frame frame) {
+                            try { buf.write(frame.getPayload()); } catch (Exception ignored) {}
+                        }
+                    })
+                    .awaitCompletion(timeoutSeconds, TimeUnit.SECONDS);
+            if (!finished) return null;
+            Long exit = docker.inspectExecCmd(created.getId()).exec().getExitCodeLong();
+            if (exit != null && exit != 0L) return null;
+            return buf.toString();
+        } catch (Exception e) {
+            log.debug("exec {} failed: {}", cmd[0], e.getMessage());
+            return null;
+        }
     }
 }

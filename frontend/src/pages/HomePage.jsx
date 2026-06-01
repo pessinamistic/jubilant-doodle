@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getInstances, getStats } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
+import { useUserProfile } from '../hooks/useUserProfile'
 import {
   CircleCheck,
   CircleOff,
@@ -22,6 +23,7 @@ export function HomePage() {
   const [stats, setStats]         = useState(null)
   const navigate = useNavigate()
   const openDeployPage = useCallback(() => navigate('/deploy'), [navigate])
+  const { profile } = useUserProfile()
 
   const load = useCallback(async () => {
     try {
@@ -72,18 +74,18 @@ export function HomePage() {
               color: 'var(--status-deploying)',
             }}>
               <Zap className="w-3.5 h-3.5" />
-              Local Developer Database Manager
+              {profile ? `${greetingFor(new Date())}, ${profile.name}` : 'Local Developer Database Manager'}
             </div>
             <h1 className="text-4xl xl:text-5xl font-bold text-[var(--text-primary)] mb-4 tracking-tight animate-fade-up delay-100">
-              Deploy & manage databases
-              <br />
+              {profile ? <>Ready to wrangle some<br/></> : <>Deploy &amp; manage databases<br/></>}
               <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--status-deploying)] bg-clip-text text-transparent">
-                in seconds
+                {profile ? 'ports today?' : 'in seconds'}
               </span>
             </h1>
             <p className="text-[var(--text-muted)] text-lg mb-8 max-w-lg animate-fade-up delay-150">
-              Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine
-              using Docker - no config headaches.
+              {profile?.role
+                ? `Tools tuned for a ${profile.role.toLowerCase()}. Spin up databases on your machine — no config headaches.`
+                : 'Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine using Docker - no config headaches.'}
             </p>
             <div className="flex items-center gap-3 flex-wrap animate-fade-up delay-200">
               <button onClick={openDeployPage}
@@ -143,6 +145,25 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Favorite tools quick deploy ── */}
+      {profile?.favTools?.length > 0 && (
+        <section className="mb-10 animate-fade-up delay-150">
+          <p className="section-label">Your Pinned Tools</p>
+          <div className="flex flex-wrap gap-2 stagger-children">
+            {profile.favTools.map(t => (
+              <button
+                key={t}
+                onClick={() => navigate(`/deploy?dbType=${t}`)}
+                className="brutal-chip px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:-translate-y-0.5 transition-transform animate-fade-up"
+              >
+                <Plus className="w-3.5 h-3.5 inline mr-1" />
+                {t.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Stat cards ── */}
       {statCards.length > 0 && (
@@ -290,4 +311,13 @@ function timeAgo(dateStr) {
   if (h > 0) return `${h}h ago`
   if (m > 0) return `${m}m ago`
   return 'just now'
+}
+
+function greetingFor(date) {
+  const h = date.getHours()
+  if (h < 5)  return 'Burning the midnight oil'
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  if (h < 21) return 'Good evening'
+  return 'Working late'
 }

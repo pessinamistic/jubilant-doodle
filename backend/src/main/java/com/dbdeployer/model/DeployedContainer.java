@@ -6,11 +6,14 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Tracks the Docker runtime state for one deployment of a
@@ -22,7 +25,10 @@ import java.time.Instant;
  * providing a permanent audit trail without losing the parent
  * {@link DeploymentConfig}.
  */
+@Setter
+@Getter
 @Entity
+@ToString
 @Table(name = "deployed_container")
 public class DeployedContainer {
 
@@ -31,7 +37,7 @@ public class DeployedContainer {
     private String id;
 
     /** The config this container belongs to. */
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "config_id", nullable = false, updatable = false)
     private DeploymentConfig config;
 
@@ -42,6 +48,9 @@ public class DeployedContainer {
     /** Human-readable Docker container name (e.g. {@code dbdeployer-my-redis}). */
     @Column(name = "container_name")
     private String containerName;
+
+    @Column(name = "container_port", nullable = false)
+    private int containerPort;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -84,95 +93,5 @@ public class DeployedContainer {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
-    }
-
-    // ── Getters & Setters ──────────────────────────────────────────────────────
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public DeploymentConfig getConfig() {
-        return config;
-    }
-
-    public void setConfig(DeploymentConfig config) {
-        this.config = config;
-    }
-
-    public String getContainerId() {
-        return containerId;
-    }
-
-    public void setContainerId(String containerId) {
-        this.containerId = containerId;
-    }
-
-    public String getContainerName() {
-        return containerName;
-    }
-
-    public void setContainerName(String containerName) {
-        this.containerName = containerName;
-    }
-
-    public InstanceStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(InstanceStatus status) {
-        this.status = status;
-    }
-
-    public String getDataDirectory() {
-        return dataDirectory;
-    }
-
-    public void setDataDirectory(String dataDirectory) {
-        this.dataDirectory = dataDirectory;
-    }
-
-    public Instant getStartedAt() {
-        return startedAt;
-    }
-
-    public void setStartedAt(Instant startedAt) {
-        this.startedAt = startedAt;
-    }
-
-    public Instant getRemovedAt() {
-        return removedAt;
-    }
-
-    public void setRemovedAt(Instant removedAt) {
-        this.removedAt = removedAt;
-    }
-
-    public String getLatestPipelineId() {
-        return latestPipelineId;
-    }
-
-    public void setLatestPipelineId(String latestPipelineId) {
-        this.latestPipelineId = latestPipelineId;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

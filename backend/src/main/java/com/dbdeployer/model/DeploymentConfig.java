@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -14,6 +15,11 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import org.checkerframework.common.aliasing.qual.Unique;
 
 /**
  * Stable, user-facing configuration record for a database instance.
@@ -24,7 +30,10 @@ import java.time.Instant;
  * {@link DeployedContainer} carrying status {@link InstanceStatus#REMOVED}.
  * This gives a full deployment history.
  */
+@Setter
+@Getter
 @Entity
+@ToString
 @Table(name = "deployment_config")
 public class DeploymentConfig {
 
@@ -82,11 +91,7 @@ public class DeploymentConfig {
     @Column(name = "is_imported", nullable = false, columnDefinition = "boolean default false")
     private boolean isImported = false;
 
-    /**
-     * Optional reference back to the {@link ConfigTemplate} this instance was
-     * launched from. No FK constraint — the template may be deleted while instances
-     * remain.
-     */
+    @Unique
     @Column(name = "template_id")
     private String templateId;
 
@@ -115,8 +120,12 @@ public class DeploymentConfig {
      * The current (or last) deployment state for this config. Cascade ALL so
      * saving/deleting the config cascades to the container record.
      */
+
     @OneToOne(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER, optional = true)
     private DeployedContainer container;
+
+    @OneToMany(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<DeployedContainer> containers;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -133,167 +142,5 @@ public class DeploymentConfig {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
-    }
-
-    // ── Getters & Setters ──────────────────────────────────────────────────────
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public DbType getDbType() {
-        return dbType;
-    }
-
-    public void setDbType(DbType dbType) {
-        this.dbType = dbType;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public int getHostPort() {
-        return hostPort;
-    }
-
-    public void setHostPort(int hostPort) {
-        this.hostPort = hostPort;
-    }
-
-    public int getContainerPort() {
-        return containerPort;
-    }
-
-    public void setContainerPort(int containerPort) {
-        this.containerPort = containerPort;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getDatabaseName() {
-        return databaseName;
-    }
-
-    public void setDatabaseName(String databaseName) {
-        this.databaseName = databaseName;
-    }
-
-    public String getExtraEnvJson() {
-        return extraEnvJson;
-    }
-
-    public void setExtraEnvJson(String extraEnvJson) {
-        this.extraEnvJson = extraEnvJson;
-    }
-
-    public DeployMethod getDeployMethod() {
-        return deployMethod;
-    }
-
-    public void setDeployMethod(DeployMethod deployMethod) {
-        this.deployMethod = deployMethod;
-    }
-
-    public boolean isSystem() {
-        return isSystem;
-    }
-
-    public void setSystem(boolean system) {
-        this.isSystem = system;
-    }
-
-    public boolean isImported() {
-        return isImported;
-    }
-
-    public void setImported(boolean imported) {
-        this.isImported = imported;
-    }
-
-    public DeployedContainer getContainer() {
-        return container;
-    }
-
-    public void setContainer(DeployedContainer container) {
-        this.container = container;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public String getTemplateId() {
-        return templateId;
-    }
-
-    public void setTemplateId(String templateId) {
-        this.templateId = templateId;
-    }
-
-    public boolean isTemplate() {
-        return isTemplate;
-    }
-
-    public void setTemplate(boolean template) {
-        this.isTemplate = template;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public int getDeployCount() {
-        return deployCount;
-    }
-
-    public void setDeployCount(int deployCount) {
-        this.deployCount = deployCount;
     }
 }

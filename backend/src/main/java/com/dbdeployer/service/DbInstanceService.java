@@ -13,6 +13,7 @@ import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.deploy.OsDetector;
+import com.dbdeployer.deploy.ToolMetricsProbe;
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
@@ -35,26 +36,25 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class DbInstanceService {
 
-    private static final Logger log = LoggerFactory.getLogger(DbInstanceService.class);
-
-    private final DeploymentConfigRepository configRepo;
-    private final DeployedContainerRepository containerRepo;
-    private final DockerDeployEngine docker;
     private final BrewDeployEngine brew;
-    private final ConnectionStringBuilder connBuilder;
     private final OsDetector osDetector;
-    private final PipelineOrchestrator orchestrator;
-    private final DeploymentPipelineRepository pipelineRepo;
+    private final DockerDeployEngine docker;
     private final PipelineStepRepository stepRepo;
+    private final PipelineOrchestrator orchestrator;
+    private final ConnectionStringBuilder connBuilder;
+    private final DeploymentConfigRepository configRepo;
     private final ImageValidationService imageValidation;
+    private final DeployedContainerRepository containerRepo;
+    private final DeploymentPipelineRepository pipelineRepo;
+    private final ToolMetricsProbe toolMetrics;
 
     public DbInstanceService(
             DeploymentConfigRepository configRepo,
@@ -66,7 +66,8 @@ public class DbInstanceService {
             PipelineOrchestrator orchestrator,
             DeploymentPipelineRepository pipelineRepo,
             PipelineStepRepository stepRepo,
-            ImageValidationService imageValidation) {
+            ImageValidationService imageValidation,
+            ToolMetricsProbe toolMetrics) {
         this.configRepo = configRepo;
         this.containerRepo = containerRepo;
         this.docker = docker;
@@ -77,6 +78,7 @@ public class DbInstanceService {
         this.pipelineRepo = pipelineRepo;
         this.stepRepo = stepRepo;
         this.imageValidation = imageValidation;
+        this.toolMetrics = toolMetrics;
     }
 
     // ── Queries ────────────────────────────────────────────────────────────────
@@ -116,20 +118,25 @@ public class DbInstanceService {
                 total, running, restarting, stopped, deploying, removing, error, removed, untracked);
     }
 
-    public DeploymentConfig getById(String id) {
-        return configRepo
-                .findByIdAndIsTemplateFalse(id)
+    public DeployedContainer getById(String id) {
+        return containerRepo
+                .findByConfigId(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
     }
 
     /** Live Docker container metrics snapshot for a non-system instance. */
     public ContainerMetricsResponse getContainerMetrics(String configId) {
-        DeploymentConfig config = getById(configId);
-        DeployedContainer container = config.getContainer();
+        DeployedContainer container = getById(configId);
         if (container == null || container.getContainerId() == null) {
             return ContainerMetricsResponse.unavailable();
         }
-        return docker.getContainerMetrics(container.getContainerId(), config.getHostPort());
+        ContainerMetricsResponse base = docker.getContainerMetrics(
+                container.getContainerId(), container.getConfig().getHostPort());
+        if (!base.available()) return base;
+        // Best-effort tool-specific telemetry (never blocks the response).
+        java.util.Map<String, Object> tools =
+                toolMetrics.collect(container.getConfig(), container.getContainerId());
+        return tools.isEmpty() ? base : base.withToolMetrics(tools);
     }
 
     /**
@@ -150,7 +157,7 @@ public class DbInstanceService {
     // ── Deploy ─────────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig deploy(DeployRequest req, String templateId) {
+    public DeploymentConfig deploy(DeployRequest req, String configId) {
         log.info(
                 "[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
                 req.name(),
@@ -200,29 +207,39 @@ public class DbInstanceService {
         String databaseName = resolveCredential(req.databaseName(), def, DatabaseCatalog.EnvVarType.DATABASE);
 
         // ── Config row ──
+
         DeploymentConfig config = new DeploymentConfig();
-        config.setId(UUID.randomUUID().toString());
-        config.setName(req.name());
-        config.setDbType(req.dbType());
-        config.setVersion(req.version());
-        config.setHostPort(req.hostPort());
-        config.setContainerPort(def.defaultPort());
-        config.setUsername(username);
-        config.setPassword(password);
-        config.setDatabaseName(databaseName);
-        config.setDeployMethod(DeployMethod.DOCKER);
-        config.setExtraEnvJson(req.extraEnvJson());
-        config.setTemplateId(templateId);
-        configRepo.save(config);
+        if (configId == null) {
+            config.setId(UUID.randomUUID().toString());
+            config.setName(req.name());
+            config.setDbType(req.dbType());
+            config.setVersion(req.version());
+            config.setHostPort(req.hostPort());
+            config.setContainerPort(def.defaultPort());
+            config.setUsername(username);
+            config.setPassword(password);
+            config.setDatabaseName(databaseName);
+            config.setDeployMethod(DeployMethod.DOCKER);
+            config.setExtraEnvJson(req.extraEnvJson());
+            config.setTemplateId(UUID.randomUUID().toString());
+            config.setTemplate(true);
+            config.setDeployCount(1);
+            configRepo.save(config);
+        } else {
+            config = configRepo.findById(configId)
+                    .orElseThrow(() -> new IllegalArgumentException("Config not found: " + configId));
+        }
+
 
         // ── Container row ── (starts as DEPLOYING; pipeline transitions it)
         DeployedContainer container = new DeployedContainer();
         container.setId(UUID.randomUUID().toString());
         container.setConfig(config);
+        container.setContainerPort(req.hostPort());
         container.setStatus(InstanceStatus.DEPLOYING);
         containerRepo.save(container);
 
-        config.setContainer(container);
+        config.getContainers().add(container);
 
         // ── Create pipeline + fire async runner after commit ──
         orchestrator.createAndLaunch(config, container);
@@ -241,9 +258,9 @@ public class DbInstanceService {
     // ── Lifecycle ──────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig startInstance(String id) {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public DeploymentConfig startInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "start");
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             brew.startServiceByContainerId(container.getContainerId(), container.getContainerName());
@@ -261,9 +278,9 @@ public class DbInstanceService {
     }
 
     @Transactional
-    public DeploymentConfig stopInstance(String id) {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public DeploymentConfig stopInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "stop");
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             brew.stopServiceByContainerId(container.getContainerId(), container.getContainerName());
@@ -276,9 +293,9 @@ public class DbInstanceService {
     }
 
     @Transactional
-    public void removeInstance(String id) {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public void removeInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "remove");
 
         container.setStatus(InstanceStatus.REMOVING);
@@ -317,9 +334,9 @@ public class DbInstanceService {
      * {@link #reTrackInstance(String)}.
      */
     @Transactional
-    public void untrackInstance(String id) {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public void untrackInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         if (!config.isImported()) {
             throw new IllegalArgumentException("Only imported instances can be untracked");
         }
@@ -333,9 +350,9 @@ public class DbInstanceService {
      * Docker/Brew status and transitions the instance back to its real live status.
      */
     @Transactional
-    public DeploymentConfig reTrackInstance(String id) {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public DeploymentConfig reTrackInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         if (container.getStatus() != InstanceStatus.UNTRACKED) {
             throw new IllegalArgumentException("Instance '" + config.getName() + "' is not currently untracked");
         }
@@ -357,9 +374,9 @@ public class DbInstanceService {
      * only the container binding changes.
      */
     @Transactional
-    public DeploymentConfig reImportInstance(String id, ReImportRequest req) {
-        DeploymentConfig config = getById(id);
-        DeployedContainer existing = requireContainer(config);
+    public DeploymentConfig reImportInstance(String configId, ReImportRequest req) {
+        DeployedContainer existing = getById(configId);
+        DeploymentConfig config = existing.getConfig();
 
         if (!config.isImported()) {
             throw new IllegalArgumentException("Only imported instances can be re-imported");
@@ -439,7 +456,7 @@ public class DbInstanceService {
         container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
         containerRepo.save(container);
 
-        config.setContainer(container);
+        config.getContainers().add(container);
         return config;
     }
 
@@ -500,10 +517,11 @@ public class DbInstanceService {
     // ── Misc ───────────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig rename(String id, String newName) {
+    public DeploymentConfig rename(String configId, String newName) {
         if (newName == null || newName.isBlank()) throw new IllegalArgumentException("Name cannot be blank");
         String trimmed = newName.trim();
-        DeploymentConfig config = getById(id);
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         if (!trimmed.equals(config.getName()) && configRepo.existsByName(trimmed)) {
             throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
         }
@@ -512,12 +530,12 @@ public class DbInstanceService {
     }
 
     public String getConnectionString(String id) {
-        return connBuilder.build(getById(id));
+        return connBuilder.build(getById(id).getConfig());
     }
 
-    public String getLogs(String id, int tail) throws InterruptedException {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public String getLogs(String configId, int tail) throws InterruptedException {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             return "Logs are not available for Homebrew-managed services in this view. Use: brew services log "
                     + (container.getContainerName() != null ? container.getContainerName() : "<service>");
@@ -536,13 +554,6 @@ public class DbInstanceService {
             throw new IllegalArgumentException(
                     "The system database cannot be " + action + "ped. It is managed automatically by Port Wrangler.");
         }
-    }
-
-    private DeployedContainer requireContainer(DeploymentConfig config) {
-        DeployedContainer c = config.getContainer();
-        if (c == null)
-            throw new IllegalStateException("No container record found for instance '" + config.getName() + "'");
-        return c;
     }
 
     private String resolveCredential(

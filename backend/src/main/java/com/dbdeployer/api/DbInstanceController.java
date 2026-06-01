@@ -11,6 +11,7 @@ import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.api.dto.SystemDbStatsResponse;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.service.ConfigTemplateService;
 import com.dbdeployer.service.DbInstanceService;
 import com.dbdeployer.service.SystemDbStatsService;
 import jakarta.validation.Valid;
@@ -41,16 +42,19 @@ public class DbInstanceController {
     private final ConnectionStringBuilder connBuilder;
     private final InstanceResponseAssembler responseAssembler;
     private final SystemDbStatsService statsService;
+    private final ConfigTemplateService configTemplateService;
 
     public DbInstanceController(
             DbInstanceService service,
             ConnectionStringBuilder connBuilder,
             InstanceResponseAssembler responseAssembler,
-            SystemDbStatsService statsService) {
+            SystemDbStatsService statsService,
+            ConfigTemplateService configTemplateService) {
         this.service = service;
         this.connBuilder = connBuilder;
         this.responseAssembler = responseAssembler;
         this.statsService = statsService;
+        this.configTemplateService = configTemplateService;
     }
 
     /** List all deployed instances */
@@ -68,7 +72,7 @@ public class DbInstanceController {
     /** Get a single instance */
     @GetMapping("/instances/{id}")
     public InstanceResponse get(@PathVariable String id) {
-        return responseAssembler.fromConfig(service.getById(id));
+        return responseAssembler.fromContainer(service.getById(id));
     }
 
     /** Deploy a new database instance */
@@ -157,7 +161,7 @@ public class DbInstanceController {
     /** Get connection string for an instance */
     @GetMapping("/instances/{id}/connection-string")
     public Map<String, String> connectionString(@PathVariable String id) {
-        DeploymentConfig config = service.getById(id);
+        DeploymentConfig config = configTemplateService.getById(id);
         return Map.of("connectionString", connBuilder.build(config), "masked", connBuilder.buildMasked(config));
     }
 

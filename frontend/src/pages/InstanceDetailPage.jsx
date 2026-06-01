@@ -399,6 +399,139 @@ function DonutChart({ data, pickColor }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+/*  Tool-Specific Telemetry Panel                                              */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+const TOOL_METRIC_DEFS = {
+  POSTGRESQL: {
+    title: 'PostgreSQL Telemetry',
+    rows: [
+      { key: 'connections',         label: 'Connections',          unit: '' },
+      { key: 'activeConnections',   label: 'Active',                unit: '' },
+      { key: 'idleConnections',     label: 'Idle',                  unit: '' },
+      { key: 'maxConnections',      label: 'Max Connections',       unit: '' },
+      { key: 'databaseSizeBytes',   label: 'Database Size',         unit: 'bytes' },
+      { key: 'serverUptimeSeconds', label: 'Postmaster Uptime',     unit: 'duration' },
+    ],
+  },
+  MYSQL: {
+    title: 'MySQL Telemetry',
+    rows: [
+      { key: 'threadsConnected',    label: 'Threads Connected',     unit: '' },
+      { key: 'threadsRunning',      label: 'Threads Running',       unit: '' },
+      { key: 'totalQueries',        label: 'Total Queries',         unit: '' },
+      { key: 'slowQueries',         label: 'Slow Queries',          unit: '' },
+      { key: 'abortedConnects',     label: 'Aborted Connects',      unit: '' },
+      { key: 'innodbBufferPoolPagesData', label: 'InnoDB Pages',    unit: '' },
+      { key: 'serverUptimeSeconds', label: 'Server Uptime',         unit: 'duration' },
+    ],
+  },
+  MARIADB: { /* alias to MYSQL */ alias: 'MYSQL' },
+  REDIS: {
+    title: 'Redis Telemetry',
+    rows: [
+      { key: 'connectedClients',          label: 'Connected Clients',    unit: '' },
+      { key: 'instantaneousOpsPerSec',    label: 'Ops / sec',            unit: '' },
+      { key: 'totalCommandsProcessed',    label: 'Commands Processed',   unit: '' },
+      { key: 'usedMemory',                label: 'Used Memory',          unit: 'bytes' },
+      { key: 'usedMemoryPeak',            label: 'Peak Memory',          unit: 'bytes' },
+      { key: 'keyspaceHits',              label: 'Keyspace Hits',        unit: '' },
+      { key: 'keyspaceMisses',            label: 'Keyspace Misses',      unit: '' },
+      { key: 'evictedKeys',               label: 'Evicted Keys',         unit: '' },
+      { key: 'expiredKeys',               label: 'Expired Keys',         unit: '' },
+      { key: 'totalKeys',                 label: 'Total Keys',           unit: '' },
+      { key: 'totalConnectionsReceived',  label: 'Total Connections',    unit: '' },
+      { key: 'rejectedConnections',       label: 'Rejected Connections', unit: '' },
+      { key: 'uptimeInSeconds',           label: 'Server Uptime',        unit: 'duration' },
+    ],
+  },
+  MONGODB: {
+    title: 'MongoDB Telemetry',
+    rows: [
+      { key: 'connectionsCurrent',   label: 'Connections',     unit: '' },
+      { key: 'connectionsAvailable', label: 'Available',       unit: '' },
+      { key: 'opcountersInsert',     label: 'Inserts',         unit: '' },
+      { key: 'opcountersQuery',      label: 'Queries',         unit: '' },
+      { key: 'opcountersUpdate',     label: 'Updates',         unit: '' },
+      { key: 'opcountersDelete',     label: 'Deletes',         unit: '' },
+      { key: 'opcountersCommand',    label: 'Commands',        unit: '' },
+      { key: 'networkBytesIn',       label: 'Network In',      unit: 'bytes' },
+      { key: 'networkBytesOut',      label: 'Network Out',     unit: 'bytes' },
+      { key: 'serverUptimeSeconds',  label: 'Server Uptime',   unit: 'duration' },
+    ],
+  },
+}
+
+function ToolTelemetryPanel({ metrics, dbType }) {
+  if (!metrics || !metrics.available) return null
+  const tools = metrics.toolMetrics
+  if (!tools || Object.keys(tools).length === 0) return null
+
+  let defKey = (dbType || '').toUpperCase()
+  let def = TOOL_METRIC_DEFS[defKey]
+  if (def && def.alias) def = TOOL_METRIC_DEFS[def.alias]
+  // Fallback: render every key as plain number
+  const rows = def
+    ? def.rows.filter(r => tools[r.key] != null)
+    : Object.keys(tools).map(k => ({ key: k, label: humanize(k), unit: '' }))
+  if (rows.length === 0) return null
+
+  return (
+    <div>
+      <p className="section-label">
+        {def?.title ?? 'Tool Telemetry'}
+        <span className="ml-2 text-[10px] font-normal normal-case text-(--text-quiet)">
+          · gathered via docker exec
+        </span>
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {rows.map(r => (
+          <div key={r.key} className="card p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-(--text-muted)">{r.label}</div>
+            <div className="text-lg font-bold font-mono text-(--text-primary) mt-1">
+              {formatToolValue(tools[r.key], r.unit)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function humanize(key) {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, c => c.toUpperCase())
+    .trim()
+}
+
+function formatToolValue(v, unit) {
+  if (v == null) return '—'
+  const n = typeof v === 'number' ? v : Number(v)
+  if (Number.isNaN(n)) return String(v)
+  if (unit === 'bytes')    return fmtBytesShort(n)
+  if (unit === 'duration') return fmtDurationShort(n)
+  return n.toLocaleString()
+}
+
+function fmtBytesShort(b) {
+  if (b < 1024)            return `${b} B`
+  if (b < 1_048_576)       return `${(b/1024).toFixed(1)} KB`
+  if (b < 1_073_741_824)   return `${(b/1_048_576).toFixed(1)} MB`
+  return `${(b/1_073_741_824).toFixed(2)} GB`
+}
+
+function fmtDurationShort(secs) {
+  const d = Math.floor(secs / 86400)
+  const h = Math.floor((secs % 86400) / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m`
+  return `${secs}s`
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 /*  System Internals Tab  (H2 embedded DB — system instance only)             */
 /* ─────────────────────────────────────────────────────────────────────────── */
 const DB_TYPE_COLORS = ['#4f46e5','#f97316','#ef4444','#06b6d4','#22c55e','#8b5cf6','#a855f7','#ec4899']
@@ -909,6 +1042,26 @@ function InstanceMetricsTab({ instanceId, instance }) {
                 <div className={`w-2 h-2 rounded-full ${liveMetrics.portReachable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 Port {instance.hostPort} — {liveMetrics.portReachable ? `Reachable (${liveMetrics.portLatencyMs}ms)` : 'Not reachable'}
               </div>
+              {liveMetrics.healthStatus && liveMetrics.healthStatus !== 'none' && (
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border
+                  ${liveMetrics.healthStatus === 'healthy'
+                    ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                    : liveMetrics.healthStatus === 'starting'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <span className="capitalize">healthcheck: {liveMetrics.healthStatus}</span>
+                </div>
+              )}
+              {liveMetrics.uptimeSeconds > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-(--bg-surface-2) border-(--border-soft) text-(--text-secondary)">
+                  <Clock3 className="w-3.5 h-3.5" /> Up {fmtAge(liveMetrics.uptimeSeconds * 1000)}
+                </div>
+              )}
+              {liveMetrics.oomKilled && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-red-500/10 border-red-500/30 text-red-400">
+                  ⚠ OOM-killed
+                </div>
+              )}
               {liveMetrics.restartCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-orange-500/10 border-orange-500/30 text-orange-400">
                   ↺ Restarted {liveMetrics.restartCount}×
@@ -916,12 +1069,20 @@ function InstanceMetricsTab({ instanceId, instance }) {
               )}
               {liveMetrics.pids > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-secondary)]">
-                  <Hash className="w-3.5 h-3.5" /> {liveMetrics.pids} PIDs
+                  <Hash className="w-3.5 h-3.5" /> {liveMetrics.pids}{liveMetrics.pidsLimit > 0 ? ` / ${liveMetrics.pidsLimit}` : ''} PIDs
                 </div>
               )}
               {liveMetrics.cpuCores > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-secondary)]">
                   <Cpu className="w-3.5 h-3.5" /> {liveMetrics.cpuCores} vCPU{liveMetrics.cpuCores !== 1 ? 's' : ''}
+                  {liveMetrics.cpuThrottledPercent > 0 && (
+                    <span className="text-amber-400">· {liveMetrics.cpuThrottledPercent.toFixed(0)}% throttled</span>
+                  )}
+                </div>
+              )}
+              {(liveMetrics.netRxErrors > 0 || liveMetrics.netTxErrors > 0) && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-red-500/10 border-red-500/30 text-red-400">
+                  Net errors: {liveMetrics.netRxErrors}rx / {liveMetrics.netTxErrors}tx
                 </div>
               )}
             </div>
@@ -992,6 +1153,9 @@ function InstanceMetricsTab({ instanceId, instance }) {
           </div>
         )}
       </div>
+
+      {/* ═══ Section 0c: Tool-Specific Telemetry ═════════════════════════════ */}
+      <ToolTelemetryPanel metrics={liveMetrics} dbType={instance.dbType} />
 
       {/* ═══ Section 0b: CPU + Memory Sparklines ══════════════════════════════ */}
       {history.length >= 2 && (
