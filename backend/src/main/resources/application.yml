@@ -2,31 +2,36 @@ server:
   port: ${SERVER_PORT:8080}
 
 # ── System database ───────────────────────────────────────────────────────────
-# Local dev:   auto-provisioned Postgres container on port 5499 (SystemDbProvisioner)
-# Docker/Compose: provided by the postgres service; set SPRING_DATASOURCE_URL env var
+# Standalone / local dev:
+#   SystemDbProvisioner auto-launches a postgres:16 container on host port 5499
+#   before Spring starts.  No extra config needed.
+#
+# Docker Compose mode:
+#   Set DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION=false and override SPRING_DATASOURCE_URL
+#   to point at the compose 'postgres' service (see docker-compose.yml).
 spring:
   datasource:
-    # H2 file-based embedded database — no Docker image pull required
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./data/dbdeployer;DB_CLOSE_ON_EXIT=FALSE}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5499/dbdeployer}
     username: ${SPRING_DATASOURCE_USERNAME:dbdeployer}
     password: ${SPRING_DATASOURCE_PASSWORD:dbdeployer_internal}
-    driver-class-name: org.h2.Driver
+    driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 5
 
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
 
   jackson:
     serialization:
@@ -40,8 +45,28 @@ dbdeployer:
     allowed-origins: ${DBDEPLOYER_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
   pipeline:
     step-delay-ms: 1500
+  image-validation:
+    scheduler-enabled: true
+    docker-hub-timeout-ms: 4000
+    local-refresh-interval-ms: 120000
+    docker-hub-refresh-interval-ms: 21600000
+    hub-request-concurrency: 10
+  system-db:
+    auto-provision: ${DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION:true}
+    container-name: ${DBDEPLOYER_SYSTEM_DB_CONTAINER_NAME:dbdeployer-system-db}
+    image: postgres:16
+    host-port: ${DBDEPLOYER_SYSTEM_DB_PORT:5499}
+    username: ${DBDEPLOYER_SYSTEM_DB_USERNAME:dbdeployer}
+    password: ${DBDEPLOYER_SYSTEM_DB_PASSWORD:dbdeployer_internal}
+    database: dbdeployer
+    # Host directory mounted into the Postgres container for data persistence.
+    data-dir: ${DBDEPLOYER_SYSTEM_DB_DATA_DIR:${user.home}/.db-deployer/system-db}
+  logging:
+    api:
+      verbose: ${DBDEPLOYER_API_LOG_VERBOSE:false}
 
 logging:
   level:
     com.dbdeployer: INFO
+    com.dbdeployer.config.ApiRequestLoggingInterceptor: INFO
     org.hibernate.SQL: WARN

@@ -55,6 +55,14 @@ export const INSTANCE_STATUS_TOKENS = {
     dot: 'var(--status-removed)',
     pulse: false,
   },
+  UNTRACKED: {
+    accent: 'var(--status-untracked)',
+    background: 'var(--status-untracked-bg)',
+    border: 'var(--status-untracked-border)',
+    text: 'var(--status-untracked)',
+    dot: 'var(--status-untracked)',
+    pulse: false,
+  },
   UNKNOWN: {
     accent: 'var(--status-stopped)',
     background: 'var(--status-stopped-bg)',

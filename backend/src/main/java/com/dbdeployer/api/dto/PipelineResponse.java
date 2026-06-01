@@ -3,8 +3,7 @@ package com.dbdeployer.api.dto;
 import com.dbdeployer.pipeline.model.DeployErrorCode;
 import com.dbdeployer.pipeline.model.DeploymentPipeline;
 import com.dbdeployer.pipeline.model.PipelineStatus;
-
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public record PipelineResponse(
@@ -13,11 +12,10 @@ public record PipelineResponse(
         PipelineStatus status,
         DeployErrorCode errorCode,
         String errorMessage,
-        LocalDateTime createdAt,
-        LocalDateTime startedAt,
-        LocalDateTime completedAt,
-        List<PipelineStepResponse> steps
-) {
+        Instant createdAt,
+        Instant startedAt,
+        Instant completedAt,
+        List<PipelineStepResponse> steps) {
     public static PipelineResponse from(DeploymentPipeline p, List<PipelineStepResponse> steps) {
         return new PipelineResponse(
                 p.getId(),
@@ -28,7 +26,6 @@ public record PipelineResponse(
                 p.getCreatedAt(),
                 p.getStartedAt(),
                 p.getCompletedAt(),
-                steps
-        );
+                steps);
     }
 }

@@ -9,9 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/**
- * Step 3 — Start the previously-created Docker container.
- */
+/** Step 3 — Start the previously-created Docker container. */
 @Component
 public class ContainerStartStep implements DeployStep {
 
@@ -29,8 +27,7 @@ public class ContainerStartStep implements DeployStep {
     }
 
     @Override
-    public String execute(DeploymentConfig config, DeployedContainer container)
-            throws StepExecutionException {
+    public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
         log.info("[pipeline] Starting container '{}'", container.getContainerName());
         try {
             docker.startContainer(container);
@@ -39,8 +36,7 @@ public class ContainerStartStep implements DeployStep {
             log.warn("[pipeline] Container already running: {}", container.getContainerName());
         } catch (Exception e) {
             throw new StepExecutionException(
-                    DeployErrorCode.CONTAINER_START_FAILED,
-                    "Failed to start container: " + e.getMessage(), e);
+                    DeployErrorCode.CONTAINER_START_FAILED, "Failed to start container: " + e.getMessage(), e);
         }
         return "Container started: " + container.getContainerName();
     }

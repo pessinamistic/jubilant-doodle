@@ -3,8 +3,7 @@ package com.dbdeployer.api.dto;
 import com.dbdeployer.pipeline.model.PipelineStep;
 import com.dbdeployer.pipeline.model.StepStatus;
 import com.dbdeployer.pipeline.model.StepType;
-
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record PipelineStepResponse(
         String id,
@@ -12,9 +11,8 @@ public record PipelineStepResponse(
         int stepOrder,
         StepStatus status,
         String message,
-        LocalDateTime startedAt,
-        LocalDateTime completedAt
-) {
+        Instant startedAt,
+        Instant completedAt) {
     public static PipelineStepResponse from(PipelineStep s) {
         return new PipelineStepResponse(
                 s.getId(),
@@ -23,7 +21,6 @@ public record PipelineStepResponse(
                 s.getStatus(),
                 s.getMessage(),
                 s.getStartedAt(),
-                s.getCompletedAt()
-        );
+                s.getCompletedAt());
     }
 }

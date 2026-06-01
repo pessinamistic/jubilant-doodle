@@ -2,7 +2,6 @@ package com.dbdeployer;
 
 import java.util.Map;
 import java.util.TimeZone;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -15,9 +14,7 @@ public class DbDeployerApplication {
 
     private static final Logger log = LoggerFactory.getLogger(DbDeployerApplication.class);
 
-    private static final Map<String, String> LEGACY_TZ_ALIASES = Map.of(
-            "Asia/Calcutta", "Asia/Kolkata"
-    );
+    private static final Map<String, String> LEGACY_TZ_ALIASES = Map.of("Asia/Calcutta", "Asia/Kolkata");
 
     public static void main(String[] args) {
         normalizeLegacyTimezoneAlias();
@@ -31,8 +28,7 @@ public class DbDeployerApplication {
         if (!normalizedTz.equals(currentTz)) {
             TimeZone.setDefault(TimeZone.getTimeZone(normalizedTz));
             System.setProperty("user.timezone", normalizedTz);
-            log.info("Normalized JVM timezone from {} to {} for PostgreSQL compatibility",
-                    currentTz, normalizedTz);
+            log.info("Normalized JVM timezone from {} to {} for PostgreSQL compatibility", currentTz, normalizedTz);
         }
     }
 }

@@ -1,21 +1,5 @@
 package com.dbdeployer.service;
 
-import java.lang.management.ManagementFactory;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-
-import javax.sql.DataSource;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
-
 import com.dbdeployer.api.dto.SystemDbStatsResponse;
 import com.dbdeployer.api.dto.SystemDbStatsResponse.AppInfo;
 import com.dbdeployer.api.dto.SystemDbStatsResponse.DbInfo;
@@ -24,53 +8,57 @@ import com.dbdeployer.api.dto.SystemDbStatsResponse.PoolInfo;
 import com.dbdeployer.api.dto.SystemDbStatsResponse.SchemaInfo;
 import com.dbdeployer.api.dto.SystemDbStatsResponse.TableStat;
 import com.zaxxer.hikari.HikariDataSource;
+import java.lang.management.ManagementFactory;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import javax.sql.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
 
 /**
- * Produces a live snapshot of Port Wrangler's embedded H2 system database stats.
+ * Produces a live snapshot of Port Wrangler's system (PostgreSQL) database
+ * stats.
  */
 @Service
 public class SystemDbStatsService {
 
     private static final Logger log = LoggerFactory.getLogger(SystemDbStatsService.class);
 
-    private static final List<String> TRACKED_TABLES = List.of(
-            "deployment_config",
-            "deployed_container",
-            "deployment_pipeline",
-            "pipeline_step"
-    );
+    private static final List<String> TRACKED_TABLES =
+            List.of("deployment_config", "deployed_container", "deployment_pipeline", "pipeline_step");
 
-    private final DataSource   dataSource;
+    private final DataSource dataSource;
     private final JdbcTemplate jdbc;
-    private final Environment  env;
+    private final Environment env;
 
     public SystemDbStatsService(DataSource dataSource, JdbcTemplate jdbc, Environment env) {
         this.dataSource = dataSource;
-        this.jdbc       = jdbc;
-        this.env        = env;
+        this.jdbc = jdbc;
+        this.env = env;
     }
 
     public SystemDbStatsResponse getStats() {
         return new SystemDbStatsResponse(
-                buildDbInfo(),
-                buildSchemaInfo(),
-                buildPoolInfo(),
-                buildAppInfo(),
-                buildJvmInfo()
-        );
+                buildDbInfo(), buildSchemaInfo(), buildPoolInfo(), buildAppInfo(), buildJvmInfo());
     }
 
     // ── Sections ──────────────────────────────────────────────────────────────
 
     private DbInfo buildDbInfo() {
-        String version = safeQuery("SELECT H2VERSION()", "unknown");
-        String url     = env.getProperty("spring.datasource.url", "");
+        String banner = safeQuery("SELECT version()", "unknown");
+        String version = parsePostgresVersion(banner);
+        long dbSize = safeCountLong("SELECT pg_database_size(current_database())");
 
-        // Parse the file path out of jdbc:h2:file:./data/dbdeployer;...
-        String filePath = extractH2FilePath(url);
-        long   fileSize = resolveFileSize(filePath);
+        String url = env.getProperty("spring.datasource.url", "");
+        String host = extractPgHost(url);
+        int port = extractPgPort(url);
 
-        return new DbInfo("H2 (embedded)", version, filePath, fileSize);
+        return new DbInfo("PostgreSQL", version, host, port, "dbdeployer", dbSize);
     }
 
     private SchemaInfo buildSchemaInfo() {
@@ -92,8 +80,7 @@ public class SystemDbStatsService {
                         pool.getActiveConnections(),
                         pool.getIdleConnections(),
                         pool.getThreadsAwaitingConnection(),
-                        pool.getTotalConnections()
-                );
+                        pool.getTotalConnections());
             }
         }
         return new PoolInfo(0, 0, 0, 0, 0);
@@ -101,54 +88,80 @@ public class SystemDbStatsService {
 
     private AppInfo buildAppInfo() {
         var mx = ManagementFactory.getRuntimeMXBean();
-        long uptimeMs  = mx.getUptime();
-        long startMs   = mx.getStartTime();
-        String started = Instant.ofEpochMilli(startMs)
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        long uptimeMs = mx.getUptime();
+        long startMs = mx.getStartTime();
+        String started =
+                Instant.ofEpochMilli(startMs).atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         return new AppInfo(uptimeMs / 1000L, started);
     }
 
     private JvmInfo buildJvmInfo() {
         Runtime rt = Runtime.getRuntime();
         long used = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
-        long max  = rt.maxMemory() / (1024 * 1024);
+        long max = rt.maxMemory() / (1024 * 1024);
         return new JvmInfo(used, max);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Extracts the file path from a H2 JDBC URL like
-     * {@code jdbc:h2:file:./data/dbdeployer;AUTO_SERVER=TRUE;...}
-     * Returns the path without the H2 {@code .mv.db} extension.
+     * Extracts the host from a Postgres JDBC URL like {@code
+     * jdbc:postgresql://localhost:5499/dbdeployer}.
      */
-    static String extractH2FilePath(String url) {
-        if (url == null) return "";
-        // Strip jdbc:h2:file: prefix
-        String trimmed = url.replaceFirst("(?i)^jdbc:h2:file:", "");
-        // Strip any ;key=value options
-        int semi = trimmed.indexOf(';');
-        return semi >= 0 ? trimmed.substring(0, semi) : trimmed;
+    static String extractPgHost(String url) {
+        if (url == null || url.isBlank()) return "localhost";
+        try {
+            // Strip jdbc: prefix so java.net.URI can parse it
+            java.net.URI uri = new java.net.URI(url.replaceFirst("^jdbc:", ""));
+            String host = uri.getHost();
+            return host != null ? host : "localhost";
+        } catch (Exception e) {
+            return "localhost";
+        }
     }
 
-    /** Returns the size in bytes of the H2 .mv.db file, or 0 if not found. */
-    private long resolveFileSize(String base) {
-        if (base == null || base.isBlank()) return 0L;
+    /**
+     * Extracts the port from a Postgres JDBC URL. Falls back to {@code 5432} if the
+     * URL contains no explicit port.
+     */
+    static int extractPgPort(String url) {
+        if (url == null || url.isBlank()) return 5432;
         try {
-            Path p = Path.of(base + ".mv.db");
-            return Files.exists(p) ? Files.size(p) : 0L;
+            java.net.URI uri = new java.net.URI(url.replaceFirst("^jdbc:", ""));
+            int p = uri.getPort();
+            return p > 0 ? p : 5432;
         } catch (Exception e) {
-            log.debug("Could not read H2 file size: {}", e.getMessage());
-            return 0L;
+            return 5432;
         }
+    }
+
+    /**
+     * Parses a short version string from the Postgres {@code version()} banner.
+     * e.g. {@code
+     * "PostgreSQL 16.3 on aarch64..."} → {@code "16.3"}
+     */
+    private static String parsePostgresVersion(String banner) {
+        if (banner == null) return "unknown";
+        String[] parts = banner.split("\\s+");
+        return parts.length >= 2 ? parts[1] : banner;
     }
 
     private String safeQuery(String sql, String fallback) {
         try {
             return jdbc.queryForObject(sql, String.class);
         } catch (Exception e) {
+            log.debug("safeQuery failed [{}]: {}", sql, e.getMessage());
             return fallback;
+        }
+    }
+
+    private long safeCountLong(String sql) {
+        try {
+            Long v = jdbc.queryForObject(sql, Long.class);
+            return v != null ? v : 0L;
+        } catch (Exception e) {
+            log.debug("safeCountLong failed [{}]: {}", sql, e.getMessage());
+            return 0L;
         }
     }
 
@@ -156,6 +169,7 @@ public class SystemDbStatsService {
         try {
             return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class);
         } catch (Exception e) {
+            log.debug("safeCount failed [{}]: {}", table, e.getMessage());
             return null;
         }
     }

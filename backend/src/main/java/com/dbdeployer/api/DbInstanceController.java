@@ -1,9 +1,24 @@
 package com.dbdeployer.api;
 
-import java.util.Collection;
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
+import com.dbdeployer.api.dto.DeployRequest;
+import com.dbdeployer.api.dto.DiscoveredContainerDto;
+import com.dbdeployer.api.dto.ImportRequest;
+import com.dbdeployer.api.dto.InstanceResponse;
+import com.dbdeployer.api.dto.InstanceStatsResponse;
+import com.dbdeployer.api.dto.PipelineResponse;
+import com.dbdeployer.api.dto.ReImportRequest;
+import com.dbdeployer.api.dto.SystemDbStatsResponse;
+import com.dbdeployer.deploy.ConnectionStringBuilder;
+import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.service.ConfigTemplateService;
+import com.dbdeployer.service.DbInstanceService;
+import com.dbdeployer.service.SystemDbStatsService;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,45 +32,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.dbdeployer.api.dto.ContainerMetricsResponse;
-import com.dbdeployer.api.dto.DeployRequest;
-import com.dbdeployer.api.dto.DiscoveredContainerDto;
-import com.dbdeployer.api.dto.ImportRequest;
-import com.dbdeployer.api.dto.InstanceResponse;
-import com.dbdeployer.api.dto.InstanceStatsResponse;
-import com.dbdeployer.api.dto.PipelineResponse;
-import com.dbdeployer.api.dto.ReImportRequest;
-import com.dbdeployer.api.dto.SystemDbStatsResponse;
-import com.dbdeployer.deploy.ConnectionStringBuilder;
-import com.dbdeployer.deploy.DatabaseCatalog;
-import com.dbdeployer.model.DeploymentConfig;
-import com.dbdeployer.service.DbInstanceService;
-import com.dbdeployer.service.SystemDbStatsService;
-
-import jakarta.validation.Valid;
-
 @RestController
 @RequestMapping("/api")
 public class DbInstanceController {
 
-    private final DbInstanceService       service;
-    private final ConnectionStringBuilder connBuilder;
-    private final SystemDbStatsService    statsService;
+    private static final Logger log = LoggerFactory.getLogger(DbInstanceController.class);
 
-    public DbInstanceController(DbInstanceService service,
-                                ConnectionStringBuilder connBuilder,
-                                SystemDbStatsService statsService) {
-        this.service      = service;
-        this.connBuilder  = connBuilder;
+    private final DbInstanceService service;
+    private final ConnectionStringBuilder connBuilder;
+    private final InstanceResponseAssembler responseAssembler;
+    private final SystemDbStatsService statsService;
+    private final ConfigTemplateService configTemplateService;
+
+    public DbInstanceController(
+            DbInstanceService service,
+            ConnectionStringBuilder connBuilder,
+            InstanceResponseAssembler responseAssembler,
+            SystemDbStatsService statsService,
+            ConfigTemplateService configTemplateService) {
+        this.service = service;
+        this.connBuilder = connBuilder;
+        this.responseAssembler = responseAssembler;
         this.statsService = statsService;
+        this.configTemplateService = configTemplateService;
     }
 
     /** List all deployed instances */
     @GetMapping("/instances")
     public List<InstanceResponse> list() {
-        return service.listAll().stream()
-                .map(this::toResponse)
-                .toList();
+        return service.listAll().stream().map(responseAssembler::fromContainer).toList();
     }
 
     /** Aggregate status counts — used by the overview stats panel */
@@ -67,46 +72,74 @@ public class DbInstanceController {
     /** Get a single instance */
     @GetMapping("/instances/{id}")
     public InstanceResponse get(@PathVariable String id) {
-        return toResponse(service.getById(id));
+        return responseAssembler.fromContainer(service.getById(id));
     }
 
     /** Deploy a new database instance */
     @PostMapping("/instances")
     public ResponseEntity<InstanceResponse> deploy(@Valid @RequestBody DeployRequest req) {
-        DeploymentConfig config = service.deploy(req);
-        return ResponseEntity.accepted().body(toResponse(config));
+        log.info(
+                "[api] deploy requested: name='{}', dbType={}, version={}, hostPort={}",
+                req.name(),
+                req.dbType(),
+                req.version(),
+                req.hostPort());
+        DeploymentConfig config = service.deploy(req, null);
+        log.info("[api] deploy accepted: configId={}, name='{}'", config.getId(), config.getName());
+        return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
     }
 
     /** Rename an instance */
     @PatchMapping("/instances/{id}")
-    public InstanceResponse rename(@PathVariable String id,
-                                   @RequestBody Map<String, String> body) {
-        return toResponse(service.rename(id, body.get("name")));
+    public InstanceResponse rename(@PathVariable String id, @RequestBody Map<String, String> body) {
+        return responseAssembler.fromConfig(service.rename(id, body.get("name")));
     }
 
     /** Start a stopped instance */
     @PostMapping("/instances/{id}/start")
     public InstanceResponse start(@PathVariable String id) {
-        return toResponse(service.startInstance(id));
+        return responseAssembler.fromConfig(service.startInstance(id));
     }
 
     /** Stop a running instance */
     @PostMapping("/instances/{id}/stop")
     public InstanceResponse stop(@PathVariable String id) {
-        return toResponse(service.stopInstance(id));
+        return responseAssembler.fromConfig(service.stopInstance(id));
     }
 
-    /** Remove an instance (stop + delete container; keeps config + container rows in DB) */
+    /**
+     * Remove an instance (stop + delete container; keeps config + container rows in
+     * DB)
+     */
     @DeleteMapping("/instances/{id}")
     public ResponseEntity<Void> remove(@PathVariable String id) {
         service.removeInstance(id);
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Untrack an imported instance — marks it UNTRACKED without touching the Docker
+     * container
+     */
+    @PostMapping("/instances/{id}/untrack")
+    public ResponseEntity<Void> untrack(@PathVariable String id) {
+        service.untrackInstance(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Re-track a previously untracked instance — restores it to its live Docker
+     * status
+     */
+    @PostMapping("/instances/{id}/retrack")
+    public InstanceResponse retrack(@PathVariable String id) {
+        return responseAssembler.fromConfig(service.reTrackInstance(id));
+    }
+
     /** Get container logs */
     @GetMapping("/instances/{id}/logs")
-    public Map<String, String> logs(@PathVariable String id,
-                                    @RequestParam(defaultValue = "100") int tail) throws InterruptedException {
+    public Map<String, String> logs(@PathVariable String id, @RequestParam(defaultValue = "100") int tail)
+            throws InterruptedException {
         return Map.of("logs", service.getLogs(id, tail));
     }
 
@@ -120,22 +153,21 @@ public class DbInstanceController {
     @GetMapping("/instances/{id}/pipeline")
     public ResponseEntity<PipelineResponse> pipeline(@PathVariable String id) {
         PipelineResponse resp = service.getLatestPipeline(id);
-        return resp != null ? ResponseEntity.ok(resp) : ResponseEntity.notFound().build();
+        return resp != null
+                ? ResponseEntity.ok(resp)
+                : ResponseEntity.notFound().build();
     }
 
     /** Get connection string for an instance */
     @GetMapping("/instances/{id}/connection-string")
     public Map<String, String> connectionString(@PathVariable String id) {
-        DeploymentConfig config = service.getById(id);
-        return Map.of(
-                "connectionString", connBuilder.build(config),
-                "masked",           connBuilder.buildMasked(config)
-        );
+        DeploymentConfig config = configTemplateService.getById(id);
+        return Map.of("connectionString", connBuilder.build(config), "masked", connBuilder.buildMasked(config));
     }
 
     /**
-     * Discover running Docker containers that look like databases but are not
-     * yet tracked.
+     * Discover running Docker containers that look like databases but are not yet
+     * tracked.
      */
     @GetMapping("/instances/discover")
     public List<DiscoveredContainerDto> discover() {
@@ -149,25 +181,18 @@ public class DbInstanceController {
     @PostMapping("/instances/import")
     public ResponseEntity<InstanceResponse> importContainer(@RequestBody ImportRequest req) {
         DeploymentConfig config = service.importContainer(req);
-        return ResponseEntity.ok(toResponse(config));
+        return ResponseEntity.ok(responseAssembler.fromConfig(config));
     }
 
     /**
-     * Re-import a previously untracked (REMOVED) imported instance by binding it
-     * to a new Docker container. All config metadata is preserved.
+     * Re-import a previously untracked (REMOVED) imported instance by binding it to
+     * a new Docker container. All config metadata is preserved.
      */
     @PutMapping("/instances/{id}/reimport")
     public ResponseEntity<InstanceResponse> reImportInstance(
-            @PathVariable String id,
-            @Valid @RequestBody ReImportRequest req) {
+            @PathVariable String id, @Valid @RequestBody ReImportRequest req) {
         DeploymentConfig config = service.reImportInstance(id, req);
-        return ResponseEntity.ok(toResponse(config));
-    }
-
-    /** List all supported database types with their catalog info */
-    @GetMapping("/catalog")
-    public Collection<DatabaseCatalog.DbDefinition> catalog() {
-        return DatabaseCatalog.all();
+        return ResponseEntity.ok(responseAssembler.fromConfig(config));
     }
 
     /** Get system info (OS, available tools) */
@@ -176,7 +201,10 @@ public class DbInstanceController {
         return service.getSystemInfo();
     }
 
-    /** Live stats for the embedded H2 system database (schema row counts, pool, JVM heap, uptime) */
+    /**
+     * Live stats for the system database (schema row counts, pool, JVM heap,
+     * uptime)
+     */
     @GetMapping("/system/stats")
     public SystemDbStatsResponse systemStats() {
         return statsService.getStats();
@@ -185,7 +213,9 @@ public class DbInstanceController {
     /** Sync container statuses from Docker */
     @PostMapping("/instances/sync")
     public ResponseEntity<Void> sync() {
+        log.info("[api] instance status sync requested");
         service.syncStatuses();
+        log.info("[api] instance status sync completed");
         return ResponseEntity.ok().build();
     }
 
@@ -193,17 +223,7 @@ public class DbInstanceController {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException e) {
+        log.warn("[api] bad request: {}", e.getMessage());
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-    }
-
-    // ── Helper ─────────────────────────────────────────────────────────────────
-
-    private InstanceResponse toResponse(DeploymentConfig config) {
-        var def       = DatabaseCatalog.get(config.getDbType());
-        String display = def != null ? def.displayName() : config.getDbType().name();
-        String icon    = def != null ? def.icon()        : "🗄️";
-        String conn    = connBuilder.build(config);
-        String masked  = connBuilder.buildMasked(config);
-        return InstanceResponse.from(config, config.getContainer(), conn, masked, display, icon);
     }
 }

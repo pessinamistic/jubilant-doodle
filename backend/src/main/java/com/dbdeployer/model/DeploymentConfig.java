@@ -1,7 +1,5 @@
 package com.dbdeployer.model;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,21 +7,33 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import org.checkerframework.common.aliasing.qual.Unique;
 
 /**
  * Stable, user-facing configuration record for a database instance.
  *
- * Lives in the {@code deployment_config} table and is NEVER deleted — even after
- * the container is removed the row remains with the associated {@link DeployedContainer}
- * carrying status {@link InstanceStatus#REMOVED}. This gives a full deployment history.
+ * <p>
+ * Lives in the {@code deployment_config} table and is NEVER deleted — even
+ * after the container is removed the row remains with the associated
+ * {@link DeployedContainer} carrying status {@link InstanceStatus#REMOVED}.
+ * This gives a full deployment history.
  */
+@Setter
+@Getter
 @Entity
+@ToString
 @Table(name = "deployment_config")
 public class DeploymentConfig {
 
@@ -63,91 +73,74 @@ public class DeploymentConfig {
     private String extraEnvJson;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "deploy_method", nullable = false)
+    @Column(name = "deploy_method")
     private DeployMethod deployMethod;
 
-    /** True for the auto-provisioned system Postgres — cannot be stopped/removed by users. */
+    /**
+     * True for the auto-provisioned system Postgres — cannot be stopped/removed by
+     * users.
+     */
     @Column(name = "is_system", nullable = false, columnDefinition = "boolean default false")
     private boolean isSystem = false;
 
     /**
-     * True when this config was imported from a pre-existing container (not deployed by DB Deployer).
-     * On remove: only untracks the container — does NOT stop or delete it from Docker.
+     * True when this config was imported from a pre-existing container (not
+     * deployed by DB Deployer). On remove: only untracks the container — does NOT
+     * stop or delete it from Docker.
      */
     @Column(name = "is_imported", nullable = false, columnDefinition = "boolean default false")
     private boolean isImported = false;
 
+    @Unique
+    @Column(name = "template_id")
+    private String templateId;
+
     /**
-     * The current (or last) deployment state for this config.
-     * Cascade ALL so saving/deleting the config cascades to the container record.
+     * When true this row is a reusable configuration blueprint, not a live
+     * deployment.
      */
+    @Column(name = "is_template", nullable = false)
+    private boolean isTemplate = false;
+
+    /**
+     * Human-readable description (populated for templates, null for plain
+     * instances).
+     */
+    @Column(name = "description")
+    private String description;
+
+    /**
+     * Number of instances launched from this template row. Always 0 for
+     * non-template rows.
+     */
+    @Column(name = "deploy_count", nullable = false)
+    private int deployCount = 0;
+
+    /**
+     * The current (or last) deployment state for this config. Cascade ALL so
+     * saving/deleting the config cascades to the container record.
+     */
+
     @OneToOne(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER, optional = true)
     private DeployedContainer container;
 
+    @OneToMany(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<DeployedContainer> containers;
+
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = Instant.now();
+        if (updatedAt == null) updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
-
-    // ── Getters & Setters ──────────────────────────────────────────────────────
-
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public DbType getDbType() { return dbType; }
-    public void setDbType(DbType dbType) { this.dbType = dbType; }
-
-    public String getVersion() { return version; }
-    public void setVersion(String version) { this.version = version; }
-
-    public int getHostPort() { return hostPort; }
-    public void setHostPort(int hostPort) { this.hostPort = hostPort; }
-
-    public int getContainerPort() { return containerPort; }
-    public void setContainerPort(int containerPort) { this.containerPort = containerPort; }
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-
-    public String getDatabaseName() { return databaseName; }
-    public void setDatabaseName(String databaseName) { this.databaseName = databaseName; }
-
-    public String getExtraEnvJson() { return extraEnvJson; }
-    public void setExtraEnvJson(String extraEnvJson) { this.extraEnvJson = extraEnvJson; }
-
-    public DeployMethod getDeployMethod() { return deployMethod; }
-    public void setDeployMethod(DeployMethod deployMethod) { this.deployMethod = deployMethod; }
-
-    public boolean isSystem() { return isSystem; }
-    public void setSystem(boolean system) { this.isSystem = system; }
-
-    public boolean isImported() { return isImported; }
-    public void setImported(boolean imported) { this.isImported = imported; }
-
-    public DeployedContainer getContainer() { return container; }
-    public void setContainer(DeployedContainer container) { this.container = container; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

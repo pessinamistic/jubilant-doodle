@@ -1,19 +1,22 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TriangleAlert, Unlink, X } from 'lucide-react'
 
 /**
  * Generic confirmation dialog.
  *
  * Props:
- *   open        – boolean
- *   variant     – 'danger' (default) | 'warning'
- *   icon        – optional JSX override for the icon
- *   title       – string
- *   message     – string or JSX
- *   confirmLabel – string  (default "Confirm")
- *   cancelLabel  – string  (default "Cancel")
- *   onConfirm   – () => void
- *   onCancel    – () => void
+ *   open                – boolean
+ *   variant             – 'danger' (default) | 'warning'
+ *   icon                – optional JSX override for the icon
+ *   title               – string
+ *   message             – string or JSX
+ *   confirmLabel        – string  (default "Confirm")
+ *   cancelLabel         – string  (default "Cancel")
+ *   requiredConfirmText – string  (optional) — when set, renders a text input and
+ *                         disables the confirm button until the user types this
+ *                         exact string (GitHub-style destructive-action gate)
+ *   onConfirm           – () => void
+ *   onCancel            – () => void
  */
 export function ConfirmModal({
   open,
@@ -23,15 +26,28 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Confirm',
   cancelLabel  = 'Cancel',
+  requiredConfirmText,
   onConfirm,
   onCancel,
 }) {
   const confirmRef = useRef(null)
+  const inputRef   = useRef(null)
+  const [typedText, setTypedText] = useState('')
 
-  // Focus the confirm button when opened
+  // Reset typed text whenever the dialog opens/closes
   useEffect(() => {
-    if (open) setTimeout(() => confirmRef.current?.focus(), 50)
+    if (!open) setTypedText('')
   }, [open])
+
+  // Focus: input when name-confirm is required, otherwise confirm button
+  useEffect(() => {
+    if (!open) return
+    if (requiredConfirmText) {
+      setTimeout(() => inputRef.current?.focus(), 50)
+    } else {
+      setTimeout(() => confirmRef.current?.focus(), 50)
+    }
+  }, [open, requiredConfirmText])
 
   // Close on Escape
   useEffect(() => {
@@ -102,6 +118,31 @@ export function ConfirmModal({
         <h2 className="text-base font-semibold text-[var(--text-primary)] mb-2">{title}</h2>
         <p className="text-sm text-[var(--text-muted)] leading-relaxed">{message}</p>
 
+        {/* Name-confirm input */}
+        {requiredConfirmText && (
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+              Type <span className="font-mono font-bold text-[var(--text-primary)]">{requiredConfirmText}</span> to continue
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={typedText}
+              onChange={e => setTypedText(e.target.value)}
+              onPaste={e => e.preventDefault()}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={requiredConfirmText}
+              className="w-full px-3 py-2 rounded-[4px] text-sm font-mono border-2 bg-[var(--bg-surface-2)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-colors"
+              style={{
+                borderColor: typedText === requiredConfirmText
+                  ? (isDanger ? 'var(--status-error-border)' : 'var(--status-warning-border)')
+                  : 'var(--border-soft)',
+              }}
+            />
+          </div>
+        )}
+
         {/* Buttons */}
         <div className="flex gap-3 mt-6">
           <button
@@ -113,7 +154,8 @@ export function ConfirmModal({
           <button
             ref={confirmRef}
             onClick={onConfirm}
-            className="flex-1 px-4 py-2 rounded-[4px] text-sm font-semibold border-2 shadow-[var(--shadow-raised)] transition-colors focus:outline-none"
+            disabled={requiredConfirmText ? typedText !== requiredConfirmText : false}
+            className="flex-1 px-4 py-2 rounded-[4px] text-sm font-semibold border-2 shadow-[var(--shadow-raised)] transition-colors focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
             style={btnTone}
           >
             {confirmLabel}

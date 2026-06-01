@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getInstances, getStats, deployInstance } from '../api/client'
+import { getInstances, getStats } from '../api/client'
 import { AppShell } from '../components/AppShell'
-import { DeployModal } from '../components/DeployModal'
 import { StatusBadge } from '../components/StatusBadge'
+import { useUserProfile } from '../hooks/useUserProfile'
 import {
   CircleCheck,
   CircleOff,
@@ -17,14 +17,13 @@ import {
   Play,
   Zap,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 
 export function HomePage() {
   const [instances, setInstances] = useState([])
   const [stats, setStats]         = useState(null)
-  const [showModal, setShowModal] = useState(false)
   const navigate = useNavigate()
-  const openDeployModal = useCallback(() => setShowModal(true), [])
+  const openDeployPage = useCallback(() => navigate('/deploy'), [navigate])
+  const { profile } = useUserProfile()
 
   const load = useCallback(async () => {
     try {
@@ -43,12 +42,6 @@ export function HomePage() {
     }
   }, [load])
 
-  const handleDeploy = async (data) => {
-    await deployInstance(data)
-    toast.success(`Deploying ${data.name}…`)
-    load()
-  }
-
   const recent = [...instances]
     .filter(i => i.status !== 'REMOVED')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -65,10 +58,10 @@ export function HomePage() {
   ] : []
 
   return (
-    <AppShell onDeploy={openDeployModal} onRefresh={load}>
+    <AppShell onRefresh={load} fullWidthTop>
 
       {/* ── Hero ── */}
-      <section className="relative mb-10 pt-4 pb-8 overflow-hidden animate-fade-up">
+      <section className="relative mb-10 pt-4 pb-8 overflow-x-clip animate-fade-up">
         <div className="absolute -top-20 left-1/3 w-[600px] h-[300px] rounded-full blur-3xl pointer-events-none" style={{ background: 'color-mix(in srgb, var(--accent) 16%, transparent)' }} />
         <div className="absolute -top-10 left-1/4 w-[300px] h-[200px] rounded-full blur-2xl pointer-events-none" style={{ background: 'color-mix(in srgb, var(--status-deploying) 12%, transparent)' }} />
 
@@ -81,21 +74,21 @@ export function HomePage() {
               color: 'var(--status-deploying)',
             }}>
               <Zap className="w-3.5 h-3.5" />
-              Local Developer Database Manager
+              {profile ? `${greetingFor(new Date())}, ${profile.name}` : 'Local Developer Database Manager'}
             </div>
             <h1 className="text-4xl xl:text-5xl font-bold text-[var(--text-primary)] mb-4 tracking-tight animate-fade-up delay-100">
-              Deploy & manage databases
-              <br />
+              {profile ? <>Ready to wrangle some<br/></> : <>Deploy &amp; manage databases<br/></>}
               <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--status-deploying)] bg-clip-text text-transparent">
-                in seconds
+                {profile ? 'ports today?' : 'in seconds'}
               </span>
             </h1>
             <p className="text-[var(--text-muted)] text-lg mb-8 max-w-lg animate-fade-up delay-150">
-              Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine
-              using Docker - no config headaches.
+              {profile?.role
+                ? `Tools tuned for a ${profile.role.toLowerCase()}. Spin up databases on your machine — no config headaches.`
+                : 'Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine using Docker - no config headaches.'}
             </p>
             <div className="flex items-center gap-3 flex-wrap animate-fade-up delay-200">
-              <button onClick={openDeployModal}
+              <button onClick={openDeployPage}
                 className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
                 <Plus className="w-5 h-5" />
                 Deploy a Database
@@ -117,7 +110,7 @@ export function HomePage() {
               <button
                 key={card.step}
                 type="button"
-                onClick={openDeployModal}
+                onClick={openDeployPage}
                 className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] hover:-translate-y-0.5 transition-all duration-200 text-left cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
@@ -152,6 +145,25 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Favorite tools quick deploy ── */}
+      {profile?.favTools?.length > 0 && (
+        <section className="mb-10 animate-fade-up delay-150">
+          <p className="section-label">Your Pinned Tools</p>
+          <div className="flex flex-wrap gap-2 stagger-children">
+            {profile.favTools.map(t => (
+              <button
+                key={t}
+                onClick={() => navigate(`/deploy?dbType=${t}`)}
+                className="brutal-chip px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:-translate-y-0.5 transition-transform animate-fade-up"
+              >
+                <Plus className="w-3.5 h-3.5 inline mr-1" />
+                {t.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Stat cards ── */}
       {statCards.length > 0 && (
@@ -192,7 +204,7 @@ export function HomePage() {
           <div className="card p-12 text-center animate-scale-in">
             <div className="text-4xl mb-3">🗄️</div>
             <p className="text-[var(--text-muted)] text-sm mb-4">No databases deployed yet</p>
-            <button onClick={openDeployModal} className="btn-primary inline-flex items-center gap-2">
+            <button onClick={openDeployPage} className="btn-primary inline-flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Deploy your first database
             </button>
@@ -224,7 +236,7 @@ export function HomePage() {
               <button
                 key={card.step}
                 type="button"
-                onClick={openDeployModal}
+                onClick={openDeployPage}
                 className="card p-5 flex gap-4 animate-fade-up transition-all duration-200 text-left cursor-pointer hover:bg-[var(--bg-surface-2)]"
               >
                 <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
@@ -260,9 +272,7 @@ export function HomePage() {
         </section>
       )}
 
-      {showModal && (
-        <DeployModal onClose={() => setShowModal(false)} onDeploy={handleDeploy} />
-      )}
+      {/* Removed DeployModal as per the new navigation */}
     </AppShell>
   )
 }
@@ -301,4 +311,13 @@ function timeAgo(dateStr) {
   if (h > 0) return `${h}h ago`
   if (m > 0) return `${m}m ago`
   return 'just now'
+}
+
+function greetingFor(date) {
+  const h = date.getHours()
+  if (h < 5)  return 'Burning the midnight oil'
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  if (h < 21) return 'Good evening'
+  return 'Working late'
 }

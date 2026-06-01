@@ -8,12 +8,11 @@ import com.dbdeployer.model.DbType;
  */
 public record DiscoveredContainerDto(
         String containerId,
-        String containerName,      // Docker name (no leading slash)
+        String containerName, // Docker name (no leading slash)
         String image,
-        DbType suggestedDbType,    // null if we couldn't detect
+        DbType suggestedDbType, // null if we couldn't detect
         String suggestedDbTypeDisplay,
         String icon,
         Integer suggestedHostPort, // mapped host port, null if not exposed
         int containerPort,
-        String status
-) {}
+        String status) {}

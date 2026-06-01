@@ -1,11 +1,11 @@
 package com.dbdeployer.api.dto;
 
-import com.dbdeployer.model.DeployedContainer;
-import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
+import com.dbdeployer.model.DeployedContainer;
+import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record InstanceResponse(
         String id,
@@ -23,25 +23,32 @@ public record InstanceResponse(
         InstanceStatus status,
         DeployMethod deployMethod,
         String dataDirectory,
-        String connectionString,        // real — for copying
-        String connectionStringMasked,  // masked — for display
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt,
-        LocalDateTime startedAt,        // time the container was last started (for uptime)
-        boolean isSystem,               // true = system DB — hide stop/remove actions
-        boolean isImported,             // true = imported container — remove only untracks, does not delete
-        String latestPipelineId         // ID of the most recent deploy pipeline, if any
-) {
+        String connectionString, // real — for
+        // copying
+        String connectionStringMasked, // masked — for display
+        Instant createdAt,
+        Instant updatedAt,
+        Instant startedAt, // time the container was last started (for uptime)
+        boolean isSystem, // true = system DB — hide stop/remove actions
+        boolean isImported, // true = imported container — untrack keeps container alive
+        String latestPipelineId, // ID of the most recent deploy pipeline, if any
+        String templateId, // nullable — ID of the ConfigTemplate this was launched from
+        String templateName // nullable — denormalized display name of the source template
+        ) {
     /**
-     * Build an {@link InstanceResponse} from the two-table model.
-     * {@code container} may be {@code null} while a deploy is being set up.
+     * Build an {@link InstanceResponse} from the two-table model. {@code container}
+     * may be {@code
+     * null} while a deploy is being set up.
      */
-    public static InstanceResponse from(DeploymentConfig config,
-                                        DeployedContainer container,
-                                        String connectionString,
-                                        String connectionStringMasked,
-                                        String displayName,
-                                        String icon) {
+    public static InstanceResponse from(
+            DeploymentConfig config,
+            DeployedContainer container,
+            String connectionString,
+            String connectionStringMasked,
+            String displayName,
+            String icon,
+            String templateId,
+            String templateName) {
         return new InstanceResponse(
                 config.getId(),
                 config.getName(),
@@ -53,19 +60,20 @@ public record InstanceResponse(
                 config.getUsername(),
                 config.getPassword(),
                 config.getDatabaseName(),
-                container != null ? container.getContainerId()   : null,
+                container != null ? container.getContainerId() : null,
                 container != null ? container.getContainerName() : null,
-                container != null ? container.getStatus()        : InstanceStatus.DEPLOYING,
+                container != null ? container.getStatus() : InstanceStatus.DEPLOYING,
                 config.getDeployMethod(),
                 container != null ? container.getDataDirectory() : null,
                 connectionString,
                 connectionStringMasked,
                 config.getCreatedAt(),
                 config.getUpdatedAt(),
-                container != null ? container.getStartedAt()     : null,
+                container != null ? container.getStartedAt() : null,
                 config.isSystem(),
                 config.isImported(),
-                container != null ? container.getLatestPipelineId() : null
-        );
+                container != null ? container.getLatestPipelineId() : null,
+                templateId,
+                templateName);
     }
 }

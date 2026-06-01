@@ -5,10 +5,6 @@ import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.InstanceStatus;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -18,6 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 @Component
 public class BrewDeployEngine {
@@ -35,8 +34,7 @@ public class BrewDeployEngine {
         return osDetector.detectOs() == OsDetector.OsType.MACOS && osDetector.isBrewAvailable();
     }
 
-    public List<DiscoveredContainerDto> discoverServices(Set<String> trackedIds,
-                                                         Set<String> trackedNames) {
+    public List<DiscoveredContainerDto> discoverServices(Set<String> trackedIds, Set<String> trackedNames) {
         if (!isAvailable()) return List.of();
 
         List<Map<String, Object>> services = listServices();
@@ -67,8 +65,7 @@ public class BrewDeployEngine {
                     icon,
                     port > 0 ? port : null,
                     port,
-                    toDiscoveryStatus(asText(svc.get("status")))
-            ));
+                    toDiscoveryStatus(asText(svc.get("status")))));
         }
 
         return result;
@@ -183,14 +180,12 @@ public class BrewDeployEngine {
     private String runCommand(String... command) {
         Process process = null;
         try {
-            process = new ProcessBuilder(command)
-                    .redirectErrorStream(true)
-                    .start();
+            process = new ProcessBuilder(command).redirectErrorStream(true).start();
 
             boolean finished = process.waitFor(20, TimeUnit.SECONDS);
             String output;
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+            try (BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 output = reader.lines().reduce("", (a, b) -> a + (a.isEmpty() ? "" : "\n") + b);
             }
 
@@ -200,8 +195,7 @@ public class BrewDeployEngine {
             }
 
             if (process.exitValue() != 0) {
-                throw new IllegalStateException("Command failed: " + String.join(" ", command)
-                        + "\n" + output);
+                throw new IllegalStateException("Command failed: " + String.join(" ", command) + "\n" + output);
             }
             return output;
         } catch (IOException e) {

@@ -10,17 +10,16 @@ public class ConnectionStringBuilder {
         var def = DatabaseCatalog.get(config.getDbType());
         if (def == null) return "N/A";
 
-        String username = coalesce(config.getUsername(),
-                firstPlaceholder(def, DatabaseCatalog.EnvVarType.TEXT), "");
-        String password = coalesce(config.getPassword(),
-                firstPlaceholder(def, DatabaseCatalog.EnvVarType.PASSWORD), "");
-        String database = coalesce(config.getDatabaseName(),
-                firstPlaceholder(def, DatabaseCatalog.EnvVarType.DATABASE), "");
+        String username = coalesce(config.getUsername(), firstPlaceholder(def, DatabaseCatalog.EnvVarType.TEXT), "");
+        String password =
+                coalesce(config.getPassword(), firstPlaceholder(def, DatabaseCatalog.EnvVarType.PASSWORD), "");
+        String database =
+                coalesce(config.getDatabaseName(), firstPlaceholder(def, DatabaseCatalog.EnvVarType.DATABASE), "");
 
         return def.connectionStringTemplate()
                 .replace("{username}", username)
                 .replace("{password}", password)
-                .replace("{port}",     String.valueOf(config.getHostPort()))
+                .replace("{port}", String.valueOf(config.getHostPort()))
                 .replace("{database}", database);
     }
 
@@ -29,8 +28,7 @@ public class ConnectionStringBuilder {
         return build(config).replaceAll(":[^@:/]+@", ":****@");
     }
 
-    private static String firstPlaceholder(DatabaseCatalog.DbDefinition def,
-                                           DatabaseCatalog.EnvVarType type) {
+    private static String firstPlaceholder(DatabaseCatalog.DbDefinition def, DatabaseCatalog.EnvVarType type) {
         return def.credentialEnvVars().stream()
                 .filter(ev -> ev.type() == type)
                 .map(DatabaseCatalog.EnvVar::placeholder)

@@ -1,24 +1,28 @@
 package com.dbdeployer.deploy;
 
 import com.dbdeployer.model.DeployMethod;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.util.Locale;
+import org.springframework.stereotype.Component;
 
 /**
- * Detects the current OS and selects the best deploy method.
- * Priority: Docker (all platforms) > Homebrew (macOS) > apt (Linux) > choco/winget (Windows)
+ * Detects the current OS and selects the best deploy method. Priority: Docker
+ * (all platforms) > Homebrew (macOS) > apt (Linux) > choco/winget (Windows)
  */
 @Component
 public class OsDetector {
 
-    public enum OsType { MACOS, LINUX, WINDOWS, UNKNOWN }
+    public enum OsType {
+        MACOS,
+        LINUX,
+        WINDOWS,
+        UNKNOWN
+    }
 
     public OsType detectOs() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("mac"))     return OsType.MACOS;
-        if (os.contains("linux"))   return OsType.LINUX;
+        if (os.contains("mac")) return OsType.MACOS;
+        if (os.contains("linux")) return OsType.LINUX;
         if (os.contains("windows")) return OsType.WINDOWS;
         return OsType.UNKNOWN;
     }
@@ -27,11 +31,13 @@ public class OsDetector {
     public DeployMethod preferredMethod() {
         if (isCommandAvailable("docker")) return DeployMethod.DOCKER;
         return switch (detectOs()) {
-            case MACOS   -> isCommandAvailable("brew")  ? DeployMethod.HOMEBREW    : DeployMethod.DOCKER;
-            case LINUX   -> isCommandAvailable("apt")   ? DeployMethod.APT         : DeployMethod.DOCKER;
-            case WINDOWS -> isCommandAvailable("choco") ? DeployMethod.CHOCOLATEY
-                         : isCommandAvailable("winget") ? DeployMethod.WINGET      : DeployMethod.DOCKER;
-            default      -> DeployMethod.DOCKER;
+            case MACOS -> isCommandAvailable("brew") ? DeployMethod.HOMEBREW : DeployMethod.DOCKER;
+            case LINUX -> isCommandAvailable("apt") ? DeployMethod.APT : DeployMethod.DOCKER;
+            case WINDOWS ->
+                isCommandAvailable("choco")
+                        ? DeployMethod.CHOCOLATEY
+                        : isCommandAvailable("winget") ? DeployMethod.WINGET : DeployMethod.DOCKER;
+            default -> DeployMethod.DOCKER;
         };
     }
 
@@ -46,8 +52,8 @@ public class OsDetector {
     private boolean isCommandAvailable(String cmd) {
         try {
             String[] check = System.getProperty("os.name", "").toLowerCase().contains("windows")
-                    ? new String[]{"where", cmd}
-                    : new String[]{"which", cmd};
+                    ? new String[] {"where", cmd}
+                    : new String[] {"which", cmd};
             Process p = Runtime.getRuntime().exec(check);
             return p.waitFor() == 0;
         } catch (IOException | InterruptedException e) {
@@ -65,8 +71,7 @@ public class OsDetector {
                 isCommandAvailable("choco"),
                 isCommandAvailable("winget"),
                 System.getProperty("os.version"),
-                System.getProperty("os.arch")
-        );
+                System.getProperty("os.arch"));
     }
 
     public record SystemInfo(
@@ -78,6 +83,5 @@ public class OsDetector {
             boolean chocoAvailable,
             boolean wingetAvailable,
             String osVersion,
-            String arch
-    ) {}
+            String arch) {}
 }

@@ -1,129 +1,155 @@
 package com.dbdeployer.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.api.dto.ImportRequest;
 import com.dbdeployer.api.dto.InstanceStatsResponse;
+import com.dbdeployer.api.dto.PipelineResponse;
+import com.dbdeployer.api.dto.PipelineStepResponse;
 import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.deploy.BrewDeployEngine;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.deploy.OsDetector;
+import com.dbdeployer.deploy.ToolMetricsProbe;
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.ImageValidationDecision;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.PipelineOrchestrator;
 import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
 import com.dbdeployer.store.DeployedContainerRepository;
 import com.dbdeployer.store.DeploymentConfigRepository;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class DbInstanceService {
 
-    private static final Logger log = LoggerFactory.getLogger(DbInstanceService.class);
+    private final BrewDeployEngine brew;
+    private final OsDetector osDetector;
+    private final DockerDeployEngine docker;
+    private final PipelineStepRepository stepRepo;
+    private final PipelineOrchestrator orchestrator;
+    private final ConnectionStringBuilder connBuilder;
+    private final DeploymentConfigRepository configRepo;
+    private final ImageValidationService imageValidation;
+    private final DeployedContainerRepository containerRepo;
+    private final DeploymentPipelineRepository pipelineRepo;
+    private final ToolMetricsProbe toolMetrics;
 
-    private final DeploymentConfigRepository    configRepo;
-    private final DeployedContainerRepository   containerRepo;
-    private final DockerDeployEngine            docker;
-    private final BrewDeployEngine              brew;
-    private final ConnectionStringBuilder       connBuilder;
-    private final OsDetector                    osDetector;
-    private final PipelineOrchestrator          orchestrator;
-    private final DeploymentPipelineRepository  pipelineRepo;
-    private final PipelineStepRepository        stepRepo;
-
-    public DbInstanceService(DeploymentConfigRepository configRepo,
-                             DeployedContainerRepository containerRepo,
-                             DockerDeployEngine docker,
-                             BrewDeployEngine brew,
-                             ConnectionStringBuilder connBuilder,
-                             OsDetector osDetector,
-                             PipelineOrchestrator orchestrator,
-                             DeploymentPipelineRepository pipelineRepo,
-                             PipelineStepRepository stepRepo) {
-        this.configRepo    = configRepo;
+    public DbInstanceService(
+            DeploymentConfigRepository configRepo,
+            DeployedContainerRepository containerRepo,
+            DockerDeployEngine docker,
+            BrewDeployEngine brew,
+            ConnectionStringBuilder connBuilder,
+            OsDetector osDetector,
+            PipelineOrchestrator orchestrator,
+            DeploymentPipelineRepository pipelineRepo,
+            PipelineStepRepository stepRepo,
+            ImageValidationService imageValidation,
+            ToolMetricsProbe toolMetrics) {
+        this.configRepo = configRepo;
         this.containerRepo = containerRepo;
-        this.docker        = docker;
-        this.brew          = brew;
-        this.connBuilder   = connBuilder;
-        this.osDetector    = osDetector;
-        this.orchestrator  = orchestrator;
-        this.pipelineRepo  = pipelineRepo;
-        this.stepRepo      = stepRepo;
+        this.docker = docker;
+        this.brew = brew;
+        this.connBuilder = connBuilder;
+        this.osDetector = osDetector;
+        this.orchestrator = orchestrator;
+        this.pipelineRepo = pipelineRepo;
+        this.stepRepo = stepRepo;
+        this.imageValidation = imageValidation;
+        this.toolMetrics = toolMetrics;
     }
 
     // ── Queries ────────────────────────────────────────────────────────────────
 
-    /** Returns all configs (including removed ones — frontend decides what to show). */
-    public List<DeploymentConfig> listAll() {
-        return configRepo.findAll();
+    /** Returns all deployed instances (excludes template rows). */
+    public List<DeployedContainer> listAll() {
+        return containerRepo.findAll();
     }
 
-    /** Aggregate status counts across all instances. Derived directly from the DB. */
+    /**
+     * Aggregate status counts across all instances. Derived directly from the DB.
+     */
     public InstanceStatsResponse getStats() {
         List<DeployedContainer> all = containerRepo.findAll();
-        int running   = 0, restarting = 0, stopped  = 0, deploying = 0,
-            removing  = 0, error      = 0, removed  = 0;
+        int running = 0,
+                restarting = 0,
+                stopped = 0,
+                deploying = 0,
+                removing = 0,
+                error = 0,
+                removed = 0,
+                untracked = 0;
         for (DeployedContainer c : all) {
             switch (c.getStatus()) {
-                case RUNNING    -> running++;
+                case RUNNING -> running++;
                 case RESTARTING -> restarting++;
-                case STOPPED    -> stopped++;
-                case DEPLOYING  -> deploying++;
-                case REMOVING   -> removing++;
-                case ERROR      -> error++;
-                case REMOVED    -> removed++;
+                case STOPPED -> stopped++;
+                case DEPLOYING -> deploying++;
+                case REMOVING -> removing++;
+                case ERROR -> error++;
+                case REMOVED -> removed++;
+                case UNTRACKED -> untracked++;
             }
         }
         int total = running + restarting + stopped + deploying + removing + error; // active only
-        return new InstanceStatsResponse(total, running, restarting, stopped, deploying, removing, error, removed);
+        return new InstanceStatsResponse(
+                total, running, restarting, stopped, deploying, removing, error, removed, untracked);
     }
 
-    public DeploymentConfig getById(String id) {
-        return configRepo.findById(id)
+    public DeployedContainer getById(String id) {
+        return containerRepo
+                .findByConfigId(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
     }
 
     /** Live Docker container metrics snapshot for a non-system instance. */
-    public com.dbdeployer.api.dto.ContainerMetricsResponse getContainerMetrics(String configId) {
-        DeploymentConfig config = getById(configId);
-        DeployedContainer container = config.getContainer();
+    public ContainerMetricsResponse getContainerMetrics(String configId) {
+        DeployedContainer container = getById(configId);
         if (container == null || container.getContainerId() == null) {
-            return com.dbdeployer.api.dto.ContainerMetricsResponse.unavailable();
+            return ContainerMetricsResponse.unavailable();
         }
-        return docker.getContainerMetrics(container.getContainerId(), config.getHostPort());
+        ContainerMetricsResponse base = docker.getContainerMetrics(
+                container.getContainerId(), container.getConfig().getHostPort());
+        if (!base.available()) return base;
+        // Best-effort tool-specific telemetry (never blocks the response).
+        java.util.Map<String, Object> tools =
+                toolMetrics.collect(container.getConfig(), container.getContainerId());
+        return tools.isEmpty() ? base : base.withToolMetrics(tools);
     }
 
-    /** Returns the most recent pipeline for an instance (or null if none exists). */
-    public com.dbdeployer.api.dto.PipelineResponse getLatestPipeline(String configId) {
-        return pipelineRepo.findTopByConfigIdOrderByCreatedAtDesc(configId)
+    /**
+     * Returns the most recent pipeline for an instance (or null if none exists).
+     */
+    public PipelineResponse getLatestPipeline(String configId) {
+        return pipelineRepo
+                .findTopByConfigIdOrderByCreatedAtDesc(configId)
                 .map(p -> {
-                    var steps = stepRepo.findByPipelineIdOrderByStepOrderAsc(p.getId())
-                            .stream()
-                            .map(com.dbdeployer.api.dto.PipelineStepResponse::from)
+                    var steps = stepRepo.findByPipelineIdOrderByStepOrderAsc(p.getId()).stream()
+                            .map(PipelineStepResponse::from)
                             .toList();
-                    return com.dbdeployer.api.dto.PipelineResponse.from(p, steps);
+                    return PipelineResponse.from(p, steps);
                 })
                 .orElse(null);
     }
@@ -131,49 +157,100 @@ public class DbInstanceService {
     // ── Deploy ─────────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig deploy(DeployRequest req) {
+    public DeploymentConfig deploy(DeployRequest req, String configId) {
+        log.info(
+                "[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
+                req.name(),
+                req.dbType(),
+                req.version(),
+                req.hostPort());
+
         if (configRepo.existsByName(req.name())) {
+            log.warn("[deploy] Rejecting request: name already exists '{}'", req.name());
             throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
         }
-        if (configRepo.existsByHostPort(req.hostPort())) {
+        if (configRepo.existsByHostPortAndNotRemoved(req.hostPort())) {
+            log.warn("[deploy] Rejecting request: host port {} already in use", req.hostPort());
             throw new IllegalArgumentException("Port " + req.hostPort() + " is already in use");
         }
 
         var def = DatabaseCatalog.get(req.dbType());
-        if (def == null) throw new IllegalArgumentException("Unsupported database type: " + req.dbType());
+        if (def == null) {
+            log.warn("[deploy] Rejecting request: unsupported database type {}", req.dbType());
+            throw new IllegalArgumentException("Unsupported database type: " + req.dbType());
+        }
+
+        // Validate image availability before creating any deployment or pipeline rows.
+        var imageCheck = imageValidation.checkForDeploy(req.dbType(), req.version());
+        log.info(
+                "[deploy] Image check result for {}:{} -> decision={}, local={}, hub={}, message='{}'",
+                def.dockerImage(),
+                req.version(),
+                imageCheck.decision(),
+                imageCheck.localStatus(),
+                imageCheck.dockerHubStatus(),
+                imageCheck.message());
+        if (imageCheck.decision() == ImageValidationDecision.BLOCK) {
+            log.warn(
+                    "[deploy] Blocking deployment '{}' because image is not deployable: {}",
+                    req.name(),
+                    imageCheck.message());
+            throw new IllegalArgumentException(imageCheck.message());
+        }
+        if (imageCheck.decision() == ImageValidationDecision.ALLOW_WITH_WARNING) {
+            log.warn("Proceeding with deployment '{}' despite warning: {}", req.name(), imageCheck.message());
+        }
 
         // Apply catalog defaults for any credentials the user left blank
-        String username     = resolveCredential(req.username(),     def, DatabaseCatalog.EnvVarType.TEXT);
-        String password     = resolveCredential(req.password(),     def, DatabaseCatalog.EnvVarType.PASSWORD);
+        String username = resolveCredential(req.username(), def, DatabaseCatalog.EnvVarType.TEXT);
+        String password = resolveCredential(req.password(), def, DatabaseCatalog.EnvVarType.PASSWORD);
         String databaseName = resolveCredential(req.databaseName(), def, DatabaseCatalog.EnvVarType.DATABASE);
 
         // ── Config row ──
+
         DeploymentConfig config = new DeploymentConfig();
-        config.setId(UUID.randomUUID().toString());
-        config.setName(req.name());
-        config.setDbType(req.dbType());
-        config.setVersion(req.version());
-        config.setHostPort(req.hostPort());
-        config.setContainerPort(def.defaultPort());
-        config.setUsername(username);
-        config.setPassword(password);
-        config.setDatabaseName(databaseName);
-        config.setDeployMethod(DeployMethod.DOCKER);
-        config.setExtraEnvJson(req.extraEnvJson());
-        configRepo.save(config);
+        if (configId == null) {
+            config.setId(UUID.randomUUID().toString());
+            config.setName(req.name());
+            config.setDbType(req.dbType());
+            config.setVersion(req.version());
+            config.setHostPort(req.hostPort());
+            config.setContainerPort(def.defaultPort());
+            config.setUsername(username);
+            config.setPassword(password);
+            config.setDatabaseName(databaseName);
+            config.setDeployMethod(DeployMethod.DOCKER);
+            config.setExtraEnvJson(req.extraEnvJson());
+            config.setTemplateId(UUID.randomUUID().toString());
+            config.setTemplate(true);
+            config.setDeployCount(1);
+            configRepo.save(config);
+        } else {
+            config = configRepo.findById(configId)
+                    .orElseThrow(() -> new IllegalArgumentException("Config not found: " + configId));
+        }
+
 
         // ── Container row ── (starts as DEPLOYING; pipeline transitions it)
         DeployedContainer container = new DeployedContainer();
         container.setId(UUID.randomUUID().toString());
         container.setConfig(config);
+        container.setContainerPort(req.hostPort());
         container.setStatus(InstanceStatus.DEPLOYING);
         containerRepo.save(container);
 
-        config.setContainer(container);
+        config.getContainers().add(container);
 
         // ── Create pipeline + fire async runner after commit ──
         orchestrator.createAndLaunch(config, container);
         containerRepo.save(container); // persist latestPipelineId set by orchestrator
+
+        log.info(
+                "[deploy] Accepted deployment '{}' (configId={}, containerRecordId={}, pipelineId={})",
+                config.getName(),
+                config.getId(),
+                container.getId(),
+                container.getLatestPipelineId());
 
         return config;
     }
@@ -181,9 +258,9 @@ public class DbInstanceService {
     // ── Lifecycle ──────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig startInstance(String id) {
-        DeploymentConfig config    = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public DeploymentConfig startInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "start");
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             brew.startServiceByContainerId(container.getContainerId(), container.getContainerName());
@@ -192,7 +269,7 @@ public class DbInstanceService {
         }
         container.setStatus(InstanceStatus.RUNNING);
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
-            container.setStartedAt(LocalDateTime.now());
+            container.setStartedAt(Instant.now());
         } else {
             container.setStartedAt(docker.getStartedAt(container.getContainerId()));
         }
@@ -201,9 +278,9 @@ public class DbInstanceService {
     }
 
     @Transactional
-    public DeploymentConfig stopInstance(String id) {
-        DeploymentConfig config    = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public DeploymentConfig stopInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "stop");
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             brew.stopServiceByContainerId(container.getContainerId(), container.getContainerName());
@@ -216,24 +293,22 @@ public class DbInstanceService {
     }
 
     @Transactional
-    public void removeInstance(String id) {
-        DeploymentConfig config    = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public void removeInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "remove");
 
         container.setStatus(InstanceStatus.REMOVING);
         containerRepo.save(container);
 
-        if (config.isImported()) {
-            log.info("Untracking imported instance '{}' — Docker container left intact", config.getName());
-        } else if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+        if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             log.info("Untracking Homebrew instance '{}' — Homebrew service left intact", config.getName());
         } else {
             try {
+                log.info("Removing Docker container for instance '{}'", config.getName());
                 docker.remove(container);
             } catch (Exception e) {
-                log.warn("Docker remove failed for '{}' (may already be gone): {}",
-                        config.getName(), e.getMessage());
+                log.warn("Docker remove failed for '{}' (may already be gone): {}", config.getName(), e.getMessage());
             }
             // Clean up volume data directory
             if (container.getDataDirectory() != null) {
@@ -242,16 +317,53 @@ public class DbInstanceService {
                     deleteDirectoryRecursive(dataDir);
                     log.info("Removed data directory: {}", dataDir);
                 } catch (IOException e) {
-                    log.warn("Could not remove data directory for '{}': {}",
-                            config.getName(), e.getMessage());
+                    log.warn("Could not remove data directory for '{}': {}", config.getName(), e.getMessage());
                 }
             }
         }
 
         // Mark container as REMOVED (retain for history) — do NOT delete the rows
         container.setStatus(InstanceStatus.REMOVED);
-        container.setRemovedAt(LocalDateTime.now());
+        container.setRemovedAt(Instant.now());
         containerRepo.save(container);
+    }
+
+    /**
+     * Untrack an imported instance — marks it UNTRACKED without touching the Docker
+     * container. The instance can be re-tracked at any time via
+     * {@link #reTrackInstance(String)}.
+     */
+    @Transactional
+    public void untrackInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
+        if (!config.isImported()) {
+            throw new IllegalArgumentException("Only imported instances can be untracked");
+        }
+        log.info("Untracking imported instance '{}' — container preserved", config.getName());
+        container.setStatus(InstanceStatus.UNTRACKED);
+        containerRepo.save(container);
+    }
+
+    /**
+     * Re-track a previously untracked imported instance — queries the live
+     * Docker/Brew status and transitions the instance back to its real live status.
+     */
+    @Transactional
+    public DeploymentConfig reTrackInstance(String configId) {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
+        if (container.getStatus() != InstanceStatus.UNTRACKED) {
+            throw new IllegalArgumentException("Instance '" + config.getName() + "' is not currently untracked");
+        }
+        DeployMethod method = config.getDeployMethod() != null ? config.getDeployMethod() : DeployMethod.DOCKER;
+        InstanceStatus liveStatus = method == DeployMethod.HOMEBREW
+                ? brew.getServiceStatusByContainerId(container.getContainerId(), container.getContainerName())
+                : docker.getStatus(container);
+        log.info("Re-tracking instance '{}' — live status: {}", config.getName(), liveStatus);
+        container.setStatus(liveStatus);
+        containerRepo.save(container);
+        return config;
     }
 
     // ── Import / Re-import ─────────────────────────────────────────────────────
@@ -262,9 +374,9 @@ public class DbInstanceService {
      * only the container binding changes.
      */
     @Transactional
-    public DeploymentConfig reImportInstance(String id, ReImportRequest req) {
-        DeploymentConfig config    = getById(id);
-        DeployedContainer existing = requireContainer(config);
+    public DeploymentConfig reImportInstance(String configId, ReImportRequest req) {
+        DeployedContainer existing = getById(configId);
+        DeploymentConfig config = existing.getConfig();
 
         if (!config.isImported()) {
             throw new IllegalArgumentException("Only imported instances can be re-imported");
@@ -293,7 +405,10 @@ public class DbInstanceService {
         containerRepo.save(existing);
         configRepo.save(config);
 
-        log.info("Re-imported instance '{}' → container {}", config.getName(), req.containerId().substring(0, 12));
+        log.info(
+                "Re-imported instance '{}' → container {}",
+                config.getName(),
+                req.containerId().substring(0, 12));
         return config;
     }
 
@@ -303,7 +418,8 @@ public class DbInstanceService {
             throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
         }
         if (containerRepo.existsByContainerId(req.containerId())) {
-            throw new IllegalArgumentException("Container " + req.containerId().substring(0, 12) + " is already tracked");
+            throw new IllegalArgumentException(
+                    "Container " + req.containerId().substring(0, 12) + " is already tracked");
         }
 
         DbType dbType;
@@ -340,7 +456,7 @@ public class DbInstanceService {
         container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
         containerRepo.save(container);
 
-        config.setContainer(container);
+        config.getContainers().add(container);
         return config;
     }
 
@@ -348,39 +464,52 @@ public class DbInstanceService {
 
     @Transactional
     public void syncStatuses() {
-        containerRepo.findByStatusNot(InstanceStatus.REMOVED).forEach(container -> {
-            // Skip containers still deploying with no containerId — DeploymentRecovery handles those on boot
-            if (container.getContainerId() == null) return;
-            DeployMethod method = container.getConfig() != null
-                    ? container.getConfig().getDeployMethod()
-                    : DeployMethod.DOCKER;
+        containerRepo
+                .findByStatusNotIn(List.of(InstanceStatus.REMOVED, InstanceStatus.UNTRACKED))
+                .forEach(container -> {
+                    // Skip containers still deploying with no containerId — DeploymentRecovery
+                    // handles
+                    // those on boot
+                    if (container.getContainerId() == null) return;
+                    DeployMethod method = container.getConfig() != null
+                            ? container.getConfig().getDeployMethod()
+                            : DeployMethod.DOCKER;
 
-            InstanceStatus current = method == DeployMethod.HOMEBREW
-                    ? brew.getServiceStatusByContainerId(container.getContainerId(), container.getContainerName())
-                    : docker.getStatus(container);
+                    InstanceStatus current = method == DeployMethod.HOMEBREW
+                            ? brew.getServiceStatusByContainerId(
+                                    container.getContainerId(), container.getContainerName())
+                            : docker.getStatus(container);
 
-            boolean changed = current != container.getStatus();
-            if (changed) container.setStatus(current);
-            if (current == InstanceStatus.RUNNING && container.getStartedAt() == null && method != DeployMethod.HOMEBREW) {
-                LocalDateTime sa = docker.getStartedAt(container.getContainerId());
-                if (sa != null) { container.setStartedAt(sa); changed = true; }
-            }
-            if (changed) containerRepo.save(container);
-        });
+                    boolean changed = current != container.getStatus();
+                    if (changed) container.setStatus(current);
+                    if (current == InstanceStatus.RUNNING
+                            && container.getStartedAt() == null
+                            && method != DeployMethod.HOMEBREW) {
+                        Instant sa = docker.getStartedAt(container.getContainerId());
+                        if (sa != null) {
+                            container.setStartedAt(sa);
+                            changed = true;
+                        }
+                    }
+                    if (changed) containerRepo.save(container);
+                });
     }
 
     // ── Discovery ──────────────────────────────────────────────────────────────
 
     public List<DiscoveredContainerDto> discoverContainers() {
         List<DeployedContainer> tracked = containerRepo.findAll();
-        Set<String> trackedIds   = tracked.stream().map(DeployedContainer::getContainerId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        Set<String> trackedNames = tracked.stream().map(DeployedContainer::getContainerName)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<String> trackedIds = tracked.stream()
+                .map(DeployedContainer::getContainerId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<String> trackedNames = tracked.stream()
+                .map(DeployedContainer::getContainerName)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        List<DiscoveredContainerDto> discovered = new java.util.ArrayList<>(
-                docker.discoverContainers(trackedIds, trackedNames)
-        );
+        List<DiscoveredContainerDto> discovered =
+                new java.util.ArrayList<>(docker.discoverContainers(trackedIds, trackedNames));
         discovered.addAll(brew.discoverServices(trackedIds, trackedNames));
         return discovered;
     }
@@ -388,10 +517,11 @@ public class DbInstanceService {
     // ── Misc ───────────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig rename(String id, String newName) {
+    public DeploymentConfig rename(String configId, String newName) {
         if (newName == null || newName.isBlank()) throw new IllegalArgumentException("Name cannot be blank");
         String trimmed = newName.trim();
-        DeploymentConfig config = getById(id);
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         if (!trimmed.equals(config.getName()) && configRepo.existsByName(trimmed)) {
             throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
         }
@@ -400,12 +530,12 @@ public class DbInstanceService {
     }
 
     public String getConnectionString(String id) {
-        return connBuilder.build(getById(id));
+        return connBuilder.build(getById(id).getConfig());
     }
 
-    public String getLogs(String id, int tail) throws InterruptedException {
-        DeploymentConfig config = getById(id);
-        DeployedContainer container = requireContainer(config);
+    public String getLogs(String configId, int tail) throws InterruptedException {
+        DeployedContainer container = getById(configId);
+        DeploymentConfig config = container.getConfig();
         if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
             return "Logs are not available for Homebrew-managed services in this view. Use: brew services log "
                     + (container.getContainerName() != null ? container.getContainerName() : "<service>");
@@ -426,15 +556,8 @@ public class DbInstanceService {
         }
     }
 
-    private DeployedContainer requireContainer(DeploymentConfig config) {
-        DeployedContainer c = config.getContainer();
-        if (c == null) throw new IllegalStateException(
-                "No container record found for instance '" + config.getName() + "'");
-        return c;
-    }
-
-    private String resolveCredential(String supplied, DatabaseCatalog.DbDefinition def,
-                                     DatabaseCatalog.EnvVarType type) {
+    private String resolveCredential(
+            String supplied, DatabaseCatalog.DbDefinition def, DatabaseCatalog.EnvVarType type) {
         if (supplied != null && !supplied.isBlank()) return supplied;
         return def.credentialEnvVars().stream()
                 .filter(ev -> ev.type() == type)
@@ -462,7 +585,7 @@ public class DbInstanceService {
                 : getContainerStatus(containerId);
     }
 
-    private LocalDateTime getImportedStartedAt(String containerId, String containerName, DeployMethod method) {
+    private Instant getImportedStartedAt(String containerId, String containerName, DeployMethod method) {
         if (method == DeployMethod.HOMEBREW) {
             return null;
         }
@@ -472,11 +595,13 @@ public class DbInstanceService {
     private void deleteDirectoryRecursive(Path path) throws IOException {
         if (!Files.exists(path)) return;
         try (var walk = Files.walk(path)) {
-            walk.sorted(Comparator.reverseOrder())
-                .forEach(p -> {
-                    try { Files.delete(p); }
-                    catch (IOException e) { log.warn("Could not delete {}: {}", p, e.getMessage()); }
-                });
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.delete(p);
+                } catch (IOException e) {
+                    log.warn("Could not delete {}: {}", p, e.getMessage());
+                }
+            });
         }
     }
 }

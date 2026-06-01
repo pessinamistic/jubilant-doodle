@@ -17,6 +17,11 @@ public class PipelineProperties {
     /** Delay in ms between each pipeline step. Default: 1500. */
     private long stepDelayMs = 1500;
 
-    public long getStepDelayMs()             { return stepDelayMs; }
-    public void setStepDelayMs(long millis)  { this.stepDelayMs = millis; }
+    public long getStepDelayMs() {
+        return stepDelayMs;
+    }
+
+    public void setStepDelayMs(long millis) {
+        this.stepDelayMs = millis;
+    }
 }

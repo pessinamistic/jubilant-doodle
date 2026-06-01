@@ -1,18 +1,18 @@
 package com.dbdeployer.pipeline.step;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.model.StepType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 /**
  * Step 4 — Finalise the deployment: verify the container is still running and
- * capture the {@code startedAt} timestamp from Docker.
+ * capture the {@code
+ * startedAt} timestamp from Docker.
  */
 @Component
 public class FinaliseStep implements DeployStep {
@@ -31,8 +31,7 @@ public class FinaliseStep implements DeployStep {
     }
 
     @Override
-    public String execute(DeploymentConfig config, DeployedContainer container)
-            throws StepExecutionException {
+    public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
         InstanceStatus status = docker.getStatus(container);
         log.info("[pipeline] Finalise — Docker reports status {}", status);
 
@@ -43,7 +42,11 @@ public class FinaliseStep implements DeployStep {
 
             // Brief settle check: some containers start then immediately crash
             // (e.g. bad config / missing env). Wait 2 s and re-verify.
-            try { Thread.sleep(2_000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            try {
+                Thread.sleep(2_000);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
             InstanceStatus settled = docker.getStatus(container);
             if (settled != InstanceStatus.RUNNING) {
                 log.warn("[pipeline] Finalise — container exited after settle wait, status now {}", settled);

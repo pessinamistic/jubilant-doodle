@@ -3,14 +3,25 @@ package com.dbdeployer.api.dto;
 /**
  * Aggregate status counts returned by GET /api/instances/stats.
  *
- * @param total      Active instances (all statuses except REMOVED)
- * @param running    Containers currently running
- * @param restarting Containers in a restart loop
- * @param stopped    Containers stopped but not removed
- * @param deploying  Containers being deployed
- * @param removing   Containers being removed
- * @param error      Containers in ERROR state
- * @param removed    Containers that have been removed (retained for history)
+ * @param total
+ *            Active instances (all statuses except REMOVED and UNTRACKED)
+ * @param running
+ *            Containers currently running
+ * @param restarting
+ *            Containers in a restart loop
+ * @param stopped
+ *            Containers stopped but not removed
+ * @param deploying
+ *            Containers being deployed
+ * @param removing
+ *            Containers being removed
+ * @param error
+ *            Containers in ERROR state
+ * @param removed
+ *            Containers that have been removed (retained for history)
+ * @param untracked
+ *            Imported containers that have been untracked (container still
+ *            alive)
  */
 public record InstanceStatsResponse(
         int total,
@@ -20,5 +31,5 @@ public record InstanceStatsResponse(
         int deploying,
         int removing,
         int error,
-        int removed
-) {}
+        int removed,
+        int untracked) {}

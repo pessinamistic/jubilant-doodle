@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getInstance, startInstance, stopInstance, removeInstance, deployInstance, getLogs, getPipeline,
+  getInstance, startInstance, stopInstance, removeInstance, untrackInstance, reTrackInstance, getLogs, getPipeline,
   getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { ConnectionString } from '../components/ConnectionString'
-import { DeployModal } from '../components/DeployModal'
 import { ImportModal } from '../components/ImportModal'
+import { ConfirmModal } from '../components/ConfirmModal'
 import {
   Activity,
   ArrowLeft,
@@ -21,7 +21,7 @@ import {
   Database,
   Eye,
   EyeOff,
-  ExternalLink,
+
   FileText,
   Folder,
   Globe,
@@ -29,11 +29,13 @@ import {
   Hash,
   Key,
   Layers,
+  Link2,
   Play,
   RefreshCw,
   Rocket,
   Server,
   Settings,
+  SlidersHorizontal,
   Square,
   Timer,
   Trash2,
@@ -70,8 +72,9 @@ export function InstanceDetailPage() {
   const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [busy, setBusy]           = useState(false)
-  const [showDeployModal, setShowDeployModal] = useState(false)
   const [showReImport, setShowReImport] = useState(false)
+  const [showConfirmUntrack, setShowConfirmUntrack] = useState(false)
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -95,7 +98,6 @@ export function InstanceDetailPage() {
   }, [load])
 
   const handle = (fn, label, redirectAfter = false) => async () => {
-    if (!confirm(`${label} "${instance?.name}"?`)) return
     setBusy(true)
     try {
       await fn(id)
@@ -106,17 +108,6 @@ export function InstanceDetailPage() {
       toast.error(e.response?.data?.error ?? `${label} failed`)
     } finally {
       setBusy(false)
-    }
-  }
-
-  const handleDeploy = async (data) => {
-    try {
-      await deployInstance(data)
-      toast.success(`Deploying ${data.name}… this may take a minute`)
-      load()
-    } catch (err) {
-      // Allow DeployModal to map backend errors to inline field-level messages.
-      throw err
     }
   }
 
@@ -133,13 +124,14 @@ export function InstanceDetailPage() {
 
   if (!instance) return null
 
-  const isRunning = instance.status === 'RUNNING'
-  const isStopped = instance.status === 'STOPPED'
-  const isRemoved = instance.status === 'REMOVED'
-  const isBusy    = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
+  const isRunning   = instance.status === 'RUNNING'
+  const isStopped   = instance.status === 'STOPPED'
+  const isRemoved   = instance.status === 'REMOVED'
+  const isUntracked = instance.status === 'UNTRACKED'
+  const isBusy      = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
 
   return (
-    <AppShell onDeploy={() => setShowDeployModal(true)} onRefresh={load}>
+    <AppShell onRefresh={load}>
       {/* ── Breadcrumb ── */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6 animate-slide-down">
         <Link to="/instances" className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1">
@@ -211,7 +203,7 @@ export function InstanceDetailPage() {
                 <Square className="w-4 h-4" /> Stop
               </button>
             )}
-            {/* Re-import: only for imported instances that have been untracked */}
+            {/* Re-import: only for imported instances that have been removed (container gone) */}
             {!instance.isSystem && instance.isImported && isRemoved && (
               <button
                 onClick={() => setShowReImport(true)}
@@ -219,20 +211,48 @@ export function InstanceDetailPage() {
                 <CornerUpLeft className="w-4 h-4" /> Re-import
               </button>
             )}
-            {/* Remove/Untrack: hidden when already removed */}
-            {!instance.isSystem && !isRemoved && (
+            {/* Re-track: untracked imported instances */}
+            {!instance.isSystem && isUntracked && (
               <button
-                onClick={handle(removeInstance, instance.isImported ? 'Untrack' : 'Remove', true)}
+                onClick={async () => {
+                  setBusy(true)
+                  try {
+                    await reTrackInstance(id)
+                    toast.success('Re-track successful')
+                    load()
+                  } catch (e) {
+                    toast.error(e.response?.data?.error ?? 'Re-track failed')
+                  } finally { setBusy(false) }
+                }}
                 disabled={isBusy}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 ${
-                  instance.isImported
-                    ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
-                    : 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20'
-                }`}>
-                {instance.isImported
-                  ? <><Unlink className="w-4 h-4" /> Untrack</>
-                  : <><Trash2 className="w-4 h-4" /> Remove</>
-                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors disabled:opacity-40">
+                <Link2 className="w-4 h-4" /> Re-track
+              </button>
+            )}
+            {/* Untrack + Remove: both shown for imported instances, hidden when removed or untracked */}
+            {!instance.isSystem && !isRemoved && !isUntracked && instance.isImported && (
+              <>
+                <button
+                  onClick={() => setShowConfirmUntrack(true)}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-40">
+                  <Unlink className="w-4 h-4" /> Untrack
+                </button>
+                <button
+                  onClick={() => setShowConfirmRemove(true)}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40">
+                  <Trash2 className="w-4 h-4" /> Remove
+                </button>
+              </>
+            )}
+            {/* Remove: non-imported instances */}
+            {!instance.isSystem && !isRemoved && !isUntracked && !instance.isImported && (
+              <button
+                onClick={() => setShowConfirmRemove(true)}
+                disabled={isBusy}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40">
+                <Trash2 className="w-4 h-4" /> Remove
               </button>
             )}
           </div>
@@ -268,12 +288,40 @@ export function InstanceDetailPage() {
         />
       )}
 
-      {showDeployModal && (
-        <DeployModal
-          onClose={() => setShowDeployModal(false)}
-          onDeploy={handleDeploy}
+      {/* Untrack modal — imported containers only */}
+      {showConfirmUntrack && (
+        <ConfirmModal
+          open={showConfirmUntrack}
+          variant="warning"
+          icon={<Unlink className="w-5 h-5" />}
+          title={`Untrack "${instance.name}"?`}
+          message="The Docker container will not be stopped or removed. It will only stop being managed by Port Wrangler. You can re-track it at any time."
+          confirmLabel="Untrack"
+          onConfirm={() => {
+            setShowConfirmUntrack(false)
+            handle(untrackInstance, 'Untrack', false)()
+          }}
+          onCancel={() => setShowConfirmUntrack(false)}
         />
       )}
+
+      {/* Remove modal */}
+      {showConfirmRemove && (
+        <ConfirmModal
+          open={showConfirmRemove}
+          variant="danger"
+          title={`Remove "${instance.name}"?`}
+          message="This will stop and permanently delete the Docker container. Any data not stored in a volume will be lost."
+          confirmLabel="Remove"
+          requiredConfirmText={instance.name}
+          onConfirm={() => {
+            setShowConfirmRemove(false)
+            handle(removeInstance, 'Remove', true)()
+          }}
+          onCancel={() => setShowConfirmRemove(false)}
+        />
+      )}
+
     </AppShell>
   )
 }
@@ -348,6 +396,139 @@ function DonutChart({ data, pickColor }) {
       </div>
     </div>
   )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  Tool-Specific Telemetry Panel                                              */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+const TOOL_METRIC_DEFS = {
+  POSTGRESQL: {
+    title: 'PostgreSQL Telemetry',
+    rows: [
+      { key: 'connections',         label: 'Connections',          unit: '' },
+      { key: 'activeConnections',   label: 'Active',                unit: '' },
+      { key: 'idleConnections',     label: 'Idle',                  unit: '' },
+      { key: 'maxConnections',      label: 'Max Connections',       unit: '' },
+      { key: 'databaseSizeBytes',   label: 'Database Size',         unit: 'bytes' },
+      { key: 'serverUptimeSeconds', label: 'Postmaster Uptime',     unit: 'duration' },
+    ],
+  },
+  MYSQL: {
+    title: 'MySQL Telemetry',
+    rows: [
+      { key: 'threadsConnected',    label: 'Threads Connected',     unit: '' },
+      { key: 'threadsRunning',      label: 'Threads Running',       unit: '' },
+      { key: 'totalQueries',        label: 'Total Queries',         unit: '' },
+      { key: 'slowQueries',         label: 'Slow Queries',          unit: '' },
+      { key: 'abortedConnects',     label: 'Aborted Connects',      unit: '' },
+      { key: 'innodbBufferPoolPagesData', label: 'InnoDB Pages',    unit: '' },
+      { key: 'serverUptimeSeconds', label: 'Server Uptime',         unit: 'duration' },
+    ],
+  },
+  MARIADB: { /* alias to MYSQL */ alias: 'MYSQL' },
+  REDIS: {
+    title: 'Redis Telemetry',
+    rows: [
+      { key: 'connectedClients',          label: 'Connected Clients',    unit: '' },
+      { key: 'instantaneousOpsPerSec',    label: 'Ops / sec',            unit: '' },
+      { key: 'totalCommandsProcessed',    label: 'Commands Processed',   unit: '' },
+      { key: 'usedMemory',                label: 'Used Memory',          unit: 'bytes' },
+      { key: 'usedMemoryPeak',            label: 'Peak Memory',          unit: 'bytes' },
+      { key: 'keyspaceHits',              label: 'Keyspace Hits',        unit: '' },
+      { key: 'keyspaceMisses',            label: 'Keyspace Misses',      unit: '' },
+      { key: 'evictedKeys',               label: 'Evicted Keys',         unit: '' },
+      { key: 'expiredKeys',               label: 'Expired Keys',         unit: '' },
+      { key: 'totalKeys',                 label: 'Total Keys',           unit: '' },
+      { key: 'totalConnectionsReceived',  label: 'Total Connections',    unit: '' },
+      { key: 'rejectedConnections',       label: 'Rejected Connections', unit: '' },
+      { key: 'uptimeInSeconds',           label: 'Server Uptime',        unit: 'duration' },
+    ],
+  },
+  MONGODB: {
+    title: 'MongoDB Telemetry',
+    rows: [
+      { key: 'connectionsCurrent',   label: 'Connections',     unit: '' },
+      { key: 'connectionsAvailable', label: 'Available',       unit: '' },
+      { key: 'opcountersInsert',     label: 'Inserts',         unit: '' },
+      { key: 'opcountersQuery',      label: 'Queries',         unit: '' },
+      { key: 'opcountersUpdate',     label: 'Updates',         unit: '' },
+      { key: 'opcountersDelete',     label: 'Deletes',         unit: '' },
+      { key: 'opcountersCommand',    label: 'Commands',        unit: '' },
+      { key: 'networkBytesIn',       label: 'Network In',      unit: 'bytes' },
+      { key: 'networkBytesOut',      label: 'Network Out',     unit: 'bytes' },
+      { key: 'serverUptimeSeconds',  label: 'Server Uptime',   unit: 'duration' },
+    ],
+  },
+}
+
+function ToolTelemetryPanel({ metrics, dbType }) {
+  if (!metrics || !metrics.available) return null
+  const tools = metrics.toolMetrics
+  if (!tools || Object.keys(tools).length === 0) return null
+
+  let defKey = (dbType || '').toUpperCase()
+  let def = TOOL_METRIC_DEFS[defKey]
+  if (def && def.alias) def = TOOL_METRIC_DEFS[def.alias]
+  // Fallback: render every key as plain number
+  const rows = def
+    ? def.rows.filter(r => tools[r.key] != null)
+    : Object.keys(tools).map(k => ({ key: k, label: humanize(k), unit: '' }))
+  if (rows.length === 0) return null
+
+  return (
+    <div>
+      <p className="section-label">
+        {def?.title ?? 'Tool Telemetry'}
+        <span className="ml-2 text-[10px] font-normal normal-case text-(--text-quiet)">
+          · gathered via docker exec
+        </span>
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {rows.map(r => (
+          <div key={r.key} className="card p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-(--text-muted)">{r.label}</div>
+            <div className="text-lg font-bold font-mono text-(--text-primary) mt-1">
+              {formatToolValue(tools[r.key], r.unit)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function humanize(key) {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, c => c.toUpperCase())
+    .trim()
+}
+
+function formatToolValue(v, unit) {
+  if (v == null) return '—'
+  const n = typeof v === 'number' ? v : Number(v)
+  if (Number.isNaN(n)) return String(v)
+  if (unit === 'bytes')    return fmtBytesShort(n)
+  if (unit === 'duration') return fmtDurationShort(n)
+  return n.toLocaleString()
+}
+
+function fmtBytesShort(b) {
+  if (b < 1024)            return `${b} B`
+  if (b < 1_048_576)       return `${(b/1024).toFixed(1)} KB`
+  if (b < 1_073_741_824)   return `${(b/1_048_576).toFixed(1)} MB`
+  return `${(b/1_073_741_824).toFixed(2)} GB`
+}
+
+function fmtDurationShort(secs) {
+  const d = Math.floor(secs / 86400)
+  const h = Math.floor((secs % 86400) / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m`
+  return `${secs}s`
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -442,11 +623,12 @@ function SystemInternalsTab() {
       {/* ── Database ── */}
       <div>
         <p className="section-label">Database</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 stagger-children">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
           {[
-            { label: 'Engine',    value: 'H2 Embedded',                      icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { label: 'Version',   value: stats?.db?.version ?? '—',          icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
-            { label: 'File Size', value: fmtBytes(stats?.db?.fileSizeBytes), icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { label: 'Engine',    value: stats?.db?.type ?? 'PostgreSQL',                              icon: <Database className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { label: 'Version',   value: stats?.db?.version ?? '—',                                   icon: <Hash className="w-5 h-5" />,     color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
+            { label: 'DB Size',   value: fmtBytes(stats?.db?.dbSizeBytes),                            icon: <HardDrive className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+            { label: 'Host',      value: stats?.db?.host ? `${stats.db.host}:${stats.db.port}` : '—', icon: <Globe className="w-5 h-5" />,    color: 'text-green-400',  bg: 'bg-green-500/10'  },
           ].map(s => (
             <div key={s.label} className="stat-card animate-fade-up hover:scale-[1.03] hover:-translate-y-0.5 transition-all duration-200">
               <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>
@@ -457,10 +639,10 @@ function SystemInternalsTab() {
             </div>
           ))}
         </div>
-        {stats?.db?.filePath && (
+        {stats?.db?.databaseName && (
           <div className="mt-3 px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
-            <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-            <span className="text-xs font-mono text-[var(--text-muted)] truncate">{stats.db.filePath}.mv.db</span>
+            <Database className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+            <span className="text-xs font-mono text-[var(--text-muted)] truncate">Database: <span className="text-[var(--text-secondary)]">{stats.db.databaseName}</span></span>
           </div>
         )}
       </div>
@@ -507,6 +689,44 @@ function SystemInternalsTab() {
                   <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v}`, 'Active']} />
                   <Line type="monotone" dataKey="poolActive" stroke="#8b5cf6" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#8b5cf6' }} />
                 </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* PostgreSQL active connections over time */}
+            <div className="card p-5">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Database className="w-3.5 h-3.5" /> PostgreSQL Active Connections
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <LineChart data={samples} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis dataKey="timestamp" {...AXIS_STYLE} tickFormatter={fmtTime} interval="preserveStartEnd" />
+                  <YAxis {...AXIS_STYLE} domain={[0, 'auto']} allowDecimals={false} width={36} />
+                  <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v}`, 'pg_stat_activity']} />
+                  <Line type="monotone" dataKey="pgActiveConns" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#10b981' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* PostgreSQL DB size over time */}
+            <div className="card p-5">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <HardDrive className="w-3.5 h-3.5" /> PostgreSQL DB Size (MB)
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <AreaChart data={samples} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="pgSizeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...GRID_STYLE} />
+                  <XAxis dataKey="timestamp" {...AXIS_STYLE} tickFormatter={fmtTime} interval="preserveStartEnd" />
+                  <YAxis {...AXIS_STYLE} domain={['auto', 'auto']} unit=" MB" width={54} />
+                  <Tooltip {...TOOLTIP_STYLE} labelFormatter={fmtTime} formatter={(v) => [`${v} MB`, 'DB Size']} />
+                  <Area type="monotone" dataKey="pgDbSizeMb" stroke="#f59e0b" strokeWidth={2} fill="url(#pgSizeGrad)" dot={false} activeDot={{ r: 3, fill: '#f59e0b' }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -667,14 +887,11 @@ function SystemInternalsTab() {
               </div>
             ))}
             <div className="pt-2 border-t border-white/[0.06]">
-              <a
-                href="/h2-console"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 transition-colors no-underline">
-                <ExternalLink className="w-4 h-4" />
-                Open H2 Console
-              </a>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[var(--text-muted)] bg-white/[0.03] border border-white/[0.06] font-mono">
+                <Server className="w-3.5 h-3.5 shrink-0 text-green-400" />
+                <span>postgresql://</span>
+                <span className="text-[var(--text-secondary)]">{stats?.db?.host ?? 'localhost'}:{stats?.db?.port ?? 5499}/{stats?.db?.databaseName ?? 'dbdeployer'}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -825,6 +1042,26 @@ function InstanceMetricsTab({ instanceId, instance }) {
                 <div className={`w-2 h-2 rounded-full ${liveMetrics.portReachable ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 Port {instance.hostPort} — {liveMetrics.portReachable ? `Reachable (${liveMetrics.portLatencyMs}ms)` : 'Not reachable'}
               </div>
+              {liveMetrics.healthStatus && liveMetrics.healthStatus !== 'none' && (
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border
+                  ${liveMetrics.healthStatus === 'healthy'
+                    ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                    : liveMetrics.healthStatus === 'starting'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <span className="capitalize">healthcheck: {liveMetrics.healthStatus}</span>
+                </div>
+              )}
+              {liveMetrics.uptimeSeconds > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-(--bg-surface-2) border-(--border-soft) text-(--text-secondary)">
+                  <Clock3 className="w-3.5 h-3.5" /> Up {fmtAge(liveMetrics.uptimeSeconds * 1000)}
+                </div>
+              )}
+              {liveMetrics.oomKilled && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-red-500/10 border-red-500/30 text-red-400">
+                  ⚠ OOM-killed
+                </div>
+              )}
               {liveMetrics.restartCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-orange-500/10 border-orange-500/30 text-orange-400">
                   ↺ Restarted {liveMetrics.restartCount}×
@@ -832,12 +1069,20 @@ function InstanceMetricsTab({ instanceId, instance }) {
               )}
               {liveMetrics.pids > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-secondary)]">
-                  <Hash className="w-3.5 h-3.5" /> {liveMetrics.pids} PIDs
+                  <Hash className="w-3.5 h-3.5" /> {liveMetrics.pids}{liveMetrics.pidsLimit > 0 ? ` / ${liveMetrics.pidsLimit}` : ''} PIDs
                 </div>
               )}
               {liveMetrics.cpuCores > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-secondary)]">
                   <Cpu className="w-3.5 h-3.5" /> {liveMetrics.cpuCores} vCPU{liveMetrics.cpuCores !== 1 ? 's' : ''}
+                  {liveMetrics.cpuThrottledPercent > 0 && (
+                    <span className="text-amber-400">· {liveMetrics.cpuThrottledPercent.toFixed(0)}% throttled</span>
+                  )}
+                </div>
+              )}
+              {(liveMetrics.netRxErrors > 0 || liveMetrics.netTxErrors > 0) && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold border bg-red-500/10 border-red-500/30 text-red-400">
+                  Net errors: {liveMetrics.netRxErrors}rx / {liveMetrics.netTxErrors}tx
                 </div>
               )}
             </div>
@@ -908,6 +1153,9 @@ function InstanceMetricsTab({ instanceId, instance }) {
           </div>
         )}
       </div>
+
+      {/* ═══ Section 0c: Tool-Specific Telemetry ═════════════════════════════ */}
+      <ToolTelemetryPanel metrics={liveMetrics} dbType={instance.dbType} />
 
       {/* ═══ Section 0b: CPU + Memory Sparklines ══════════════════════════════ */}
       {history.length >= 2 && (
@@ -1343,6 +1591,29 @@ function ConfigurationTab({ instance }) {
 
   return (
     <div className="space-y-5">
+      {/* Source Template banner */}
+      {instance.templateId && (
+        <div className="card p-4 flex items-center gap-3 border-(--border-strong) animate-fade-up">
+          <SlidersHorizontal className="w-5 h-5 shrink-0" style={{ color: 'var(--status-deploying)' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-(--text-muted) uppercase tracking-widest font-bold">Source Template</p>
+            {instance.templateName
+              ? <p className="text-sm font-semibold text-(--text-primary) truncate">{instance.templateName}</p>
+              : <p className="text-sm text-(--text-muted) italic">Template was deleted</p>
+            }
+          </div>
+          {instance.templateName && (
+            <Link
+              to="/configurations"
+              className="btn-secondary text-xs flex items-center gap-1.5 shrink-0"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              View Configurations
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Connection string full widget */}
       {instance.connectionString && (
         <div className="card p-5">

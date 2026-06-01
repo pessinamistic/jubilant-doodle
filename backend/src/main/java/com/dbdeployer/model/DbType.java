@@ -27,6 +27,7 @@ public enum DbType {
     // ── Messaging & streaming ─────────────────────────────────────────────────
     RABBITMQ,
     KAFKA,
+    CONDUKTOR,
 
     // ── Observability ─────────────────────────────────────────────────────────
     GRAFANA,
