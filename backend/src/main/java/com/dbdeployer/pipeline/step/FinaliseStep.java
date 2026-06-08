@@ -5,8 +5,7 @@ import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.model.StepType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,10 +13,9 @@ import org.springframework.stereotype.Component;
  * capture the {@code
  * startedAt} timestamp from Docker.
  */
+@Slf4j
 @Component
 public class FinaliseStep implements DeployStep {
-
-    private static final Logger log = LoggerFactory.getLogger(FinaliseStep.class);
 
     private final DockerDeployEngine docker;
 

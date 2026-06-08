@@ -20,8 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -32,10 +31,9 @@ import org.springframework.stereotype.Service;
  * Re-fetches all entities from the DB by ID before doing any work so that the
  * caller's transaction is guaranteed to have committed first.
  */
+@Slf4j
 @Service
 public class PipelineRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(PipelineRunner.class);
 
     private final DeploymentPipelineRepository pipelineRepo;
     private final PipelineStepRepository stepRepo;

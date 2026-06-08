@@ -5,8 +5,7 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import java.net.URI;
 import java.time.Duration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,10 +17,9 @@ import org.springframework.stereotype.Component;
  * tests whether the {@code docker} CLI binary is on the PATH — not whether the
  * daemon is actually running.
  */
+@Slf4j
 @Component
 public class DockerHealthChecker {
-
-    private static final Logger log = LoggerFactory.getLogger(DockerHealthChecker.class);
 
     /**
      * Result of a Docker daemon reachability probe.

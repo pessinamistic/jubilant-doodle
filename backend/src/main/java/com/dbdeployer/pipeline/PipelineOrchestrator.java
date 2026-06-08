@@ -7,8 +7,7 @@ import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -24,10 +23,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * after the pipeline + step rows are committed to the DB, avoiding a not-found
  * race condition in the async thread.
  */
+@Slf4j
 @Service
 public class PipelineOrchestrator {
-
-    private static final Logger log = LoggerFactory.getLogger(PipelineOrchestrator.class);
 
     private static final List<StepType> STEP_ORDER =
             List.of(StepType.PULL_IMAGE, StepType.CREATE_CONTAINER, StepType.START_CONTAINER, StepType.FINALISE);

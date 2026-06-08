@@ -14,14 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class BrewDeployEngine {
-
-    private static final Logger log = LoggerFactory.getLogger(BrewDeployEngine.class);
 
     private final OsDetector osDetector;
     private final ObjectMapper objectMapper = new ObjectMapper();

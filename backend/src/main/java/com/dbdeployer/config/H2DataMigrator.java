@@ -3,8 +3,7 @@ package com.dbdeployer.config;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -43,12 +42,11 @@ import org.springframework.stereotype.Component;
  * {@code build.gradle.kts}
  * </ol>
  */
+@Slf4j
 @Component
 @Order(2) // runs after SystemDbRegistrar (Order 1)
 @ConditionalOnProperty(name = "app.migrate-from-h2", havingValue = "true")
 public class H2DataMigrator implements ApplicationRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(H2DataMigrator.class);
 
     private final JdbcTemplate pgJdbc;
 

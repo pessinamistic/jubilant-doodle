@@ -134,8 +134,7 @@ public class DbInstanceService {
                 container.getContainerId(), container.getConfig().getHostPort());
         if (!base.available()) return base;
         // Best-effort tool-specific telemetry (never blocks the response).
-        java.util.Map<String, Object> tools =
-                toolMetrics.collect(container.getConfig(), container.getContainerId());
+        java.util.Map<String, Object> tools = toolMetrics.collect(container.getConfig(), container.getContainerId());
         return tools.isEmpty() ? base : base.withToolMetrics(tools);
     }
 
@@ -226,10 +225,10 @@ public class DbInstanceService {
             config.setDeployCount(1);
             configRepo.save(config);
         } else {
-            config = configRepo.findById(configId)
+            config = configRepo
+                    .findById(configId)
                     .orElseThrow(() -> new IllegalArgumentException("Config not found: " + configId));
         }
-
 
         // ── Container row ── (starts as DEPLOYING; pipeline transitions it)
         DeployedContainer container = new DeployedContainer();

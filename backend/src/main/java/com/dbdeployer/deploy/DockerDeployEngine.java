@@ -29,14 +29,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class DockerDeployEngine {
 
-    private static final Logger log = LoggerFactory.getLogger(DockerDeployEngine.class);
     private final DockerClient docker;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, ReentrantLock> imagePullLocks = new ConcurrentHashMap<>();
@@ -665,7 +664,8 @@ public class DockerDeployEngine {
         try {
             var currCpu = stats.getCpuStats();
             var prevCpu = stats.getPreCpuStats();
-            if (currCpu != null && prevCpu != null
+            if (currCpu != null
+                    && prevCpu != null
                     && currCpu.getThrottlingData() != null
                     && prevCpu.getThrottlingData() != null) {
                 Long currT = currCpu.getThrottlingData().getThrottledTime();
@@ -678,9 +678,8 @@ public class DockerDeployEngine {
                     // throttledTime is in ns; periods × ~100ms each.
                     if (periodDelta > 0) {
                         double avgPeriodNs = 100_000_000.0; // default 100ms
-                        cpuThrottledPct = Math.min(
-                                100.0,
-                                ((double) throttleDelta / (periodDelta * avgPeriodNs)) * 100.0);
+                        cpuThrottledPct =
+                                Math.min(100.0, ((double) throttleDelta / (periodDelta * avgPeriodNs)) * 100.0);
                     }
                 }
             }
@@ -843,7 +842,10 @@ public class DockerDeployEngine {
                     .exec(new ResultCallback.Adapter<Frame>() {
                         @Override
                         public void onNext(Frame frame) {
-                            try { buf.write(frame.getPayload()); } catch (Exception ignored) {}
+                            try {
+                                buf.write(frame.getPayload());
+                            } catch (Exception ignored) {
+                            }
                         }
                     })
                     .awaitCompletion(timeoutSeconds, TimeUnit.SECONDS);

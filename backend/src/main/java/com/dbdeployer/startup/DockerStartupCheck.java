@@ -8,8 +8,7 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.URI;
 import javax.swing.JOptionPane;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -25,10 +24,9 @@ import org.springframework.stereotype.Component;
  * (only when running as a desktop app, i.e.\ a non-headless environment).
  * </ol>
  */
+@Slf4j
 @Component
 public class DockerStartupCheck implements ApplicationRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(DockerStartupCheck.class);
 
     private static final String SEPARATOR = "=".repeat(72);
     private static final String UI_URL = "http://localhost:8080";

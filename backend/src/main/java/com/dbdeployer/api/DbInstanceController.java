@@ -17,8 +17,7 @@ import com.dbdeployer.service.SystemDbStatsService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -32,11 +31,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
 public class DbInstanceController {
-
-    private static final Logger log = LoggerFactory.getLogger(DbInstanceController.class);
 
     private final DbInstanceService service;
     private final ConnectionStringBuilder connBuilder;

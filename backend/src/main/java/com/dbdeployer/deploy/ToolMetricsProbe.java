@@ -5,8 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -22,10 +21,9 @@ import org.springframework.stereotype.Component;
  * tracked {@link DeploymentConfig}; no user-controlled string is ever
  * concatenated into a shell, mitigating command injection.
  */
+@Slf4j
 @Component
 public class ToolMetricsProbe {
-
-    private static final Logger log = LoggerFactory.getLogger(ToolMetricsProbe.class);
 
     private final DockerDeployEngine docker;
 
@@ -42,11 +40,11 @@ public class ToolMetricsProbe {
         if (config == null || containerId == null) return Map.of();
         try {
             return switch (config.getDbType()) {
-                case POSTGRESQL              -> probePostgres(config, containerId);
-                case MYSQL, MARIADB          -> probeMysql(config, containerId);
-                case REDIS                   -> probeRedis(containerId);
-                case MONGODB                 -> probeMongo(config, containerId);
-                default                       -> Map.of();
+                case POSTGRESQL -> probePostgres(config, containerId);
+                case MYSQL, MARIADB -> probeMysql(config, containerId);
+                case REDIS -> probeRedis(containerId);
+                case MONGODB -> probeMongo(config, containerId);
+                default -> Map.of();
             };
         } catch (Exception e) {
             log.debug("tool-metrics probe failed for {}: {}", config.getDbType(), e.getMessage());
@@ -57,16 +55,17 @@ public class ToolMetricsProbe {
     // ── PostgreSQL ────────────────────────────────────────────────────────
     private Map<String, Object> probePostgres(DeploymentConfig cfg, String containerId) {
         String user = nonBlank(cfg.getUsername(), "postgres");
-        String db   = nonBlank(cfg.getDatabaseName(), user);
-        String sql  = "SELECT (SELECT count(*) FROM pg_stat_activity), "
+        String db = nonBlank(cfg.getDatabaseName(), user);
+        String sql = "SELECT (SELECT count(*) FROM pg_stat_activity), "
                 + "(SELECT setting::int FROM pg_settings WHERE name='max_connections'), "
                 + "(SELECT pg_database_size(current_database())), "
                 + "(SELECT count(*) FROM pg_stat_activity WHERE state='active'), "
                 + "(SELECT count(*) FROM pg_stat_activity WHERE state='idle'), "
                 + "(SELECT extract(epoch from now()-pg_postmaster_start_time())::bigint);";
-        String out = docker.execCapture(containerId, new String[] {
-                "psql", "-U", user, "-d", db, "-AtXq", "-F", "|", "-c", sql
-        }, EXEC_TIMEOUT_SECONDS);
+        String out = docker.execCapture(
+                containerId,
+                new String[] {"psql", "-U", user, "-d", db, "-AtXq", "-F", "|", "-c", sql},
+                EXEC_TIMEOUT_SECONDS);
         if (out == null) return Map.of();
         String[] parts = out.trim().split("\\|");
         if (parts.length < 6) return Map.of();
@@ -85,15 +84,21 @@ public class ToolMetricsProbe {
         String user = nonBlank(cfg.getUsername(), "root");
         String pass = nonBlank(cfg.getPassword(), "");
         if (pass.isEmpty()) return Map.of(); // need credentials
-        String out = docker.execCapture(containerId, new String[] {
-                "mysql",
-                "-u", user,
-                "-p" + pass,
-                "-N", "-B", "-e",
-                "SHOW GLOBAL STATUS WHERE Variable_name IN "
-                        + "('Threads_connected','Threads_running','Uptime','Queries',"
-                        + "'Slow_queries','Aborted_connects','Innodb_buffer_pool_pages_data');"
-        }, EXEC_TIMEOUT_SECONDS);
+        String out = docker.execCapture(
+                containerId,
+                new String[] {
+                    "mysql",
+                    "-u",
+                    user,
+                    "-p" + pass,
+                    "-N",
+                    "-B",
+                    "-e",
+                    "SHOW GLOBAL STATUS WHERE Variable_name IN "
+                            + "('Threads_connected','Threads_running','Uptime','Queries',"
+                            + "'Slow_queries','Aborted_connects','Innodb_buffer_pool_pages_data');"
+                },
+                EXEC_TIMEOUT_SECONDS);
         if (out == null) return Map.of();
         Map<String, Object> m = new LinkedHashMap<>();
         for (String line : out.split("\\R")) {
@@ -101,13 +106,15 @@ public class ToolMetricsProbe {
             if (kv.length < 2) continue;
             switch (kv[0]) {
                 case "Threads_connected" -> putLong(m, "threadsConnected", kv[1]);
-                case "Threads_running"   -> putLong(m, "threadsRunning",   kv[1]);
-                case "Uptime"            -> putLong(m, "serverUptimeSeconds", kv[1]);
-                case "Queries"           -> putLong(m, "totalQueries",     kv[1]);
-                case "Slow_queries"      -> putLong(m, "slowQueries",      kv[1]);
-                case "Aborted_connects"  -> putLong(m, "abortedConnects",  kv[1]);
+                case "Threads_running" -> putLong(m, "threadsRunning", kv[1]);
+                case "Uptime" -> putLong(m, "serverUptimeSeconds", kv[1]);
+                case "Queries" -> putLong(m, "totalQueries", kv[1]);
+                case "Slow_queries" -> putLong(m, "slowQueries", kv[1]);
+                case "Aborted_connects" -> putLong(m, "abortedConnects", kv[1]);
                 case "Innodb_buffer_pool_pages_data" -> putLong(m, "innodbBufferPoolPagesData", kv[1]);
-                default -> { /* ignore */ }
+                default -> {
+                    /* ignore */
+                }
             }
         }
         return m;
@@ -116,13 +123,21 @@ public class ToolMetricsProbe {
     // ── Redis ─────────────────────────────────────────────────────────────
     private static final Pattern REDIS_KV = Pattern.compile("^([a-zA-Z0-9_]+):(.+)$");
     private static final java.util.Set<String> REDIS_KEYS = java.util.Set.of(
-            "connected_clients", "used_memory", "used_memory_peak", "uptime_in_seconds",
-            "total_commands_processed", "instantaneous_ops_per_sec",
-            "keyspace_hits", "keyspace_misses", "evicted_keys", "expired_keys",
-            "total_connections_received", "rejected_connections");
+            "connected_clients",
+            "used_memory",
+            "used_memory_peak",
+            "uptime_in_seconds",
+            "total_commands_processed",
+            "instantaneous_ops_per_sec",
+            "keyspace_hits",
+            "keyspace_misses",
+            "evicted_keys",
+            "expired_keys",
+            "total_connections_received",
+            "rejected_connections");
 
     private Map<String, Object> probeRedis(String containerId) {
-        String out = docker.execCapture(containerId, new String[] { "redis-cli", "INFO" }, EXEC_TIMEOUT_SECONDS);
+        String out = docker.execCapture(containerId, new String[] {"redis-cli", "INFO"}, EXEC_TIMEOUT_SECONDS);
         if (out == null) return Map.of();
         Map<String, Object> m = new LinkedHashMap<>();
         long dbKeys = 0;
@@ -138,7 +153,10 @@ public class ToolMetricsProbe {
                 // dbN:keys=NN,expires=NN,avg_ttl=NN
                 for (String kv : v.split(",")) {
                     if (kv.startsWith("keys=")) {
-                        try { dbKeys += Long.parseLong(kv.substring(5)); } catch (NumberFormatException ignored) {}
+                        try {
+                            dbKeys += Long.parseLong(kv.substring(5));
+                        } catch (NumberFormatException ignored) {
+                        }
                     }
                 }
             }
@@ -165,19 +183,21 @@ public class ToolMetricsProbe {
                 + "print('networkBytesOut='+s.network.bytesOut);";
         String[] cmd;
         if (!user.isEmpty() && !pass.isEmpty()) {
-            cmd = new String[] { "mongosh", "--quiet", "-u", user, "-p", pass,
-                    "--authenticationDatabase", "admin", "--eval", script };
+            cmd = new String[] {
+                "mongosh", "--quiet", "-u", user, "-p", pass, "--authenticationDatabase", "admin", "--eval", script
+            };
         } else {
-            cmd = new String[] { "mongosh", "--quiet", "--eval", script };
+            cmd = new String[] {"mongosh", "--quiet", "--eval", script};
         }
         String out = docker.execCapture(containerId, cmd, EXEC_TIMEOUT_SECONDS);
         if (out == null) {
             // Older images ship only the legacy `mongo` shell
             if (!user.isEmpty() && !pass.isEmpty()) {
-                cmd = new String[] { "mongo", "--quiet", "-u", user, "-p", pass,
-                        "--authenticationDatabase", "admin", "--eval", script };
+                cmd = new String[] {
+                    "mongo", "--quiet", "-u", user, "-p", pass, "--authenticationDatabase", "admin", "--eval", script
+                };
             } else {
-                cmd = new String[] { "mongo", "--quiet", "--eval", script };
+                cmd = new String[] {"mongo", "--quiet", "--eval", script};
             }
             out = docker.execCapture(containerId, cmd, EXEC_TIMEOUT_SECONDS);
             if (out == null) return Map.of();
@@ -216,7 +236,10 @@ public class ToolMetricsProbe {
         boolean up = false;
         for (int i = 0; i < snake.length(); i++) {
             char c = snake.charAt(i);
-            if (c == '_') { up = true; continue; }
+            if (c == '_') {
+                up = true;
+                continue;
+            }
             sb.append(up ? Character.toUpperCase(c) : c);
             up = false;
         }

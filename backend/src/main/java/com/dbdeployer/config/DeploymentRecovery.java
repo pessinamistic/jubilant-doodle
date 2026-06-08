@@ -11,8 +11,7 @@ import com.dbdeployer.pipeline.store.PipelineStepRepository;
 import com.dbdeployer.store.DeployedContainerRepository;
 import java.time.Instant;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -38,11 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Runs at Order(3) — after SystemDbRegistrar (Order 1) and H2DataMigrator
  * (Order 2).
  */
-@Component
+@Slf4j
 @Order(3)
+@Component
 public class DeploymentRecovery implements ApplicationRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(DeploymentRecovery.class);
 
     private final DeployedContainerRepository containerRepo;
     private final DockerDeployEngine docker;

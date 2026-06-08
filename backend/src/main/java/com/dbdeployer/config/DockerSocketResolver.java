@@ -4,8 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Resolves the correct Docker socket URI for the current machine and sets it as
@@ -21,9 +20,8 @@ import org.slf4j.LoggerFactory;
  * (/var/run/docker.sock) 7. Rootless Docker socket (~/.docker/run/docker.sock)
  * 8. Docker Desktop socket (~/.docker/desktop/run/docker.sock) [macOS]
  */
+@Slf4j
 public class DockerSocketResolver {
-
-    private static final Logger log = LoggerFactory.getLogger(DockerSocketResolver.class);
 
     /**
      * Resolves the Docker socket URI and also exports it as the {@code DOCKER_HOST}

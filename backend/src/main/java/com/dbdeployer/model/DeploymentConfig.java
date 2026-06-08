@@ -120,7 +120,6 @@ public class DeploymentConfig {
      * The current (or last) deployment state for this config. Cascade ALL so
      * saving/deleting the config cascades to the container record.
      */
-
     @OneToOne(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER, optional = true)
     private DeployedContainer container;
 

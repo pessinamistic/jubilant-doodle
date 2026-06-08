@@ -10,8 +10,7 @@ import com.dbdeployer.store.DeploymentConfigRepository;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -24,11 +23,11 @@ import org.springframework.stereotype.Component;
  * only backfills missing runtime metadata (for example container ID) from the
  * provisioner so we do not rewrite the system config on every run.
  */
-@Component
+@Slf4j
 @Order(1)
+@Component
 public class SystemDbRegistrar implements ApplicationRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(SystemDbRegistrar.class);
     static final String SYSTEM_CONFIG_ID = "system";
 
     private final DeploymentConfigRepository configRepo;

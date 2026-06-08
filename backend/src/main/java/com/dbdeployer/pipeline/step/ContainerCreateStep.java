@@ -5,18 +5,16 @@ import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.pipeline.model.DeployErrorCode;
 import com.dbdeployer.pipeline.model.StepType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
  * Step 2 — Create the Docker container (without starting it). Populates {@code
  * container.containerId}, {@code containerName}, and {@code dataDirectory}.
  */
+@Slf4j
 @Component
 public class ContainerCreateStep implements DeployStep {
-
-    private static final Logger log = LoggerFactory.getLogger(ContainerCreateStep.class);
 
     private final DockerDeployEngine docker;
 

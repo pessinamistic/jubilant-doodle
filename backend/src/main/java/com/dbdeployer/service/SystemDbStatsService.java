@@ -14,8 +14,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import javax.sql.DataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -24,10 +23,9 @@ import org.springframework.stereotype.Service;
  * Produces a live snapshot of Port Wrangler's system (PostgreSQL) database
  * stats.
  */
+@Slf4j
 @Service
 public class SystemDbStatsService {
-
-    private static final Logger log = LoggerFactory.getLogger(SystemDbStatsService.class);
 
     private static final List<String> TRACKED_TABLES =
             List.of("deployment_config", "deployed_container", "deployment_pipeline", "pipeline_step");

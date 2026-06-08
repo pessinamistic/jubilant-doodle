@@ -2,17 +2,15 @@ package com.dbdeployer;
 
 import java.util.Map;
 import java.util.TimeZone;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+@Slf4j
 @EnableScheduling
+@SpringBootApplication
 public class DbDeployerApplication {
-
-    private static final Logger log = LoggerFactory.getLogger(DbDeployerApplication.class);
 
     private static final Map<String, String> LEGACY_TZ_ALIASES = Map.of("Asia/Calcutta", "Asia/Kolkata");
 

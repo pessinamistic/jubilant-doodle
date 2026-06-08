@@ -5,8 +5,7 @@ import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.store.DeployedContainerRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -15,10 +14,9 @@ import org.springframework.stereotype.Service;
  * in a separate bean so that @Async proxy interception works correctly —
  * self-invocation within the same bean bypasses the proxy.
  */
+@Slf4j
 @Service
 public class AsyncDeployer {
-
-    private static final Logger log = LoggerFactory.getLogger(AsyncDeployer.class);
 
     private final DeployedContainerRepository containerRepo;
     private final DockerDeployEngine docker;

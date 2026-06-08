@@ -2,16 +2,15 @@ package com.dbdeployer.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+@Slf4j
 @Component
 public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(ApiRequestLoggingInterceptor.class);
     private static final String START_TIME_ATTR = "api.request.startNanos";
 
     @Value("${dbdeployer.logging.api.verbose:false}")

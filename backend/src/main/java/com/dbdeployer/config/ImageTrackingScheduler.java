@@ -1,16 +1,14 @@
 package com.dbdeployer.config;
 
 import com.dbdeployer.service.ImageValidationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /** Periodic local and Docker Hub image tracking refresh jobs. */
+@Slf4j
 @Component
 public class ImageTrackingScheduler {
-
-    private static final Logger log = LoggerFactory.getLogger(ImageTrackingScheduler.class);
 
     private final ImageValidationService imageValidationService;
     private final ImageValidationProperties properties;

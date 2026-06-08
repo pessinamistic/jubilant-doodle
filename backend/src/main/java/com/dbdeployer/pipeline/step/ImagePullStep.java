@@ -7,15 +7,13 @@ import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.pipeline.model.DeployErrorCode;
 import com.dbdeployer.pipeline.model.StepType;
 import com.dbdeployer.service.ImageValidationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /** Step 1 — Pull (or verify) the Docker image required for this deployment. */
+@Slf4j
 @Component
 public class ImagePullStep implements DeployStep {
-
-    private static final Logger log = LoggerFactory.getLogger(ImagePullStep.class);
 
     private final DockerDeployEngine docker;
     private final ImageValidationService imageValidationService;
