@@ -4,6 +4,7 @@ import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.api.dto.DeployFromTemplateRequest;
 import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.store.DeploymentConfigRepository;
 import java.util.List;
 import java.util.UUID;
@@ -66,7 +67,7 @@ public class ConfigTemplateService {
      * template after a successful dispatch.
      */
     @Transactional
-    public DeploymentConfig deployFromTemplate(String templateId, DeployFromTemplateRequest req) {
+    public DeploymentResponse deployFromTemplate(String templateId, DeployFromTemplateRequest req) {
         DeploymentConfig deploymentConfig = getById(templateId);
 
         DeployRequest deployReq = new DeployRequest(
@@ -79,12 +80,13 @@ public class ConfigTemplateService {
                 deploymentConfig.getDatabaseName(),
                 deploymentConfig.getExtraEnvJson());
 
-        DeploymentConfig config = instanceService.deploy(deployReq, templateId);
+        DeploymentResponse deploymentResponse = instanceService.deploy(deployReq, templateId);
 
         deploymentConfig.setDeployCount(deploymentConfig.getDeployCount() + 1);
-        configRepo.save(deploymentConfig);
+        DeploymentConfig save = configRepo.save(deploymentConfig);
 
-        return config;
+        deploymentResponse.setDeploymentConfig(save);
+        return deploymentResponse;
     }
 
     private void applyRequest(DeploymentConfig t, ConfigTemplateRequest req) {

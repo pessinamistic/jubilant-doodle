@@ -18,6 +18,7 @@ import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.model.ImageValidationDecision;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.PipelineOrchestrator;
@@ -156,7 +157,7 @@ public class DbInstanceService {
     // ── Deploy ─────────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig deploy(DeployRequest req, String configId) {
+    public DeploymentResponse deploy(DeployRequest req, String configId) {
         log.info(
                 "[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
                 req.name(),
@@ -251,13 +252,13 @@ public class DbInstanceService {
                 container.getId(),
                 container.getLatestPipelineId());
 
-        return config;
+        return new DeploymentResponse(config, container);
     }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig startInstance(String configId) {
+    public DeploymentResponse startInstance(String configId) {
         DeployedContainer container = getById(configId);
         DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "start");
@@ -273,11 +274,11 @@ public class DbInstanceService {
             container.setStartedAt(docker.getStartedAt(container.getContainerId()));
         }
         containerRepo.save(container);
-        return config;
+        return new DeploymentResponse(config, container);
     }
 
     @Transactional
-    public DeploymentConfig stopInstance(String configId) {
+    public DeploymentResponse stopInstance(String configId) {
         DeployedContainer container = getById(configId);
         DeploymentConfig config = container.getConfig();
         requireNotSystem(config, "stop");
@@ -288,7 +289,7 @@ public class DbInstanceService {
         }
         container.setStatus(InstanceStatus.STOPPED);
         containerRepo.save(container);
-        return config;
+        return new DeploymentResponse(config, container);
     }
 
     @Transactional
@@ -349,7 +350,7 @@ public class DbInstanceService {
      * Docker/Brew status and transitions the instance back to its real live status.
      */
     @Transactional
-    public DeploymentConfig reTrackInstance(String configId) {
+    public DeploymentResponse reTrackInstance(String configId) {
         DeployedContainer container = getById(configId);
         DeploymentConfig config = container.getConfig();
         if (container.getStatus() != InstanceStatus.UNTRACKED) {
@@ -362,7 +363,7 @@ public class DbInstanceService {
         log.info("Re-tracking instance '{}' — live status: {}", config.getName(), liveStatus);
         container.setStatus(liveStatus);
         containerRepo.save(container);
-        return config;
+        return new DeploymentResponse(config, container);
     }
 
     // ── Import / Re-import ─────────────────────────────────────────────────────
@@ -373,7 +374,7 @@ public class DbInstanceService {
      * only the container binding changes.
      */
     @Transactional
-    public DeploymentConfig reImportInstance(String configId, ReImportRequest req) {
+    public DeploymentResponse reImportInstance(String configId, ReImportRequest req) {
         DeployedContainer existing = getById(configId);
         DeploymentConfig config = existing.getConfig();
 
@@ -408,11 +409,11 @@ public class DbInstanceService {
                 "Re-imported instance '{}' → container {}",
                 config.getName(),
                 req.containerId().substring(0, 12));
-        return config;
+        return new DeploymentResponse(config, existing);
     }
 
     @Transactional
-    public DeploymentConfig importContainer(ImportRequest req) {
+    public DeploymentResponse importContainer(ImportRequest req) {
         if (configRepo.existsByName(req.name())) {
             throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
         }
@@ -455,8 +456,8 @@ public class DbInstanceService {
         container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
         containerRepo.save(container);
 
-        config.getContainers().add(container);
-        return config;
+        // config.getContainers().add(container);
+        return new DeploymentResponse(config, container);
     }
 
     // ── Status sync ────────────────────────────────────────────────────────────
@@ -516,7 +517,7 @@ public class DbInstanceService {
     // ── Misc ───────────────────────────────────────────────────────────────────
 
     @Transactional
-    public DeploymentConfig rename(String configId, String newName) {
+    public DeploymentResponse rename(String configId, String newName) {
         if (newName == null || newName.isBlank()) throw new IllegalArgumentException("Name cannot be blank");
         String trimmed = newName.trim();
         DeployedContainer container = getById(configId);
@@ -524,8 +525,10 @@ public class DbInstanceService {
         if (!trimmed.equals(config.getName()) && configRepo.existsByName(trimmed)) {
             throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
         }
-        config.setName(trimmed);
-        return configRepo.save(config);
+        container.setContainerName(trimmed); // keep container name in sync with instance name for easier identification
+        containerRepo.save(container);
+        return new DeploymentResponse(config, container);
+//        return configRepo.save(config);
     }
 
     public String getConnectionString(String id) {

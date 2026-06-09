@@ -5,6 +5,7 @@ import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.store.DeploymentConfigRepository;
 import org.springframework.stereotype.Component;
 
@@ -20,8 +21,9 @@ public class InstanceResponseAssembler {
         this.configRepo = configRepo;
     }
 
-    public InstanceResponse fromConfig(DeploymentConfig config) {
-        return build(config, config.getContainer());
+    public InstanceResponse fromConfig(DeploymentResponse deploymentResponse) {
+
+        return build(deploymentResponse.getDeploymentConfig(), deploymentResponse.getDeployedContainer());
     }
 
     public InstanceResponse fromContainer(DeployedContainer container) {

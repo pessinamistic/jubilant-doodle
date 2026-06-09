@@ -11,6 +11,7 @@ import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.api.dto.SystemDbStatsResponse;
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.service.ConfigTemplateService;
 import com.dbdeployer.service.DbInstanceService;
 import com.dbdeployer.service.SystemDbStatsService;
@@ -82,15 +83,18 @@ public class DbInstanceController {
                 req.dbType(),
                 req.version(),
                 req.hostPort());
-        DeploymentConfig config = service.deploy(req, null);
-        log.info("[api] deploy accepted: configId={}, name='{}'", config.getId(), config.getName());
-        return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
+        DeploymentResponse deploymentResponse = service.deploy(req, null);
+
+        DeploymentConfig deploymentConfig = deploymentResponse.getDeploymentConfig();
+        log.info("[api] deploy accepted: configId={}, name='{}'", deploymentConfig.getId(), deploymentConfig.getName());
+        return ResponseEntity.accepted().body(responseAssembler.fromConfig(deploymentResponse));
     }
 
     /** Rename an instance */
     @PatchMapping("/instances/{id}")
     public InstanceResponse rename(@PathVariable String id, @RequestBody Map<String, String> body) {
-        return responseAssembler.fromConfig(service.rename(id, body.get("name")));
+        DeploymentResponse deploymentResponse = service.rename(id, body.get("name"));
+        return responseAssembler.fromConfig(deploymentResponse);
     }
 
     /** Start a stopped instance */
@@ -178,8 +182,7 @@ public class DbInstanceController {
      */
     @PostMapping("/instances/import")
     public ResponseEntity<InstanceResponse> importContainer(@RequestBody ImportRequest req) {
-        DeploymentConfig config = service.importContainer(req);
-        return ResponseEntity.ok(responseAssembler.fromConfig(config));
+        return ResponseEntity.ok(responseAssembler.fromConfig(service.importContainer(req)));
     }
 
     /**
@@ -189,8 +192,7 @@ public class DbInstanceController {
     @PutMapping("/instances/{id}/reimport")
     public ResponseEntity<InstanceResponse> reImportInstance(
             @PathVariable String id, @Valid @RequestBody ReImportRequest req) {
-        DeploymentConfig config = service.reImportInstance(id, req);
-        return ResponseEntity.ok(responseAssembler.fromConfig(config));
+        return ResponseEntity.ok(responseAssembler.fromConfig(service.reImportInstance(id, req)));
     }
 
     /** Get system info (OS, available tools) */

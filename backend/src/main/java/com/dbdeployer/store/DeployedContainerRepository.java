@@ -27,4 +27,13 @@ public interface DeployedContainerRepository extends JpaRepository<DeployedConta
 
     /** All containers in a specific status — used by DeploymentRecovery. */
     List<DeployedContainer> findByStatus(InstanceStatus status);
+
+    List<DeployedContainer> findByConfigIdOrderByCreatedAtDesc(String configId);
+
+    Optional<DeployedContainer> findFirstByConfigIdOrderByCreatedAtDesc(String configId);
+
+    Optional<DeployedContainer> findFirstByConfigIdAndStatusNotOrderByCreatedAtDesc(
+        String configId,
+        InstanceStatus status
+    );
 }

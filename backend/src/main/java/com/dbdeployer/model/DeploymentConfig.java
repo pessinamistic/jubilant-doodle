@@ -1,6 +1,5 @@
 package com.dbdeployer.model;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -117,13 +116,14 @@ public class DeploymentConfig {
     private int deployCount = 0;
 
     /**
-     * The current (or last) deployment state for this config. Cascade ALL so
-     * saving/deleting the config cascades to the container record.
+     * Historical deployments created from this config.
+     *
+     * This is intentionally not cascaded. Deployment containers should be created,
+     * updated, and removed through DeployedContainerRepository/service logic, not by
+     * saving DeploymentConfig.
      */
-    @OneToOne(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER, optional = true)
-    private DeployedContainer container;
-
-    @OneToMany(mappedBy = "config", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "config", fetch = FetchType.LAZY)
+    @ToString.Exclude
     private List<DeployedContainer> containers;
 
     @Column(name = "created_at", nullable = false, updatable = false)

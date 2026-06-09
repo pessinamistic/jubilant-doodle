@@ -4,7 +4,7 @@ import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.api.dto.ConfigTemplateResponse;
 import com.dbdeployer.api.dto.DeployFromTemplateRequest;
 import com.dbdeployer.api.dto.InstanceResponse;
-import com.dbdeployer.model.DeploymentConfig;
+import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.service.ConfigTemplateService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -80,8 +80,8 @@ public class ConfigTemplateController {
     @PostMapping("/{id}/deploy")
     public ResponseEntity<InstanceResponse> deploy(
             @PathVariable String id, @Valid @RequestBody DeployFromTemplateRequest req) {
-        DeploymentConfig config = templateService.deployFromTemplate(id, req);
-        return ResponseEntity.accepted().body(responseAssembler.fromConfig(config));
+        DeploymentResponse deploymentResponse = templateService.deployFromTemplate(id, req);
+        return ResponseEntity.accepted().body(responseAssembler.fromConfig(deploymentResponse));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

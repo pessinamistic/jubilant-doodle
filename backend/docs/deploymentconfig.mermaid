@@ -1,0 +1,24 @@
+classDiagram
+direction BT
+class deployment_config {
+   varchar(255) name
+   varchar(50) db_type
+   varchar(255) version
+   integer host_port
+   integer container_port
+   varchar(255) username
+   varchar(255) password
+   varchar(255) database_name
+   text extra_env_json
+   varchar(255) deploy_method
+   boolean is_system
+   boolean is_imported
+   timestamp with time zone created_at
+   timestamp with time zone updated_at
+   varchar(255) template_id
+   boolean is_template
+   varchar(255) description
+   integer deploy_count
+   varchar(255) id
+}
+
