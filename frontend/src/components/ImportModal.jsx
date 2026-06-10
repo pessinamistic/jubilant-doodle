@@ -71,7 +71,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
   const selectContainer = (c) => {
     setSelected(c)
     if (!isReImport) {
-      // Normal import: auto-fill form from container discovery
+      // Normal import: autofill form from container discovery
       setForm({
         name:          c.containerName.replace(/^\//, ''),
         dbType:        c.suggestedDbType ?? '',
@@ -250,7 +250,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
         {step === 'configure' && selected && (
           <div className="px-6 pb-6 pt-3">
             {/* Selected container info */}
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/[0.06] border border-blue-500/[0.15] mb-5">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/6 border border-blue-500/15 mb-5">
               <span className="text-xl">{selected.icon ?? '🗄️'}</span>
               <div>
                 <p className="text-sm text-(--text-primary) font-medium">{selected.containerName}</p>
@@ -268,7 +268,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
             {isReImport ? (
               /* Re-import: just confirm — all config preserved, only container changes */
               <div className="space-y-3">
-                <div className="px-4 py-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/[0.15]">
+                <div className="px-4 py-3 rounded-xl bg-amber-500/6 border border-amber-500/15">
                   <p className="text-xs mb-2 font-medium uppercase tracking-wider" style={{ color: 'var(--status-warning)' }}>Config preserved from original</p>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                     <Row label="Name"     value={existingInstance.name} />
@@ -316,7 +316,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
             )}
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-white/[0.06]">
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-white/6">
               <button onClick={onClose} className="btn-ghost">Cancel</button>
               <button
                 onClick={handleSubmit}
