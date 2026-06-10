@@ -404,6 +404,8 @@ public class DbInstanceService {
     container.setConfig(config);
     container.setContainerId(req.containerId());
     container.setContainerName(req.containerName());
+    container.setHostPort(req.hostPort());
+    container.setContainerPort(req.containerPort());
     container.setStatus(getImportedStatus(req.containerId(), req.containerName(), importMethod));
     container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
     containerRepo.save(container);
@@ -474,6 +476,7 @@ public class DbInstanceService {
       throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
     }
     container.setContainerName(trimmed); // keep container name in sync with instance name for easier identification
+    docker.renameContainer(container, trimmed);
     containerRepo.save(container);
     return new DeploymentResponse(config, container);
     // return configRepo.save(config);

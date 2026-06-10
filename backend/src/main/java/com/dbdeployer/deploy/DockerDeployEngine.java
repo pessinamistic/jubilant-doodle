@@ -462,6 +462,8 @@ public class DockerDeployEngine {
           ? c.getNames()[0].replaceFirst("^/", "")
           : c.getId().substring(0, 12);
 
+      List<String> image = Arrays.stream(c.getImage().split(":")).toList();
+
       if (trackedIds.contains(c.getId()))
         continue;
       if (trackedNames.contains(name))
@@ -493,8 +495,16 @@ public class DockerDeployEngine {
       String displayName = def != null ? def.displayName() : dbType.name();
       String icon = def != null ? def.icon() : "🗄️";
 
-      result.add(new DiscoveredContainerDto(c.getId(), name, c.getImage(), dbType, displayName, icon, hostPort,
-          containerPort, c.getState()));
+      result.add(new DiscoveredContainerDto(c.getId(),
+          name,
+          c.getImage(),
+          dbType,
+          displayName,
+          image.getLast(),
+          icon,
+          hostPort,
+          containerPort,
+          c.getState()));
     }
 
     return result;
@@ -844,6 +854,17 @@ public class DockerDeployEngine {
     } catch (Exception e) {
       log.debug("exec {} failed: {}", cmd[0], e.getMessage());
       return null;
+    }
+  }
+
+  public void renameContainer(
+    DeployedContainer container,
+    String trimmed) {
+    try {
+      docker.renameContainerCmd(container.getContainerId()).withName(trimmed).exec();
+      container.setContainerName(trimmed);
+    } catch (Exception e) {
+      log.warn("Failed to rename container {} to {}: {}", container.getContainerId(), trimmed, e.getMessage());
     }
   }
 }

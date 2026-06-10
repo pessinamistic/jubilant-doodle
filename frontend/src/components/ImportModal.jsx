@@ -106,7 +106,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
           containerName: selected.containerName,
           name:          form.name.trim(),
           dbType:        form.dbType.trim(),
-          version:       form.version.trim() || 'unknown',
+          version:       selected.suggestedDbVersion.trim() || 'unknown',
           hostPort:      Number(form.hostPort),
           containerPort: Number(form.containerPort) || undefined,
           username:      form.username.trim() || undefined,

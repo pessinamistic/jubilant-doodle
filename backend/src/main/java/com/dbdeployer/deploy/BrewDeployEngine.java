@@ -58,12 +58,21 @@ public class BrewDeployEngine {
         continue;
 
       var def = DatabaseCatalog.get(dbType);
+      double dbVersion = 0.0;
       int port = def != null ? def.defaultPort() : 0;
       String displayName = def != null ? def.displayName() : dbType.name();
       String icon = def != null ? def.icon() : "🗄️";
 
-      result.add(new DiscoveredContainerDto(syntheticId, serviceName, "homebrew/" + serviceName, dbType, displayName,
-          icon, port > 0 ? port : null, port, toDiscoveryStatus(asText(svc.get("status")))));
+      result.add(new DiscoveredContainerDto(syntheticId,
+          serviceName,
+          "homebrew/" + serviceName,
+          dbType,
+          displayName,
+          Double.toString(dbVersion),
+          icon,
+          port > 0 ? port : null,
+          port,
+          toDiscoveryStatus(asText(svc.get("status")))));
     }
 
     return result;
@@ -145,7 +154,7 @@ public class BrewDeployEngine {
       String output = runCommand("brew", "services", "list", "--json");
       if (output == null || output.isBlank())
         return List.of();
-      return objectMapper.readValue(output, new TypeReference<List<Map<String, Object>>>() {
+      return objectMapper.readValue(output, new TypeReference<>() {
       });
     } catch (Exception e) {
       log.debug("Could not list Homebrew services: {}", e.getMessage());
@@ -155,32 +164,99 @@ public class BrewDeployEngine {
 
   private DbType detectDbType(
     String serviceName) {
+    if (serviceName == null || serviceName.isBlank()) {
+      return null;
+    }
+
     String lower = serviceName.toLowerCase();
 
-    if (lower.contains("postgres"))
-      return DbType.POSTGRESQL;
-    if (lower.contains("kafka"))
-      return DbType.KAFKA;
-    if (lower.contains("redis"))
-      return DbType.REDIS;
-    if (lower.contains("mysql"))
-      return DbType.MYSQL;
-    if (lower.contains("mariadb"))
-      return DbType.MARIADB;
-    if (lower.contains("mongodb"))
-      return DbType.MONGODB;
-    if (lower.contains("cassandra"))
-      return DbType.CASSANDRA;
-    if (lower.contains("elasticsearch"))
-      return DbType.ELASTICSEARCH;
-    if (lower.contains("clickhouse"))
-      return DbType.CLICKHOUSE;
-    if (lower.contains("neo4j"))
-      return DbType.NEO4J;
-    if (lower.contains("couchdb"))
-      return DbType.COUCHDB;
+    return switch (lower) {
+      case String s when s.contains("postgres") || s.contains("postgresql") ->
+        DbType.POSTGRESQL;
 
-    return null;
+      case String s when s.contains("pgadmin") ->
+        DbType.PGADMIN;
+
+      case String s when s.contains("mysql") ->
+        DbType.MYSQL;
+
+      case String s when s.contains("mariadb") ->
+        DbType.MARIADB;
+
+      case String s when s.contains("mssql")
+          || s.contains("sqlserver")
+          || s.contains("sql-server")
+          || s.contains("microsoft-sql-server") ->
+        DbType.MSSQL;
+
+      case String s when s.contains("h2") ->
+        DbType.H2;
+
+      case String s when s.contains("mongo")
+          || s.contains("mongodb") ->
+        DbType.MONGODB;
+
+      case String s when s.contains("couchdb") ->
+        DbType.COUCHDB;
+
+      case String s when s.contains("neo4j") ->
+        DbType.NEO4J;
+
+      case String s when s.contains("dynamodb")
+          || s.contains("dynamodb-local") ->
+        DbType.DYNAMODB_LOCAL;
+
+      case String s when s.contains("redis") ->
+        DbType.REDIS;
+
+      case String s when s.contains("cassandra") ->
+        DbType.CASSANDRA;
+
+      case String s when s.contains("clickhouse") ->
+        DbType.CLICKHOUSE;
+
+      case String s when s.contains("elasticsearch")
+          || s.contains("elastic-search") ->
+        DbType.ELASTICSEARCH;
+
+      case String s when s.contains("rabbitmq")
+          || s.contains("rabbit-mq") ->
+        DbType.RABBITMQ;
+
+      case String s when s.contains("kafka") ->
+        DbType.KAFKA;
+
+      case String s when s.contains("conduktor") ->
+        DbType.CONDUKTOR;
+
+      case String s when s.contains("grafana") ->
+        DbType.GRAFANA;
+
+      case String s when s.contains("prometheus") ->
+        DbType.PROMETHEUS;
+
+      case String s when s.contains("loki") ->
+        DbType.LOKI;
+
+      case String s when s.contains("minio")
+          || s.contains("minio-server") ->
+        DbType.MINIO;
+
+      case String s when s.contains("keycloak") ->
+        DbType.KEYCLOAK;
+
+      case String s when s.contains("vault")
+          || s.contains("hashicorp-vault") ->
+        DbType.VAULT;
+
+      case String s when s.contains("nginx") ->
+        DbType.NGINX;
+
+      case String s when s.contains("adminer") ->
+        DbType.ADMINER;
+
+      default -> null;
+    };
   }
 
   private static String toDiscoveryStatus(
