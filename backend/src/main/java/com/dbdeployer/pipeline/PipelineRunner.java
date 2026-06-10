@@ -140,7 +140,8 @@ public class PipelineRunner {
     pipelineRepo.save(pipeline);
 
     if (failed) {
-      // Mark container ERROR if the deployment failed before the container was started
+      // Mark container ERROR if the deployment failed before the container was
+      // started
       if (container.getStatus() == InstanceStatus.DEPLOYING) {
         container.setStatus(InstanceStatus.ERROR);
         containerRepo.save(container);

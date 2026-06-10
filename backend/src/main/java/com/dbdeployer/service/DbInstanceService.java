@@ -55,16 +55,17 @@ public class DbInstanceService {
   private final DeploymentPipelineRepository pipelineRepo;
   private final DeploymentValidations deploymentValidations;
 
-  public DbInstanceService(BrewDeployEngine brew,
-                           DockerDeployEngine docker,
-                           ToolMetricsProbe toolMetrics,
-                           PipelineStepRepository stepRepo,
-                           PipelineOrchestrator orchestrator,
-                           ConnectionStringBuilder connBuilder,
-                           DeploymentConfigRepository configRepo,
-                           DeployedContainerRepository containerRepo,
-                           DeploymentPipelineRepository pipelineRepo,
-                           DeploymentValidations deploymentValidations) {
+  public DbInstanceService(
+    BrewDeployEngine brew,
+    DockerDeployEngine docker,
+    ToolMetricsProbe toolMetrics,
+    PipelineStepRepository stepRepo,
+    PipelineOrchestrator orchestrator,
+    ConnectionStringBuilder connBuilder,
+    DeploymentConfigRepository configRepo,
+    DeployedContainerRepository containerRepo,
+    DeploymentPipelineRepository pipelineRepo,
+    DeploymentValidations deploymentValidations) {
     this.brew = brew;
     this.docker = docker;
     this.toolMetrics = toolMetrics;
