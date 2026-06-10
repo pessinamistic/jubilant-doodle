@@ -17,7 +17,9 @@ public class ConfigTemplateService {
   private final DeploymentConfigRepository configRepo;
   private final DbInstanceService instanceService;
 
-  public ConfigTemplateService(DeploymentConfigRepository configRepo, DbInstanceService instanceService) {
+  public ConfigTemplateService(
+    DeploymentConfigRepository configRepo,
+    DbInstanceService instanceService) {
     this.configRepo = configRepo;
     this.instanceService = instanceService;
   }
@@ -26,13 +28,15 @@ public class ConfigTemplateService {
     return configRepo.findAllByIsTemplateTrueOrderByCreatedAtDesc();
   }
 
-  public DeploymentConfig getById(String id) {
+  public DeploymentConfig getById(
+    String id) {
     return configRepo.findByIdAndIsTemplateTrue(id)
         .orElseThrow(() -> new IllegalArgumentException("Configuration template not found: " + id));
   }
 
   @Transactional
-  public DeploymentConfig create(ConfigTemplateRequest req) {
+  public DeploymentConfig create(
+    ConfigTemplateRequest req) {
     if (configRepo.existsByName(req.name())) {
       throw new IllegalArgumentException("A configuration named '" + req.name() + "' already exists");
     }
@@ -44,7 +48,9 @@ public class ConfigTemplateService {
   }
 
   @Transactional
-  public DeploymentConfig update(String id, ConfigTemplateRequest req) {
+  public DeploymentConfig update(
+    String id,
+    ConfigTemplateRequest req) {
     DeploymentConfig t = getById(id);
     if (configRepo.existsByNameAndIsTemplateTrueAndIdNot(req.name(), id)) {
       throw new IllegalArgumentException("A template named '" + req.name() + "' already exists");
@@ -54,7 +60,8 @@ public class ConfigTemplateService {
   }
 
   @Transactional
-  public void delete(String id) {
+  public void delete(
+    String id) {
     DeploymentConfig t = getById(id);
     configRepo.delete(t);
   }
@@ -66,14 +73,21 @@ public class ConfigTemplateService {
    * template after a successful dispatch.
    */
   @Transactional
-  public DeploymentResponse deployFromTemplate(String templateId, DeployFromTemplateRequest req) {
+  public DeploymentResponse deployFromTemplate(
+    String templateId,
+    DeployFromTemplateRequest req) {
     DeploymentConfig deploymentConfig = getById(templateId);
 
-    DeployRequest deployReq = new DeployRequest(req.instanceName(), deploymentConfig.getDbType(),
-        deploymentConfig.getVersion(), req.hostPort(), deploymentConfig.getUsername(), deploymentConfig.getPassword(),
-        deploymentConfig.getDatabaseName(), deploymentConfig.getExtraEnvJson());
+    DeployRequest deployReq = new DeployRequest(req.instanceName(),
+        deploymentConfig.getDbType(),
+        deploymentConfig.getVersion(),
+        req.hostPort(),
+        deploymentConfig.getUsername(),
+        deploymentConfig.getPassword(),
+        deploymentConfig.getDatabaseName(),
+        deploymentConfig.getExtraEnvJson());
 
-    DeploymentResponse deploymentResponse = instanceService.deploy(deployReq, templateId);
+    DeploymentResponse deploymentResponse = instanceService.deploy(deployReq, templateId, true);
 
     deploymentConfig.setDeployCount(deploymentConfig.getDeployCount() + 1);
     DeploymentConfig save = configRepo.save(deploymentConfig);
@@ -82,7 +96,9 @@ public class ConfigTemplateService {
     return deploymentResponse;
   }
 
-  private void applyRequest(DeploymentConfig t, ConfigTemplateRequest req) {
+  private void applyRequest(
+    DeploymentConfig t,
+    ConfigTemplateRequest req) {
     t.setName(req.name());
     t.setDescription(req.description());
     t.setDbType(req.dbType());

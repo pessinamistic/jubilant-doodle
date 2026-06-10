@@ -53,12 +53,14 @@ public class H2DataMigrator implements ApplicationRunner {
   @Value("${app.h2-source-path:${user.home}/.db-deployer/system/dbdeployer}")
   private String h2SourcePath;
 
-  public H2DataMigrator(JdbcTemplate pgJdbc) {
+  public H2DataMigrator(
+    JdbcTemplate pgJdbc) {
     this.pgJdbc = pgJdbc;
   }
 
   @Override
-  public void run(ApplicationArguments args) {
+  public void run(
+    ApplicationArguments args) {
     log.info("H2DataMigrator — starting one-shot migration from H2: {}", h2SourcePath);
 
     JdbcTemplate h2 = buildH2JdbcTemplate();
@@ -76,7 +78,8 @@ public class H2DataMigrator implements ApplicationRunner {
 
   // ── Table migrations ──────────────────────────────────────────────────────
 
-  private void migrateDeploymentConfig(JdbcTemplate h2) {
+  private void migrateDeploymentConfig(
+    JdbcTemplate h2) {
     if (targetHasRows("deployment_config"))
       return;
     List<Map<String, Object>> rows = h2.queryForList("SELECT * FROM deployment_config");
@@ -96,7 +99,8 @@ public class H2DataMigrator implements ApplicationRunner {
     log.info("  deployment_config  → {} rows migrated", rows.size());
   }
 
-  private void migrateDeployedContainer(JdbcTemplate h2) {
+  private void migrateDeployedContainer(
+    JdbcTemplate h2) {
     if (targetHasRows("deployed_container"))
       return;
     List<Map<String, Object>> rows = h2.queryForList("SELECT * FROM deployed_container");
@@ -115,7 +119,8 @@ public class H2DataMigrator implements ApplicationRunner {
     log.info("  deployed_container → {} rows migrated", rows.size());
   }
 
-  private void migrateDeploymentPipeline(JdbcTemplate h2) {
+  private void migrateDeploymentPipeline(
+    JdbcTemplate h2) {
     if (targetHasRows("deployment_pipeline"))
       return;
     List<Map<String, Object>> rows = h2.queryForList("SELECT * FROM deployment_pipeline");
@@ -132,7 +137,8 @@ public class H2DataMigrator implements ApplicationRunner {
     log.info("  deployment_pipeline → {} rows migrated", rows.size());
   }
 
-  private void migratePipelineStep(JdbcTemplate h2) {
+  private void migratePipelineStep(
+    JdbcTemplate h2) {
     if (targetHasRows("pipeline_step"))
       return;
     List<Map<String, Object>> rows = h2.queryForList("SELECT * FROM pipeline_step");
@@ -149,7 +155,8 @@ public class H2DataMigrator implements ApplicationRunner {
     log.info("  pipeline_step      → {} rows migrated", rows.size());
   }
 
-  private void migrateImageTrackingStatus(JdbcTemplate h2) {
+  private void migrateImageTrackingStatus(
+    JdbcTemplate h2) {
     if (targetHasRows("image_tracking_status"))
       return;
     List<Map<String, Object>> rows = h2.queryForList("SELECT * FROM image_tracking_status");
@@ -171,7 +178,8 @@ public class H2DataMigrator implements ApplicationRunner {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  private boolean targetHasRows(String table) {
+  private boolean targetHasRows(
+    String table) {
     Integer count = pgJdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
     if (count != null && count > 0) {
       log.info("  {} already has {} rows — skipping", table, count);
@@ -193,19 +201,25 @@ public class H2DataMigrator implements ApplicationRunner {
     return new JdbcTemplate(ds);
   }
 
-  private static String str(Map<String, Object> row, String col) {
+  private static String str(
+    Map<String, Object> row,
+    String col) {
     Object v = row.get(col);
     return v != null ? v.toString() : null;
   }
 
-  private static int intVal(Map<String, Object> row, String col) {
+  private static int intVal(
+    Map<String, Object> row,
+    String col) {
     Object v = row.get(col);
     if (v == null)
       return 0;
     return ((Number) v).intValue();
   }
 
-  private static boolean boolVal(Map<String, Object> row, String col) {
+  private static boolean boolVal(
+    Map<String, Object> row,
+    String col) {
     Object v = row.get(col);
     if (v instanceof Boolean b)
       return b;
@@ -214,7 +228,9 @@ public class H2DataMigrator implements ApplicationRunner {
     return Boolean.parseBoolean(String.valueOf(v));
   }
 
-  private static Timestamp ts(Map<String, Object> row, String col) {
+  private static Timestamp ts(
+    Map<String, Object> row,
+    String col) {
     Object v = row.get(col);
     if (v == null)
       return null;

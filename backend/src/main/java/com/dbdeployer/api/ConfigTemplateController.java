@@ -21,13 +21,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/templates")
+@RequestMapping("/templates")
 public class ConfigTemplateController {
 
   private final ConfigTemplateService templateService;
   private final InstanceResponseAssembler responseAssembler;
 
-  public ConfigTemplateController(ConfigTemplateService templateService, InstanceResponseAssembler responseAssembler) {
+  public ConfigTemplateController(
+    ConfigTemplateService templateService,
+    InstanceResponseAssembler responseAssembler) {
     this.templateService = templateService;
     this.responseAssembler = responseAssembler;
   }
@@ -40,13 +42,15 @@ public class ConfigTemplateController {
 
   /** Get a single template by ID. */
   @GetMapping("/{id}")
-  public ConfigTemplateResponse get(@PathVariable String id) {
+  public ConfigTemplateResponse get(
+    @PathVariable String id) {
     return ConfigTemplateResponse.from(templateService.getById(id));
   }
 
   /** Save a new configuration template (no Docker action). */
   @PostMapping
-  public ResponseEntity<ConfigTemplateResponse> create(@Valid @RequestBody ConfigTemplateRequest req) {
+  public ResponseEntity<ConfigTemplateResponse> create(
+    @Valid @RequestBody ConfigTemplateRequest req) {
     return ResponseEntity.ok(ConfigTemplateResponse.from(templateService.create(req)));
   }
 
@@ -55,7 +59,9 @@ public class ConfigTemplateController {
    * it.
    */
   @PutMapping("/{id}")
-  public ConfigTemplateResponse update(@PathVariable String id, @Valid @RequestBody ConfigTemplateRequest req) {
+  public ConfigTemplateResponse update(
+    @PathVariable String id,
+    @Valid @RequestBody ConfigTemplateRequest req) {
     return ConfigTemplateResponse.from(templateService.update(id, req));
   }
 
@@ -64,7 +70,8 @@ public class ConfigTemplateController {
    * on.
    */
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable String id) {
+  public ResponseEntity<Void> delete(
+    @PathVariable String id) {
     templateService.delete(id);
     return ResponseEntity.noContent().build();
   }
@@ -75,14 +82,16 @@ public class ConfigTemplateController {
    * with the new instance response.
    */
   @PostMapping("/{id}/deploy")
-  public ResponseEntity<InstanceResponse> deploy(@PathVariable String id,
-      @Valid @RequestBody DeployFromTemplateRequest req) {
+  public ResponseEntity<InstanceResponse> deploy(
+    @PathVariable String id,
+    @Valid @RequestBody DeployFromTemplateRequest req) {
     DeploymentResponse deploymentResponse = templateService.deployFromTemplate(id, req);
     return ResponseEntity.accepted().body(responseAssembler.fromConfig(deploymentResponse));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+  public ResponseEntity<Map<String, String>> handleBadRequest(
+    IllegalArgumentException ex) {
     return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
   }
 }

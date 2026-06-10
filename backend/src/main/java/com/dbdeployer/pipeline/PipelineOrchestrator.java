@@ -34,8 +34,10 @@ public class PipelineOrchestrator {
   private final PipelineStepRepository stepRepo;
   private final PipelineRunner runner;
 
-  public PipelineOrchestrator(DeploymentPipelineRepository pipelineRepo, PipelineStepRepository stepRepo,
-      PipelineRunner runner) {
+  public PipelineOrchestrator(
+    DeploymentPipelineRepository pipelineRepo,
+    PipelineStepRepository stepRepo,
+    PipelineRunner runner) {
     this.pipelineRepo = pipelineRepo;
     this.stepRepo = stepRepo;
     this.runner = runner;
@@ -51,10 +53,14 @@ public class PipelineOrchestrator {
    * container).
    */
   @Transactional
-  public DeploymentPipeline createAndLaunch(DeploymentConfig config, DeployedContainer container) {
+  public DeploymentPipeline createAndLaunch(
+    DeploymentConfig config,
+    DeployedContainer container,
+    boolean isTemplate) {
     // ── Create pipeline row ──
     DeploymentPipeline pipeline = new DeploymentPipeline();
     pipeline.setId(UUID.randomUUID().toString());
+    pipeline.setDeploymentContainerId(container.getId());
     pipeline.setConfigId(config.getId());
     pipeline.setStatus(PipelineStatus.PENDING);
     pipelineRepo.save(pipeline);

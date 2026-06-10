@@ -105,7 +105,8 @@ public class DockerDeployEngine {
    * Pull the named Docker image (e.g. {@code postgres:16}). Blocks until the pull
    * is complete.
    */
-  public void pullImage(String image) throws Exception {
+  public void pullImage(
+    String image) throws Exception {
     log.info("[docker] Pulling image {}", image);
     docker.pullImageCmd(image).start().awaitCompletion();
     log.info("[docker] Pull complete for {}", image);
@@ -117,7 +118,9 @@ public class DockerDeployEngine {
    *
    * @return true if a pull was executed, false if the image was already local
    */
-  public boolean ensureImageAvailable(String imageName, String tag) throws Exception {
+  public boolean ensureImageAvailable(
+    String imageName,
+    String tag) throws Exception {
     String normalizedImage = imageName == null ? "" : imageName.trim().toLowerCase(Locale.ROOT);
     String normalizedTag = tag == null || tag.isBlank() ? "latest" : tag.trim().toLowerCase(Locale.ROOT);
     String lockKey = normalizedImage + ":" + normalizedTag;
@@ -147,21 +150,27 @@ public class DockerDeployEngine {
    * container.containerId}, {@code containerName}, and {@code dataDirectory}
    * in-place. The caller must persist.
    */
-  public void createContainer(DeploymentConfig config, DeployedContainer container) throws Exception {
+  public void createContainer(
+    DeploymentConfig config,
+    DeployedContainer container) throws Exception {
     var def = DatabaseCatalog.get(config.getDbType());
     String image = def.dockerImage() + ":" + config.getVersion();
-    String containerName = "dbdeployer-" + config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-");
+    String containerName = "dbdeployer-%s-%s".formatted(config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
+        UUID.randomUUID().toString().substring(0, 8));
 
-    log.info("[docker] Creating container '{}' from image {} on hostPort={} containerPort={}", containerName, image,
-        config.getHostPort(), config.getContainerPort());
+    log.info("[docker] Creating container '{}' from image {} on hostPort={} containerPort={}",
+        containerName,
+        image,
+        config.getHostPort(),
+        config.getContainerPort());
 
     container.setContainerName(containerName);
 
     List<String> envVars = buildEnvVars(config, def);
 
-    ExposedPort exposed = ExposedPort.tcp(config.getContainerPort());
+    ExposedPort exposed = ExposedPort.tcp(container.getContainerPort());
     Ports portBindings = new Ports();
-    portBindings.bind(exposed, Ports.Binding.bindPort(config.getHostPort()));
+    portBindings.bind(exposed, Ports.Binding.bindPort(container.getHostPort()));
 
     List<Bind> binds = new ArrayList<>();
     if (def.dataVolumePath() != null) {
@@ -203,7 +212,8 @@ public class DockerDeployEngine {
    * or {@code
    * startedAt} — the caller or {@code FinaliseStep} is responsible for those.
    */
-  public void startContainer(DeployedContainer container) {
+  public void startContainer(
+    DeployedContainer container) {
     log.info("[docker] Starting container {} ({})", container.getContainerName(), container.getContainerId());
     docker.startContainerCmd(container.getContainerId()).exec();
     log.info("[docker] Start command sent for container {} ({})", container.getContainerName(),
@@ -246,7 +256,10 @@ public class DockerDeployEngine {
   }
 
   /** Fast check using an existing local refs snapshot. */
-  public boolean hasLocalImage(String image, String tag, Set<String> localRefs) {
+  public boolean hasLocalImage(
+    String image,
+    String tag,
+    Set<String> localRefs) {
     if (image == null || image.isBlank() || tag == null || tag.isBlank())
       return false;
     if (localRefs == null || localRefs.isEmpty())
@@ -263,7 +276,9 @@ public class DockerDeployEngine {
   }
 
   /** Live local image existence check for one image:tag pair. */
-  public boolean isImageAvailableLocally(String image, String tag) {
+  public boolean isImageAvailableLocally(
+    String image,
+    String tag) {
     return hasLocalImage(image, tag, getLocalImageReferences());
   }
 
@@ -273,7 +288,9 @@ public class DockerDeployEngine {
    * containerName}, {@code dataDirectory}, {@code startedAt} in-place. The caller
    * is responsible for persisting the container.
    */
-  public void deploy(DeploymentConfig config, DeployedContainer container) throws Exception {
+  public void deploy(
+    DeploymentConfig config,
+    DeployedContainer container) throws Exception {
     var def = DatabaseCatalog.get(config.getDbType());
     String image = def.dockerImage() + ":" + config.getVersion();
     String containerName = "dbdeployer-" + config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-");
@@ -336,15 +353,18 @@ public class DockerDeployEngine {
     log.info("Container started: {} ({})", containerName, created.getId());
   }
 
-  public void start(DeployedContainer container) {
+  public void start(
+    DeployedContainer container) {
     docker.startContainerCmd(container.getContainerId()).exec();
   }
 
-  public void stop(DeployedContainer container) {
+  public void stop(
+    DeployedContainer container) {
     docker.stopContainerCmd(container.getContainerId()).withTimeout(15).exec();
   }
 
-  public void remove(DeployedContainer container) {
+  public void remove(
+    DeployedContainer container) {
     try {
       docker.stopContainerCmd(container.getContainerId()).withTimeout(5).exec();
     } catch (Exception ignored) {
@@ -352,7 +372,8 @@ public class DockerDeployEngine {
     docker.removeContainerCmd(container.getContainerId()).withForce(true).exec();
   }
 
-  public InstanceStatus getStatus(DeployedContainer container) {
+  public InstanceStatus getStatus(
+    DeployedContainer container) {
     if (container.getContainerId() == null)
       return InstanceStatus.ERROR;
     try {
@@ -377,12 +398,15 @@ public class DockerDeployEngine {
   }
 
   /** Fetch last N lines of container logs */
-  public String getLogs(DeployedContainer container, int tail) throws InterruptedException {
+  public String getLogs(
+    DeployedContainer container,
+    int tail) throws InterruptedException {
     StringBuilder sb = new StringBuilder();
     docker.logContainerCmd(container.getContainerId()).withStdOut(true).withStdErr(true).withTail(tail)
         .exec(new com.github.dockerjava.api.async.ResultCallback.Adapter<>() {
           @Override
-          public void onNext(Frame item) {
+          public void onNext(
+            Frame item) {
             sb.append(new String(item.getPayload()));
           }
         }).awaitCompletion();
@@ -390,7 +414,8 @@ public class DockerDeployEngine {
   }
 
   /** Returns the container ID for a named container, or null if not found. */
-  public String getContainerId(String containerName) {
+  public String getContainerId(
+    String containerName) {
     try {
       return docker.inspectContainerCmd(containerName).exec().getId();
     } catch (NotFoundException e) {
@@ -402,7 +427,8 @@ public class DockerDeployEngine {
    * Returns the UTC time the container was last started, or null if the container
    * hasn't started or the timestamp is the Docker zero value (0001-01-01).
    */
-  public Instant getStartedAt(String containerId) {
+  public Instant getStartedAt(
+    String containerId) {
     try {
       String raw = docker.inspectContainerCmd(containerId).exec().getState().getStartedAt();
       if (raw == null || raw.startsWith("0001"))
@@ -418,7 +444,9 @@ public class DockerDeployEngine {
    * Lists all running Docker containers whose images look like a database engine
    * and whose IDs / names are not already tracked by DB Deployer.
    */
-  public List<DiscoveredContainerDto> discoverContainers(Set<String> trackedIds, Set<String> trackedNames) {
+  public List<DiscoveredContainerDto> discoverContainers(
+    Set<String> trackedIds,
+    Set<String> trackedNames) {
     List<Container> running;
     try {
       running = docker.listContainersCmd().withShowAll(true).exec();
@@ -474,7 +502,8 @@ public class DockerDeployEngine {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  private DbType detectDbType(String image) {
+  private DbType detectDbType(
+    String image) {
     if (image == null)
       return null;
     String lower = image.toLowerCase();
@@ -485,7 +514,9 @@ public class DockerDeployEngine {
     return null;
   }
 
-  private Set<String> localRefCandidates(String image, String tag) {
+  private Set<String> localRefCandidates(
+    String image,
+    String tag) {
     Set<String> refs = new HashSet<>();
     refs.add(image + ":" + tag);
 
@@ -516,7 +547,9 @@ public class DockerDeployEngine {
     return refs;
   }
 
-  private List<String> buildEnvVars(DeploymentConfig config, DatabaseCatalog.DbDefinition def) throws IOException {
+  private List<String> buildEnvVars(
+    DeploymentConfig config,
+    DatabaseCatalog.DbDefinition def) throws IOException {
     List<String> env = new ArrayList<>();
 
     Map<String, String> extra = new LinkedHashMap<>();
@@ -566,7 +599,9 @@ public class DockerDeployEngine {
    * {@link ContainerMetricsResponse#unavailable()} if the container is stopped,
    * not found, or Docker is unreachable.
    */
-  public ContainerMetricsResponse getContainerMetrics(String containerId, int hostPort) {
+  public ContainerMetricsResponse getContainerMetrics(
+    String containerId,
+    int hostPort) {
     if (containerId == null)
       return ContainerMetricsResponse.unavailable();
 
@@ -575,7 +610,8 @@ public class DockerDeployEngine {
     try {
       docker.statsCmd(containerId).withNoStream(true).exec(new ResultCallback.Adapter<>() {
         @Override
-        public void onNext(Statistics s) {
+        public void onNext(
+          Statistics s) {
           statsRef.set(s);
         }
       }).awaitCompletion(6, TimeUnit.SECONDS);
@@ -780,7 +816,10 @@ public class DockerDeployEngine {
    * expanded by a shell, so each element is treated as an opaque argument —
    * preventing command injection.
    */
-  public String execCapture(String containerId, String[] cmd, int timeoutSeconds) {
+  public String execCapture(
+    String containerId,
+    String[] cmd,
+    int timeoutSeconds) {
     if (containerId == null || cmd == null || cmd.length == 0)
       return null;
     try {
@@ -788,7 +827,8 @@ public class DockerDeployEngine {
       var buf = new java.io.ByteArrayOutputStream();
       boolean finished = docker.execStartCmd(created.getId()).exec(new ResultCallback.Adapter<Frame>() {
         @Override
-        public void onNext(Frame frame) {
+        public void onNext(
+          Frame frame) {
           try {
             buf.write(frame.getPayload());
           } catch (Exception ignored) {

@@ -17,7 +17,10 @@ public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
   private boolean verbose;
 
   @Override
-  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+  public boolean preHandle(
+    HttpServletRequest request,
+    HttpServletResponse response,
+    Object handler) {
     request.setAttribute(START_TIME_ATTR, System.nanoTime());
 
     String method = request.getMethod();
@@ -35,7 +38,11 @@ public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
   }
 
   @Override
-  public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+  public void afterCompletion(
+    HttpServletRequest request,
+    HttpServletResponse response,
+    Object handler,
+    Exception ex) {
     long durationMs = resolveDurationMs(request);
     String method = request.getMethod();
     String uri = request.getRequestURI();
@@ -54,7 +61,8 @@ public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
     }
   }
 
-  private long resolveDurationMs(HttpServletRequest request) {
+  private long resolveDurationMs(
+    HttpServletRequest request) {
     Object start = request.getAttribute(START_TIME_ATTR);
     if (!(start instanceof Long startNanos)) {
       return -1L;

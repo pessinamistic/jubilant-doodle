@@ -49,7 +49,8 @@ public class OsDetector {
     return isCommandAvailable("brew");
   }
 
-  private boolean isCommandAvailable(String cmd) {
+  private boolean isCommandAvailable(
+    String cmd) {
     try {
       String[] check = System.getProperty("os.name", "").toLowerCase().contains("windows")
           ? new String[]{"where", cmd}

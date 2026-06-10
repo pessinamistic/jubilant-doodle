@@ -91,7 +91,8 @@ public record ContainerMetricsResponse(
   }
 
   /** Returns a copy of this response with {@code toolMetrics} replaced. */
-  public ContainerMetricsResponse withToolMetrics(Map<String, Object> tools) {
+  public ContainerMetricsResponse withToolMetrics(
+    Map<String, Object> tools) {
     return new ContainerMetricsResponse(available, cpuPercent, cpuCores, cpuThrottledPercent, memUsageBytes,
         memMaxUsageBytes, memLimitBytes, memPercent, netRxBytes, netTxBytes, netRxPackets, netTxPackets, netRxErrors,
         netTxErrors, blockReadBytes, blockWriteBytes, blockReadOps, blockWriteOps, pids, pidsLimit, restartCount, image,

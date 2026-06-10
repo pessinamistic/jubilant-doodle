@@ -34,7 +34,10 @@ public class SystemDbStatsService {
   private final JdbcTemplate jdbc;
   private final Environment env;
 
-  public SystemDbStatsService(DataSource dataSource, JdbcTemplate jdbc, Environment env) {
+  public SystemDbStatsService(
+    DataSource dataSource,
+    JdbcTemplate jdbc,
+    Environment env) {
     this.dataSource = dataSource;
     this.jdbc = jdbc;
     this.env = env;
@@ -99,7 +102,8 @@ public class SystemDbStatsService {
    * Extracts the host from a Postgres JDBC URL like {@code
    * jdbc:postgresql://localhost:5499/dbdeployer}.
    */
-  static String extractPgHost(String url) {
+  static String extractPgHost(
+    String url) {
     if (url == null || url.isBlank())
       return "localhost";
     try {
@@ -116,7 +120,8 @@ public class SystemDbStatsService {
    * Extracts the port from a Postgres JDBC URL. Falls back to {@code 5432} if the
    * URL contains no explicit port.
    */
-  static int extractPgPort(String url) {
+  static int extractPgPort(
+    String url) {
     if (url == null || url.isBlank())
       return 5432;
     try {
@@ -133,14 +138,17 @@ public class SystemDbStatsService {
    * e.g. {@code
    * "PostgreSQL 16.3 on aarch64..."} → {@code "16.3"}
    */
-  private static String parsePostgresVersion(String banner) {
+  private static String parsePostgresVersion(
+    String banner) {
     if (banner == null)
       return "unknown";
     String[] parts = banner.split("\\s+");
     return parts.length >= 2 ? parts[1] : banner;
   }
 
-  private String safeQuery(String sql, String fallback) {
+  private String safeQuery(
+    String sql,
+    String fallback) {
     try {
       return jdbc.queryForObject(sql, String.class);
     } catch (Exception e) {
@@ -149,7 +157,8 @@ public class SystemDbStatsService {
     }
   }
 
-  private long safeCountLong(String sql) {
+  private long safeCountLong(
+    String sql) {
     try {
       Long v = jdbc.queryForObject(sql, Long.class);
       return v != null ? v : 0L;
@@ -159,7 +168,8 @@ public class SystemDbStatsService {
     }
   }
 
-  private Long safeCount(String table) {
+  private Long safeCount(
+    String table) {
     try {
       return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class);
     } catch (Exception e) {

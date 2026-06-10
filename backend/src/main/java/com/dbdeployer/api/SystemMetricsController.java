@@ -24,15 +24,17 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  */
 @RestController
-@RequestMapping("/api/system/metrics")
+@RequestMapping("/system/metrics")
 public class SystemMetricsController {
 
   private final MetricsHistoryService historyService;
   private final JdbcTemplate jdbc;
   private final DockerHealthChecker dockerHealthChecker;
 
-  public SystemMetricsController(MetricsHistoryService historyService, JdbcTemplate jdbc,
-      DockerHealthChecker dockerHealthChecker) {
+  public SystemMetricsController(
+    MetricsHistoryService historyService,
+    JdbcTemplate jdbc,
+    DockerHealthChecker dockerHealthChecker) {
     this.historyService = historyService;
     this.jdbc = jdbc;
     this.dockerHealthChecker = dockerHealthChecker;
@@ -64,8 +66,10 @@ public class SystemMetricsController {
           AND created_at >= NOW() - INTERVAL '30 days'
         GROUP BY created_at::date
         ORDER BY deploy_date
-        """, (rs, i) -> new DeploymentActivityResponse.DayCount(rs.getDate("deploy_date").toLocalDate().toString(),
-        rs.getLong("cnt")));
+        """, (
+      rs,
+      i) -> new DeploymentActivityResponse.DayCount(rs.getDate("deploy_date").toLocalDate().toString(),
+          rs.getLong("cnt")));
 
     // ── Instances by database type ───────────────────────────────────────
     List<DeploymentActivityResponse.LabelCount> byType = jdbc.query("""
@@ -74,7 +78,9 @@ public class SystemMetricsController {
         WHERE is_system = false
         GROUP BY db_type
         ORDER BY cnt DESC
-        """, (rs, i) -> new DeploymentActivityResponse.LabelCount(rs.getString("label"), rs.getLong("cnt")));
+        """, (
+      rs,
+      i) -> new DeploymentActivityResponse.LabelCount(rs.getString("label"), rs.getLong("cnt")));
 
     // ── Instances by status ──────────────────────────────────────────────
     List<DeploymentActivityResponse.LabelCount> byStatus = jdbc.query("""
@@ -84,7 +90,9 @@ public class SystemMetricsController {
         WHERE cfg.is_system = false
         GROUP BY dc.status
         ORDER BY cnt DESC
-        """, (rs, i) -> new DeploymentActivityResponse.LabelCount(rs.getString("label"), rs.getLong("cnt")));
+        """, (
+      rs,
+      i) -> new DeploymentActivityResponse.LabelCount(rs.getString("label"), rs.getLong("cnt")));
 
     return new DeploymentActivityResponse(byDay, byType, byStatus);
   }

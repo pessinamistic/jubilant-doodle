@@ -8,6 +8,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Persisted record of a single deploy pipeline run for one
@@ -19,7 +22,10 @@ import java.time.Instant;
  * DeploymentConfig} is denormalised as a plain String {@code configId} so that
  * pipeline rows remain readable even if a config were ever deleted.
  */
+@Setter
+@Getter
 @Entity
+@ToString
 @Table(name = "deployment_pipeline")
 public class DeploymentPipeline {
 
@@ -33,6 +39,12 @@ public class DeploymentPipeline {
    */
   @Column(name = "config_id", nullable = false, updatable = false)
   private String configId;
+
+  @Column(name = "deployment_container_id", nullable = false, updatable = false)
+  private String deploymentContainerId;
+
+  @Column(name = "is_template")
+  private boolean isTemplate;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
@@ -60,69 +72,4 @@ public class DeploymentPipeline {
       createdAt = Instant.now();
   }
 
-  // ── Getters & Setters ──────────────────────────────────────────────────────
-
-  public String getId() {
-    return id;
-  }
-
-  public void setId(String id) {
-    this.id = id;
-  }
-
-  public String getConfigId() {
-    return configId;
-  }
-
-  public void setConfigId(String configId) {
-    this.configId = configId;
-  }
-
-  public PipelineStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(PipelineStatus status) {
-    this.status = status;
-  }
-
-  public DeployErrorCode getErrorCode() {
-    return errorCode;
-  }
-
-  public void setErrorCode(DeployErrorCode ec) {
-    this.errorCode = ec;
-  }
-
-  public String getErrorMessage() {
-    return errorMessage;
-  }
-
-  public void setErrorMessage(String errorMessage) {
-    this.errorMessage = errorMessage;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(Instant t) {
-    this.createdAt = t;
-  }
-
-  public Instant getStartedAt() {
-    return startedAt;
-  }
-
-  public void setStartedAt(Instant t) {
-    this.startedAt = t;
-  }
-
-  public Instant getCompletedAt() {
-    return completedAt;
-  }
-
-  public void setCompletedAt(Instant t) {
-    this.completedAt = t;
-  }
 }

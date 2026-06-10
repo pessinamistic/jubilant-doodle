@@ -80,7 +80,8 @@ public class ImageTrackingStatus {
     return id;
   }
 
-  public void setId(String id) {
+  public void setId(
+    String id) {
     this.id = id;
   }
 
@@ -88,7 +89,8 @@ public class ImageTrackingStatus {
     return dbType;
   }
 
-  public void setDbType(DbType dbType) {
+  public void setDbType(
+    DbType dbType) {
     this.dbType = dbType;
   }
 
@@ -96,7 +98,8 @@ public class ImageTrackingStatus {
     return imageName;
   }
 
-  public void setImageName(String imageName) {
+  public void setImageName(
+    String imageName) {
     this.imageName = imageName;
   }
 
@@ -104,7 +107,8 @@ public class ImageTrackingStatus {
     return imageTag;
   }
 
-  public void setImageTag(String imageTag) {
+  public void setImageTag(
+    String imageTag) {
     this.imageTag = imageTag;
   }
 
@@ -112,7 +116,8 @@ public class ImageTrackingStatus {
     return dockerHubManaged;
   }
 
-  public void setDockerHubManaged(boolean dockerHubManaged) {
+  public void setDockerHubManaged(
+    boolean dockerHubManaged) {
     this.dockerHubManaged = dockerHubManaged;
   }
 
@@ -120,7 +125,8 @@ public class ImageTrackingStatus {
     return localStatus;
   }
 
-  public void setLocalStatus(ImageAvailabilityState localStatus) {
+  public void setLocalStatus(
+    ImageAvailabilityState localStatus) {
     this.localStatus = localStatus;
   }
 
@@ -128,7 +134,8 @@ public class ImageTrackingStatus {
     return dockerHubStatus;
   }
 
-  public void setDockerHubStatus(ImageAvailabilityState dockerHubStatus) {
+  public void setDockerHubStatus(
+    ImageAvailabilityState dockerHubStatus) {
     this.dockerHubStatus = dockerHubStatus;
   }
 
@@ -136,7 +143,8 @@ public class ImageTrackingStatus {
     return decision;
   }
 
-  public void setDecision(ImageValidationDecision decision) {
+  public void setDecision(
+    ImageValidationDecision decision) {
     this.decision = decision;
   }
 
@@ -144,7 +152,8 @@ public class ImageTrackingStatus {
     return message;
   }
 
-  public void setMessage(String message) {
+  public void setMessage(
+    String message) {
     this.message = message;
   }
 
@@ -152,7 +161,8 @@ public class ImageTrackingStatus {
     return localCheckedAt;
   }
 
-  public void setLocalCheckedAt(LocalDateTime localCheckedAt) {
+  public void setLocalCheckedAt(
+    LocalDateTime localCheckedAt) {
     this.localCheckedAt = localCheckedAt;
   }
 
@@ -160,7 +170,8 @@ public class ImageTrackingStatus {
     return dockerHubCheckedAt;
   }
 
-  public void setDockerHubCheckedAt(LocalDateTime dockerHubCheckedAt) {
+  public void setDockerHubCheckedAt(
+    LocalDateTime dockerHubCheckedAt) {
     this.dockerHubCheckedAt = dockerHubCheckedAt;
   }
 
@@ -168,7 +179,8 @@ public class ImageTrackingStatus {
     return createdAt;
   }
 
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(
+    LocalDateTime createdAt) {
     this.createdAt = createdAt;
   }
 
@@ -176,7 +188,8 @@ public class ImageTrackingStatus {
     return updatedAt;
   }
 
-  public void setUpdatedAt(LocalDateTime updatedAt) {
+  public void setUpdatedAt(
+    LocalDateTime updatedAt) {
     this.updatedAt = updatedAt;
   }
 }

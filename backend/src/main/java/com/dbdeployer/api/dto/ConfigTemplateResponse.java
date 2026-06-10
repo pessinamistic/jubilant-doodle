@@ -9,7 +9,8 @@ public record ConfigTemplateResponse(String id, String name, String description,
     String icon, String version, int hostPort, String username, String password, String databaseName,
     String extraEnvJson, int deployCount, Instant createdAt, Instant updatedAt) {
 
-  public static ConfigTemplateResponse from(DeploymentConfig t) {
+  public static ConfigTemplateResponse from(
+    DeploymentConfig t) {
     var def = DatabaseCatalog.get(t.getDbType());
     String display = def != null ? def.displayName() : t.getDbType().name();
     String icon = def != null ? def.icon() : "🗄️";

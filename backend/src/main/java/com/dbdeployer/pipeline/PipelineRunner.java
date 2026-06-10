@@ -42,9 +42,13 @@ public class PipelineRunner {
   private final Map<StepType, DeployStep> stepRegistry;
   private final PipelineProperties props;
 
-  public PipelineRunner(DeploymentPipelineRepository pipelineRepo, PipelineStepRepository stepRepo,
-      DeploymentConfigRepository configRepo, DeployedContainerRepository containerRepo, List<DeployStep> steps,
-      PipelineProperties props) {
+  public PipelineRunner(
+    DeploymentPipelineRepository pipelineRepo,
+    PipelineStepRepository stepRepo,
+    DeploymentConfigRepository configRepo,
+    DeployedContainerRepository containerRepo,
+    List<DeployStep> steps,
+    PipelineProperties props) {
     this.pipelineRepo = pipelineRepo;
     this.stepRepo = stepRepo;
     this.configRepo = configRepo;
@@ -54,7 +58,8 @@ public class PipelineRunner {
   }
 
   @Async
-  public void run(String pipelineId) {
+  public void run(
+    String pipelineId) {
     log.info("[runner] Starting pipeline {}", pipelineId);
 
     // ── Re-fetch everything fresh (post-TX) ──
@@ -64,7 +69,7 @@ public class PipelineRunner {
     DeploymentConfig config = configRepo.findById(pipeline.getConfigId())
         .orElseThrow(() -> new IllegalStateException("Config not found for pipeline: " + pipelineId));
 
-    DeployedContainer container = containerRepo.findByConfigId(config.getId())
+    DeployedContainer container = containerRepo.findById(pipeline.getDeploymentContainerId())
         .orElseThrow(() -> new IllegalStateException("Container record not found for config: " + config.getId()));
 
     List<PipelineStep> steps = stepRepo.findByPipelineIdOrderByStepOrderAsc(pipelineId);
@@ -135,7 +140,7 @@ public class PipelineRunner {
     pipelineRepo.save(pipeline);
 
     if (failed) {
-      // Mark container ERROR if the deploy failed before the container was started
+      // Mark container ERROR if the deployment failed before the container was started
       if (container.getStatus() == InstanceStatus.DEPLOYING) {
         container.setStatus(InstanceStatus.ERROR);
         containerRepo.save(container);
@@ -150,7 +155,10 @@ public class PipelineRunner {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  private void markStepFailed(PipelineStep step, DeployErrorCode code, String message) {
+  private void markStepFailed(
+    PipelineStep step,
+    DeployErrorCode code,
+    String message) {
     step.setStatus(StepStatus.FAILED);
     step.setMessage("[" + code + "] " + message);
     step.setCompletedAt(Instant.now());

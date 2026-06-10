@@ -29,7 +29,8 @@ public class ToolMetricsProbe {
 
   private final DockerDeployEngine docker;
 
-  public ToolMetricsProbe(@Lazy DockerDeployEngine docker) {
+  public ToolMetricsProbe(
+    @Lazy DockerDeployEngine docker) {
     this.docker = docker;
   }
 
@@ -38,7 +39,9 @@ public class ToolMetricsProbe {
    * database type is not supported, the exec call fails, or output cannot be
    * parsed. Never throws.
    */
-  public Map<String, Object> collect(DeploymentConfig config, String containerId) {
+  public Map<String, Object> collect(
+    DeploymentConfig config,
+    String containerId) {
     if (config == null || containerId == null)
       return Map.of();
     try {
@@ -56,7 +59,9 @@ public class ToolMetricsProbe {
   }
 
   // ── PostgreSQL ────────────────────────────────────────────────────────
-  private Map<String, Object> probePostgres(DeploymentConfig cfg, String containerId) {
+  private Map<String, Object> probePostgres(
+    DeploymentConfig cfg,
+    String containerId) {
     String user = nonBlank(cfg.getUsername(), "postgres");
     String db = nonBlank(cfg.getDatabaseName(), user);
     String sql = "SELECT (SELECT count(*) FROM pg_stat_activity), "
@@ -83,7 +88,9 @@ public class ToolMetricsProbe {
   }
 
   // ── MySQL / MariaDB ────────────────────────────────────────────────────
-  private Map<String, Object> probeMysql(DeploymentConfig cfg, String containerId) {
+  private Map<String, Object> probeMysql(
+    DeploymentConfig cfg,
+    String containerId) {
     String user = nonBlank(cfg.getUsername(), "root");
     String pass = nonBlank(cfg.getPassword(), "");
     if (pass.isEmpty())
@@ -122,7 +129,8 @@ public class ToolMetricsProbe {
       "used_memory_peak", "uptime_in_seconds", "total_commands_processed", "instantaneous_ops_per_sec", "keyspace_hits",
       "keyspace_misses", "evicted_keys", "expired_keys", "total_connections_received", "rejected_connections");
 
-  private Map<String, Object> probeRedis(String containerId) {
+  private Map<String, Object> probeRedis(
+    String containerId) {
     String out = docker.execCapture(containerId, new String[]{"redis-cli", "INFO"}, EXEC_TIMEOUT_SECONDS);
     if (out == null)
       return Map.of();
@@ -156,7 +164,9 @@ public class ToolMetricsProbe {
   }
 
   // ── MongoDB ───────────────────────────────────────────────────────────
-  private Map<String, Object> probeMongo(DeploymentConfig cfg, String containerId) {
+  private Map<String, Object> probeMongo(
+    DeploymentConfig cfg,
+    String containerId) {
     String user = nonBlank(cfg.getUsername(), "");
     String pass = nonBlank(cfg.getPassword(), "");
     // Single eval that prints "k=v" pairs, easy to parse and shell-free.
@@ -200,7 +210,10 @@ public class ToolMetricsProbe {
 
   private static final int EXEC_TIMEOUT_SECONDS = 3;
 
-  private static void putLong(Map<String, Object> map, String key, String raw) {
+  private static void putLong(
+    Map<String, Object> map,
+    String key,
+    String raw) {
     if (raw == null)
       return;
     String v = raw.trim();
@@ -218,7 +231,8 @@ public class ToolMetricsProbe {
     }
   }
 
-  private static String camel(String snake) {
+  private static String camel(
+    String snake) {
     StringBuilder sb = new StringBuilder(snake.length());
     boolean up = false;
     for (int i = 0; i < snake.length(); i++) {
@@ -233,7 +247,9 @@ public class ToolMetricsProbe {
     return sb.toString();
   }
 
-  private static String nonBlank(String s, String fallback) {
+  private static String nonBlank(
+    String s,
+    String fallback) {
     return (s == null || s.isBlank()) ? fallback : s;
   }
 }

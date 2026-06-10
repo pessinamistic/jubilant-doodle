@@ -30,7 +30,8 @@ public class MetricsHistoryService {
   private final JdbcTemplate jdbc;
   private final Deque<MetricSample> ring = new ArrayDeque<>(MAX_SAMPLES + 1);
 
-  public MetricsHistoryService(DataSource dataSource) {
+  public MetricsHistoryService(
+    DataSource dataSource) {
     this.dataSource = dataSource;
     this.jdbc = new JdbcTemplate(dataSource);
   }

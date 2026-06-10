@@ -19,7 +19,8 @@ public class FinaliseStep implements DeployStep {
 
   private final DockerDeployEngine docker;
 
-  public FinaliseStep(DockerDeployEngine docker) {
+  public FinaliseStep(
+    DockerDeployEngine docker) {
     this.docker = docker;
   }
 
@@ -29,7 +30,9 @@ public class FinaliseStep implements DeployStep {
   }
 
   @Override
-  public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
+  public String execute(
+    DeploymentConfig config,
+    DeployedContainer container) throws StepExecutionException {
     InstanceStatus status = docker.getStatus(container);
     log.info("[pipeline] Finalise — Docker reports status {}", status);
 

@@ -21,7 +21,6 @@ import {
   Database,
   Eye,
   EyeOff,
-
   FileText,
   Folder,
   Globe,
@@ -66,6 +65,8 @@ const TABS = [
 
 export function InstanceDetailPage() {
   const { id } = useParams()
+
+  console.log("making get instance request for id : ", id)
   const navigate = useNavigate()
 
   const [instance, setInstance]   = useState(null)

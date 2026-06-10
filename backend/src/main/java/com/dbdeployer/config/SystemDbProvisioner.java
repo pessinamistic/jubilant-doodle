@@ -36,7 +36,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
   public static final String RUNTIME_HOST_PORT_PROPERTY = "dbdeployer.system-db.runtime.host-port";
 
   @Override
-  public void initialize(ConfigurableApplicationContext ctx) {
+  public void initialize(
+    ConfigurableApplicationContext ctx) {
     ConfigurableEnvironment env = ctx.getEnvironment();
 
     // When the system DB is provided externally (e.g. docker-compose), skip
@@ -86,8 +87,15 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
 
   // ── Container lifecycle ────────────────────────────────────────────────────
 
-  private SystemContainerState ensureContainerRunning(DockerClient docker, String containerName, String image,
-      int hostPort, String username, String password, String database, String dataDir) {
+  private SystemContainerState ensureContainerRunning(
+    DockerClient docker,
+    String containerName,
+    String image,
+    int hostPort,
+    String username,
+    String password,
+    String database,
+    String dataDir) {
     try {
       var info = docker.inspectContainerCmd(containerName).exec();
       Boolean running = info.getState().getRunning();
@@ -108,8 +116,15 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
     }
   }
 
-  private void createAndStartContainer(DockerClient docker, String containerName, String image, int hostPort,
-      String username, String password, String database, String dataDir) {
+  private void createAndStartContainer(
+    DockerClient docker,
+    String containerName,
+    String image,
+    int hostPort,
+    String username,
+    String password,
+    String database,
+    String dataDir) {
     // Ensure the host data directory exists before bind-mounting it
     Path dataDirPath = Paths.get(dataDir).toAbsolutePath();
     try {
@@ -149,7 +164,9 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
 
   // ── Readiness probe ───────────────────────────────────────────────────────
 
-  private void waitForPostgres(int port, int maxSeconds) {
+  private void waitForPostgres(
+    int port,
+    int maxSeconds) {
     log.info("Waiting for system Postgres to accept connections on port {}...", port);
     int safeMaxSeconds = Math.max(1, maxSeconds);
 
@@ -173,7 +190,10 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
         + port + ". Check Docker logs for container 'dbdeployer-system-db'.");
   }
 
-  private String formatProgressBar(int elapsedSeconds, int maxSeconds, boolean ready) {
+  private String formatProgressBar(
+    int elapsedSeconds,
+    int maxSeconds,
+    boolean ready) {
     int safeMaxSeconds = Math.max(1, maxSeconds);
     int clampedElapsed = Math.max(0, Math.min(elapsedSeconds, safeMaxSeconds));
     int barWidth = 24;
@@ -186,7 +206,9 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
     return bar + " " + percent + "% (" + clampedElapsed + "s/" + safeMaxSeconds + "s, " + status + ")";
   }
 
-  private boolean isPortOpen(String host, int port) {
+  private boolean isPortOpen(
+    String host,
+    int port) {
     try (Socket ignored = new Socket(host, port)) {
       return true;
     } catch (Exception e) {

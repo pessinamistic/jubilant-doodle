@@ -46,7 +46,7 @@ public class DeployedContainer {
   private String containerId;
 
   /** Human-readable Docker container name (e.g. {@code dbdeployer-my-redis}). */
-  @Column(name = "container_name")
+  @Column(name = "container_name", unique = true, nullable = false)
   private String containerName;
 
   // In DeployedContainer.java

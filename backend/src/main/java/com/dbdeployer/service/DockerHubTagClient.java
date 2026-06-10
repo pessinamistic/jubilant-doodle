@@ -25,13 +25,16 @@ public class DockerHubTagClient {
   private final HttpClient client;
   private final ImageValidationProperties props;
 
-  public DockerHubTagClient(ImageValidationProperties props) {
+  public DockerHubTagClient(
+    ImageValidationProperties props) {
     this.props = props;
     this.client = HttpClient.newBuilder()
         .connectTimeout(Duration.ofMillis(Math.max(props.getDockerHubTimeoutMs(), 1000))).build();
   }
 
-  public HubTagResult checkTag(String image, String tag) {
+  public HubTagResult checkTag(
+    String image,
+    String tag) {
     DockerHubRepository repo = resolveDockerHubRepository(image);
     if (repo == null) {
       return new HubTagResult(ImageAvailabilityState.NOT_APPLICABLE,
@@ -73,7 +76,8 @@ public class DockerHubTagClient {
    * Converts a Docker image name into Docker Hub namespace/repository if
    * applicable. Returns null for non-Docker Hub images.
    */
-  public DockerHubRepository resolveDockerHubRepository(String image) {
+  public DockerHubRepository resolveDockerHubRepository(
+    String image) {
     if (image == null || image.isBlank())
       return null;
 
@@ -97,11 +101,13 @@ public class DockerHubTagClient {
     return new DockerHubRepository(parts[0], String.join("/", java.util.Arrays.copyOfRange(parts, 1, parts.length)));
   }
 
-  private boolean isRegistryHost(String firstSegment) {
+  private boolean isRegistryHost(
+    String firstSegment) {
     return firstSegment.contains(".") || firstSegment.contains(":") || "localhost".equals(firstSegment);
   }
 
-  private String urlEncode(String value) {
+  private String urlEncode(
+    String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 }

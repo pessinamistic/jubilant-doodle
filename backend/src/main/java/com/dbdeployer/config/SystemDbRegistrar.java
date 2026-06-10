@@ -49,15 +49,18 @@ public class SystemDbRegistrar implements ApplicationRunner {
   @Value("${dbdeployer.system-db.runtime.container-name:}")
   private String runtimeContainerName;
 
-  public SystemDbRegistrar(DeploymentConfigRepository configRepo, DeployedContainerRepository containerRepo,
-      JdbcTemplate jdbc) {
+  public SystemDbRegistrar(
+    DeploymentConfigRepository configRepo,
+    DeployedContainerRepository containerRepo,
+    JdbcTemplate jdbc) {
     this.configRepo = configRepo;
     this.containerRepo = containerRepo;
     this.jdbc = jdbc;
   }
 
   @Override
-  public void run(ApplicationArguments args) {
+  public void run(
+    ApplicationArguments args) {
     try {
       DeploymentConfig config = configRepo.findById(SYSTEM_CONFIG_ID).orElse(null);
       if (config == null) {
@@ -162,13 +165,16 @@ public class SystemDbRegistrar implements ApplicationRunner {
     }
   }
 
-  private static String firstNonBlank(String first, String second) {
+  private static String firstNonBlank(
+    String first,
+    String second) {
     if (first != null && !first.isBlank())
       return first;
     return second;
   }
 
-  private static String abbreviate(String value) {
+  private static String abbreviate(
+    String value) {
     if (value == null || value.isBlank())
       return "n/a";
     return value.length() > 12 ? value.substring(0, 12) : value;
@@ -185,7 +191,8 @@ public class SystemDbRegistrar implements ApplicationRunner {
    * <p>
    * Returns: {@code "16.3"}
    */
-  private static String parsePostgresVersion(String banner) {
+  private static String parsePostgresVersion(
+    String banner) {
     if (banner == null)
       return "16";
     // Banner starts with "PostgreSQL <major>.<minor>" (optionally followed by more

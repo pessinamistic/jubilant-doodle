@@ -14,7 +14,8 @@ public class DbDeployerApplication {
 
   private static final Map<String, String> LEGACY_TZ_ALIASES = Map.of("Asia/Calcutta", "Asia/Kolkata");
 
-  public static void main(String[] args) {
+  public static void main(
+    String[] args) {
     normalizeLegacyTimezoneAlias();
     SpringApplication.run(DbDeployerApplication.class, args);
   }

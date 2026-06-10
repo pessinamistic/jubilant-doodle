@@ -34,13 +34,16 @@ public class DockerStartupCheck implements ApplicationRunner {
   private final DockerHealthChecker dockerHealthChecker;
   private final OsDetector osDetector;
 
-  public DockerStartupCheck(DockerHealthChecker dockerHealthChecker, OsDetector osDetector) {
+  public DockerStartupCheck(
+    DockerHealthChecker dockerHealthChecker,
+    OsDetector osDetector) {
     this.dockerHealthChecker = dockerHealthChecker;
     this.osDetector = osDetector;
   }
 
   @Override
-  public void run(ApplicationArguments args) {
+  public void run(
+    ApplicationArguments args) {
     DockerStatus status = dockerHealthChecker.check();
 
     if (!status.available()) {
@@ -55,7 +58,8 @@ public class DockerStartupCheck implements ApplicationRunner {
 
   // ── private helpers ───────────────────────────────────────────────────────
 
-  private void printDockerMissingBanner(DockerStatus status) {
+  private void printDockerMissingBanner(
+    DockerStatus status) {
     String fix = remediation();
     System.err.println();
     System.err.println(SEPARATOR);
@@ -79,7 +83,8 @@ public class DockerStartupCheck implements ApplicationRunner {
     System.err.println();
   }
 
-  private void showDockerMissingDialog(DockerStatus status) {
+  private void showDockerMissingDialog(
+    DockerStatus status) {
     if (GraphicsEnvironment.isHeadless())
       return;
 

@@ -11,12 +11,17 @@ public class StepExecutionException extends Exception {
 
   private final DeployErrorCode errorCode;
 
-  public StepExecutionException(DeployErrorCode errorCode, String message) {
+  public StepExecutionException(
+    DeployErrorCode errorCode,
+    String message) {
     super(message);
     this.errorCode = errorCode;
   }
 
-  public StepExecutionException(DeployErrorCode errorCode, String message, Throwable cause) {
+  public StepExecutionException(
+    DeployErrorCode errorCode,
+    String message,
+    Throwable cause) {
     super(message, cause);
     this.errorCode = errorCode;
   }

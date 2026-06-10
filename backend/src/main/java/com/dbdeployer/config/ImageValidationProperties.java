@@ -29,7 +29,8 @@ public class ImageValidationProperties {
     return dockerHubTimeoutMs;
   }
 
-  public void setDockerHubTimeoutMs(int dockerHubTimeoutMs) {
+  public void setDockerHubTimeoutMs(
+    int dockerHubTimeoutMs) {
     this.dockerHubTimeoutMs = dockerHubTimeoutMs;
   }
 
@@ -37,7 +38,8 @@ public class ImageValidationProperties {
     return localRefreshIntervalMs;
   }
 
-  public void setLocalRefreshIntervalMs(long localRefreshIntervalMs) {
+  public void setLocalRefreshIntervalMs(
+    long localRefreshIntervalMs) {
     this.localRefreshIntervalMs = localRefreshIntervalMs;
   }
 
@@ -45,7 +47,8 @@ public class ImageValidationProperties {
     return dockerHubRefreshIntervalMs;
   }
 
-  public void setDockerHubRefreshIntervalMs(long dockerHubRefreshIntervalMs) {
+  public void setDockerHubRefreshIntervalMs(
+    long dockerHubRefreshIntervalMs) {
     this.dockerHubRefreshIntervalMs = dockerHubRefreshIntervalMs;
   }
 
@@ -53,7 +56,8 @@ public class ImageValidationProperties {
     return schedulerEnabled;
   }
 
-  public void setSchedulerEnabled(boolean schedulerEnabled) {
+  public void setSchedulerEnabled(
+    boolean schedulerEnabled) {
     this.schedulerEnabled = schedulerEnabled;
   }
 
@@ -61,7 +65,8 @@ public class ImageValidationProperties {
     return hubRequestConcurrency;
   }
 
-  public void setHubRequestConcurrency(int hubRequestConcurrency) {
+  public void setHubRequestConcurrency(
+    int hubRequestConcurrency) {
     this.hubRequestConcurrency = hubRequestConcurrency;
   }
 }

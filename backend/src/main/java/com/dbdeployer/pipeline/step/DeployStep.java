@@ -28,5 +28,7 @@ public interface DeployStep {
    * @throws StepExecutionException
    *           on a known Docker failure
    */
-  String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException;
+  String execute(
+    DeploymentConfig config,
+    DeployedContainer container) throws StepExecutionException;
 }

@@ -18,7 +18,8 @@ public class AppConfig implements WebMvcConfigurer {
 
   private final ApiRequestLoggingInterceptor apiRequestLoggingInterceptor;
 
-  public AppConfig(ApiRequestLoggingInterceptor apiRequestLoggingInterceptor) {
+  public AppConfig(
+    ApiRequestLoggingInterceptor apiRequestLoggingInterceptor) {
     this.apiRequestLoggingInterceptor = apiRequestLoggingInterceptor;
   }
 
@@ -37,13 +38,15 @@ public class AppConfig implements WebMvcConfigurer {
   private String[] allowedOrigins;
 
   @Override
-  public void addCorsMappings(CorsRegistry registry) {
+  public void addCorsMappings(
+    CorsRegistry registry) {
     registry.addMapping("/api/**").allowedOrigins(allowedOrigins)
         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS").allowedHeaders("*");
   }
 
   @Override
-  public void addInterceptors(InterceptorRegistry registry) {
+  public void addInterceptors(
+    InterceptorRegistry registry) {
     registry.addInterceptor(apiRequestLoggingInterceptor).addPathPatterns("/api/**");
   }
 }

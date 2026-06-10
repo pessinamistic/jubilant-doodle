@@ -15,12 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 /** API flow for DB catalog metadata and version discovery. */
 @Slf4j
 @RestController
-@RequestMapping("/api/catalog")
+@RequestMapping("/catalog")
 public class CatalogController {
 
   private final ImageValidationService imageValidationService;
 
-  public CatalogController(ImageValidationService imageValidationService) {
+  public CatalogController(
+    ImageValidationService imageValidationService) {
     this.imageValidationService = imageValidationService;
   }
 
@@ -34,8 +35,9 @@ public class CatalogController {
    * Resolve deployable versions dynamically from the image registry for one tool.
    */
   @GetMapping("/{dbType}/versions")
-  public List<String> catalogVersions(@PathVariable DbType dbType,
-      @RequestParam(defaultValue = "false") boolean refresh) {
+  public List<String> catalogVersions(
+    @PathVariable DbType dbType,
+    @RequestParam(defaultValue = "false") boolean refresh) {
     log.info("[api] catalog versions requested: dbType={}, refresh={}", dbType, refresh);
     List<String> versions = imageValidationService.discoverAndTrackVersions(dbType, refresh);
     log.info("[api] catalog versions resolved: dbType={}, count={}", dbType, versions.size());

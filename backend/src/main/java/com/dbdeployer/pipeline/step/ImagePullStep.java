@@ -18,7 +18,9 @@ public class ImagePullStep implements DeployStep {
   private final DockerDeployEngine docker;
   private final ImageValidationService imageValidationService;
 
-  public ImagePullStep(DockerDeployEngine docker, ImageValidationService imageValidationService) {
+  public ImagePullStep(
+    DockerDeployEngine docker,
+    ImageValidationService imageValidationService) {
     this.docker = docker;
     this.imageValidationService = imageValidationService;
   }
@@ -29,7 +31,9 @@ public class ImagePullStep implements DeployStep {
   }
 
   @Override
-  public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
+  public String execute(
+    DeploymentConfig config,
+    DeployedContainer container) throws StepExecutionException {
     var def = DatabaseCatalog.get(config.getDbType());
     String imageName = def.dockerImage();
     String tag = config.getVersion();

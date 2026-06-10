@@ -21,7 +21,8 @@ public class PipelineProperties {
     return stepDelayMs;
   }
 
-  public void setStepDelayMs(long millis) {
+  public void setStepDelayMs(
+    long millis) {
     this.stepDelayMs = millis;
   }
 }

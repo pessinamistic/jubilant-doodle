@@ -18,7 +18,8 @@ public class ContainerCreateStep implements DeployStep {
 
   private final DockerDeployEngine docker;
 
-  public ContainerCreateStep(DockerDeployEngine docker) {
+  public ContainerCreateStep(
+    DockerDeployEngine docker) {
     this.docker = docker;
   }
 
@@ -28,7 +29,9 @@ public class ContainerCreateStep implements DeployStep {
   }
 
   @Override
-  public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
+  public String execute(
+    DeploymentConfig config,
+    DeployedContainer container) throws StepExecutionException {
     log.info("[pipeline] Creating container for '{}'", config.getName());
     try {
       docker.createContainer(config, container);

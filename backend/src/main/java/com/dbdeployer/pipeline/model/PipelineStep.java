@@ -59,7 +59,8 @@ public class PipelineStep {
     return id;
   }
 
-  public void setId(String id) {
+  public void setId(
+    String id) {
     this.id = id;
   }
 
@@ -67,7 +68,8 @@ public class PipelineStep {
     return pipeline;
   }
 
-  public void setPipeline(DeploymentPipeline p) {
+  public void setPipeline(
+    DeploymentPipeline p) {
     this.pipeline = p;
   }
 
@@ -75,7 +77,8 @@ public class PipelineStep {
     return stepType;
   }
 
-  public void setStepType(StepType t) {
+  public void setStepType(
+    StepType t) {
     this.stepType = t;
   }
 
@@ -83,7 +86,8 @@ public class PipelineStep {
     return stepOrder;
   }
 
-  public void setStepOrder(int order) {
+  public void setStepOrder(
+    int order) {
     this.stepOrder = order;
   }
 
@@ -91,7 +95,8 @@ public class PipelineStep {
     return status;
   }
 
-  public void setStatus(StepStatus s) {
+  public void setStatus(
+    StepStatus s) {
     this.status = s;
   }
 
@@ -99,7 +104,8 @@ public class PipelineStep {
     return message;
   }
 
-  public void setMessage(String msg) {
+  public void setMessage(
+    String msg) {
     this.message = msg;
   }
 
@@ -107,7 +113,8 @@ public class PipelineStep {
     return startedAt;
   }
 
-  public void setStartedAt(Instant t) {
+  public void setStartedAt(
+    Instant t) {
     this.startedAt = t;
   }
 
@@ -115,7 +122,8 @@ public class PipelineStep {
     return completedAt;
   }
 
-  public void setCompletedAt(Instant t) {
+  public void setCompletedAt(
+    Instant t) {
     this.completedAt = t;
   }
 }

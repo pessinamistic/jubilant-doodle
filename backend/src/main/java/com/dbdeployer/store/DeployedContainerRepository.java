@@ -12,32 +12,42 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeployedContainerRepository extends JpaRepository<DeployedContainer, String> {
-  Optional<DeployedContainer> findByConfigId(String configId);
+  Optional<DeployedContainer> findByConfigId(
+    String configId);
 
-  boolean existsByName(String name);
+  boolean existsByContainerName(
+    String containerName);
 
-  boolean existsByContainerId(String containerId);
+  boolean existsByContainerId(
+    String containerId);
 
-  Optional<DeployedContainer> findByContainerId(String containerId);
+  Optional<DeployedContainer> findByContainerId(
+    String containerId);
 
   /** All containers not yet REMOVED — used by the status sync scheduler. */
-  List<DeployedContainer> findByStatusNot(InstanceStatus status);
+  List<DeployedContainer> findByStatusNot(
+    InstanceStatus status);
 
   /**
    * All containers not in any of the given statuses — used by the status sync
    * scheduler.
    */
-  List<DeployedContainer> findByStatusNotIn(Collection<InstanceStatus> statuses);
+  List<DeployedContainer> findByStatusNotIn(
+    Collection<InstanceStatus> statuses);
 
   /** All containers in a specific status — used by DeploymentRecovery. */
-  List<DeployedContainer> findByStatus(InstanceStatus status);
+  List<DeployedContainer> findByStatus(
+    InstanceStatus status);
 
-  List<DeployedContainer> findByConfigIdOrderByCreatedAtDesc(String configId);
+  List<DeployedContainer> findByConfigIdOrderByCreatedAtDesc(
+    String configId);
 
-  Optional<DeployedContainer> findFirstByConfigIdOrderByCreatedAtDesc(String configId);
+  Optional<DeployedContainer> findFirstByConfigIdOrderByCreatedAtDesc(
+    String configId);
 
-  Optional<DeployedContainer> findFirstByConfigIdAndStatusNotOrderByCreatedAtDesc(String configId,
-      InstanceStatus status);
+  Optional<DeployedContainer> findFirstByConfigIdAndStatusNotOrderByCreatedAtDesc(
+    String configId,
+    InstanceStatus status);
 
   /**
    * Returns true if any non-removed instance is already using this port. REMOVED
@@ -45,5 +55,6 @@ public interface DeployedContainerRepository extends JpaRepository<DeployedConta
    */
   @Query("SELECT CASE WHEN COUNT(dc) > 0 THEN true ELSE false END FROM DeployedContainer dc "
       + "WHERE dc.hostPort = :hostPort AND " + "(dc.status <> com.dbdeployer.model.InstanceStatus.REMOVED)")
-  boolean existsByHostPortAndNotRemoved(@Param("hostPort") int hostPort);
+  boolean existsByHostPortAndNotRemoved(
+    @Param("hostPort") int hostPort);
 }

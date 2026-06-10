@@ -24,7 +24,8 @@ public class BrewDeployEngine {
   private final OsDetector osDetector;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public BrewDeployEngine(OsDetector osDetector) {
+  public BrewDeployEngine(
+    OsDetector osDetector) {
     this.osDetector = osDetector;
   }
 
@@ -32,7 +33,9 @@ public class BrewDeployEngine {
     return osDetector.detectOs() == OsDetector.OsType.MACOS && osDetector.isBrewAvailable();
   }
 
-  public List<DiscoveredContainerDto> discoverServices(Set<String> trackedIds, Set<String> trackedNames) {
+  public List<DiscoveredContainerDto> discoverServices(
+    Set<String> trackedIds,
+    Set<String> trackedNames) {
     if (!isAvailable())
       return List.of();
 
@@ -66,12 +69,15 @@ public class BrewDeployEngine {
     return result;
   }
 
-  public InstanceStatus getServiceStatusByContainerId(String containerId, String fallbackName) {
+  public InstanceStatus getServiceStatusByContainerId(
+    String containerId,
+    String fallbackName) {
     String serviceName = fromSyntheticId(containerId, fallbackName);
     return getServiceStatus(serviceName);
   }
 
-  public InstanceStatus getServiceStatus(String serviceName) {
+  public InstanceStatus getServiceStatus(
+    String serviceName) {
     if (!isAvailable())
       return InstanceStatus.ERROR;
     if (serviceName == null || serviceName.isBlank())
@@ -86,15 +92,20 @@ public class BrewDeployEngine {
     return InstanceStatus.ERROR;
   }
 
-  public void startServiceByContainerId(String containerId, String fallbackName) {
+  public void startServiceByContainerId(
+    String containerId,
+    String fallbackName) {
     startService(fromSyntheticId(containerId, fallbackName));
   }
 
-  public void stopServiceByContainerId(String containerId, String fallbackName) {
+  public void stopServiceByContainerId(
+    String containerId,
+    String fallbackName) {
     stopService(fromSyntheticId(containerId, fallbackName));
   }
 
-  public void startService(String serviceName) {
+  public void startService(
+    String serviceName) {
     if (!isAvailable()) {
       throw new IllegalStateException("Homebrew is not available on this machine");
     }
@@ -104,7 +115,8 @@ public class BrewDeployEngine {
     runCommand("brew", "services", "start", serviceName);
   }
 
-  public void stopService(String serviceName) {
+  public void stopService(
+    String serviceName) {
     if (!isAvailable()) {
       throw new IllegalStateException("Homebrew is not available on this machine");
     }
@@ -114,11 +126,14 @@ public class BrewDeployEngine {
     runCommand("brew", "services", "stop", serviceName);
   }
 
-  public static String toSyntheticId(String serviceName) {
+  public static String toSyntheticId(
+    String serviceName) {
     return "brew:" + serviceName;
   }
 
-  private String fromSyntheticId(String containerId, String fallbackName) {
+  private String fromSyntheticId(
+    String containerId,
+    String fallbackName) {
     if (containerId != null && containerId.startsWith("brew:")) {
       return containerId.substring("brew:".length());
     }
@@ -138,7 +153,8 @@ public class BrewDeployEngine {
     }
   }
 
-  private DbType detectDbType(String serviceName) {
+  private DbType detectDbType(
+    String serviceName) {
     String lower = serviceName.toLowerCase();
 
     if (lower.contains("postgres"))
@@ -167,7 +183,8 @@ public class BrewDeployEngine {
     return null;
   }
 
-  private static String toDiscoveryStatus(String brewStatus) {
+  private static String toDiscoveryStatus(
+    String brewStatus) {
     return switch (toInstanceStatus(brewStatus)) {
       case RUNNING -> "RUNNING";
       case ERROR -> "ERROR";
@@ -175,7 +192,8 @@ public class BrewDeployEngine {
     };
   }
 
-  private static InstanceStatus toInstanceStatus(String brewStatus) {
+  private static InstanceStatus toInstanceStatus(
+    String brewStatus) {
     if (brewStatus == null)
       return InstanceStatus.STOPPED;
     String s = brewStatus.trim().toLowerCase();
@@ -186,11 +204,13 @@ public class BrewDeployEngine {
     return InstanceStatus.STOPPED;
   }
 
-  private static String asText(Object o) {
+  private static String asText(
+    Object o) {
     return o == null ? null : String.valueOf(o);
   }
 
-  private String runCommand(String... command) {
+  private String runCommand(
+    String... command) {
     Process process = null;
     try {
       process = new ProcessBuilder(command).redirectErrorStream(true).start();
@@ -199,7 +219,9 @@ public class BrewDeployEngine {
       String output;
       try (BufferedReader reader = new BufferedReader(
           new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-        output = reader.lines().reduce("", (a, b) -> a + (a.isEmpty() ? "" : "\n") + b);
+        output = reader.lines().reduce("", (
+          a,
+          b) -> a + (a.isEmpty() ? "" : "\n") + b);
       }
 
       if (!finished) {

@@ -245,7 +245,8 @@ public class DatabaseCatalog {
             "http://localhost:{port}", "/var/lib/pgadmin", false, true, true));
   }
 
-  public static DbDefinition get(DbType type) {
+  public static DbDefinition get(
+    DbType type) {
     return CATALOG.get(type);
   }
 

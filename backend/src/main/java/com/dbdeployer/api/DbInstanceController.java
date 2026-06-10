@@ -34,23 +34,26 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping()
 public class DbInstanceController {
 
   private final DbInstanceService service;
-  private final ConnectionStringBuilder connBuilder;
-  private final InstanceResponseAssembler responseAssembler;
   private final SystemDbStatsService statsService;
+  private final ConnectionStringBuilder connBuilder;
   private final ConfigTemplateService configTemplateService;
+  private final InstanceResponseAssembler responseAssembler;
 
-  public DbInstanceController(DbInstanceService service, ConnectionStringBuilder connBuilder,
-      InstanceResponseAssembler responseAssembler, SystemDbStatsService statsService,
-      ConfigTemplateService configTemplateService) {
+  public DbInstanceController(
+    DbInstanceService service,
+    SystemDbStatsService statsService,
+    ConnectionStringBuilder connBuilder,
+    ConfigTemplateService configTemplateService,
+    InstanceResponseAssembler responseAssembler) {
     this.service = service;
-    this.connBuilder = connBuilder;
-    this.responseAssembler = responseAssembler;
     this.statsService = statsService;
+    this.connBuilder = connBuilder;
     this.configTemplateService = configTemplateService;
+    this.responseAssembler = responseAssembler;
   }
 
   /** List all deployed instances */
@@ -67,16 +70,18 @@ public class DbInstanceController {
 
   /** Get a single instance */
   @GetMapping("/instances/{id}")
-  public InstanceResponse get(@PathVariable String id) {
+  public InstanceResponse get(
+    @PathVariable String id) {
     return responseAssembler.fromContainer(service.getById(id));
   }
 
   /** Deploy a new database instance */
   @PostMapping("/instances")
-  public ResponseEntity<InstanceResponse> deploy(@Valid @RequestBody DeployRequest req) {
+  public ResponseEntity<InstanceResponse> deploy(
+    @Valid @RequestBody DeployRequest req) {
     log.info("[api] deploy requested: name='{}', dbType={}, version={}, hostPort={}", req.name(), req.dbType(),
         req.version(), req.hostPort());
-    DeploymentResponse deploymentResponse = service.deploy(req, null);
+    DeploymentResponse deploymentResponse = service.deploy(req, null, false);
 
     DeploymentConfig deploymentConfig = deploymentResponse.getDeploymentConfig();
     log.info("[api] deploy accepted: configId={}, name='{}'", deploymentConfig.getId(), deploymentConfig.getName());
@@ -85,20 +90,24 @@ public class DbInstanceController {
 
   /** Rename an instance */
   @PatchMapping("/instances/{id}")
-  public InstanceResponse rename(@PathVariable String id, @RequestBody Map<String, String> body) {
+  public InstanceResponse rename(
+    @PathVariable String id,
+    @RequestBody Map<String, String> body) {
     DeploymentResponse deploymentResponse = service.rename(id, body.get("name"));
     return responseAssembler.fromConfig(deploymentResponse);
   }
 
   /** Start a stopped instance */
   @PostMapping("/instances/{id}/start")
-  public InstanceResponse start(@PathVariable String id) {
+  public InstanceResponse start(
+    @PathVariable String id) {
     return responseAssembler.fromConfig(service.startInstance(id));
   }
 
   /** Stop a running instance */
   @PostMapping("/instances/{id}/stop")
-  public InstanceResponse stop(@PathVariable String id) {
+  public InstanceResponse stop(
+    @PathVariable String id) {
     return responseAssembler.fromConfig(service.stopInstance(id));
   }
 
@@ -107,7 +116,8 @@ public class DbInstanceController {
    * DB)
    */
   @DeleteMapping("/instances/{id}")
-  public ResponseEntity<Void> remove(@PathVariable String id) {
+  public ResponseEntity<Void> remove(
+    @PathVariable String id) {
     service.removeInstance(id);
     return ResponseEntity.noContent().build();
   }
@@ -117,7 +127,8 @@ public class DbInstanceController {
    * container
    */
   @PostMapping("/instances/{id}/untrack")
-  public ResponseEntity<Void> untrack(@PathVariable String id) {
+  public ResponseEntity<Void> untrack(
+    @PathVariable String id) {
     service.untrackInstance(id);
     return ResponseEntity.noContent().build();
   }
@@ -127,33 +138,39 @@ public class DbInstanceController {
    * status
    */
   @PostMapping("/instances/{id}/retrack")
-  public InstanceResponse retrack(@PathVariable String id) {
+  public InstanceResponse retrack(
+    @PathVariable String id) {
     return responseAssembler.fromConfig(service.reTrackInstance(id));
   }
 
   /** Get container logs */
   @GetMapping("/instances/{id}/logs")
-  public Map<String, String> logs(@PathVariable String id, @RequestParam(defaultValue = "100") int tail)
+  public Map<String, String> logs(
+    @PathVariable String id,
+    @RequestParam(defaultValue = "100") int tail)
       throws InterruptedException {
     return Map.of("logs", service.getLogs(id, tail));
   }
 
   /** Live container metrics — CPU, memory, network/block I/O, port probe */
   @GetMapping("/instances/{id}/container-metrics")
-  public ContainerMetricsResponse containerMetrics(@PathVariable String id) {
+  public ContainerMetricsResponse containerMetrics(
+    @PathVariable String id) {
     return service.getContainerMetrics(id);
   }
 
   /** Get the latest deploy pipeline for an instance */
   @GetMapping("/instances/{id}/pipeline")
-  public ResponseEntity<PipelineResponse> pipeline(@PathVariable String id) {
+  public ResponseEntity<PipelineResponse> pipeline(
+    @PathVariable String id) {
     PipelineResponse resp = service.getLatestPipeline(id);
     return resp != null ? ResponseEntity.ok(resp) : ResponseEntity.notFound().build();
   }
 
   /** Get connection string for an instance */
   @GetMapping("/instances/{id}/connection-string")
-  public Map<String, String> connectionString(@PathVariable String id) {
+  public Map<String, String> connectionString(
+    @PathVariable String id) {
     DeploymentConfig config = configTemplateService.getById(id);
     return Map.of("connectionString", connBuilder.build(config), "masked", connBuilder.buildMasked(config));
   }
@@ -172,7 +189,8 @@ public class DbInstanceController {
    * touching the container itself.
    */
   @PostMapping("/instances/import")
-  public ResponseEntity<InstanceResponse> importContainer(@RequestBody ImportRequest req) {
+  public ResponseEntity<InstanceResponse> importContainer(
+    @RequestBody ImportRequest req) {
     return ResponseEntity.ok(responseAssembler.fromConfig(service.importContainer(req)));
   }
 
@@ -181,15 +199,10 @@ public class DbInstanceController {
    * a new Docker container. All config metadata is preserved.
    */
   @PutMapping("/instances/{id}/reimport")
-  public ResponseEntity<InstanceResponse> reImportInstance(@PathVariable String id,
-      @Valid @RequestBody ReImportRequest req) {
+  public ResponseEntity<InstanceResponse> reImportInstance(
+    @PathVariable String id,
+    @Valid @RequestBody ReImportRequest req) {
     return ResponseEntity.ok(responseAssembler.fromConfig(service.reImportInstance(id, req)));
-  }
-
-  /** Get system info (OS, available tools) */
-  @GetMapping("/system")
-  public Object systemInfo() {
-    return service.getSystemInfo();
   }
 
   /**
@@ -213,7 +226,8 @@ public class DbInstanceController {
   // ── Error handler ──────────────────────────────────────────────────────────
 
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException e) {
+  public ResponseEntity<Map<String, String>> handleBadRequest(
+    IllegalArgumentException e) {
     log.warn("[api] bad request: {}", e.getMessage());
     return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
   }

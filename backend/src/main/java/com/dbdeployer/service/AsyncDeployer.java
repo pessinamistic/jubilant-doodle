@@ -21,7 +21,9 @@ public class AsyncDeployer {
   private final DeployedContainerRepository containerRepo;
   private final DockerDeployEngine docker;
 
-  public AsyncDeployer(DeployedContainerRepository containerRepo, DockerDeployEngine docker) {
+  public AsyncDeployer(
+    DeployedContainerRepository containerRepo,
+    DockerDeployEngine docker) {
     this.containerRepo = containerRepo;
     this.docker = docker;
   }
@@ -32,7 +34,9 @@ public class AsyncDeployer {
    * the DB before the caller's transaction has committed.
    */
   @Async
-  public void deploy(DeploymentConfig config, DeployedContainer container) {
+  public void deploy(
+    DeploymentConfig config,
+    DeployedContainer container) {
     try {
       log.info("Async deploy starting for '{}' ({})", config.getName(), config.getId());
       docker.deploy(config, container); // mutates container in-place

@@ -13,7 +13,9 @@ public class ImageTrackingScheduler {
   private final ImageValidationService imageValidationService;
   private final ImageValidationProperties properties;
 
-  public ImageTrackingScheduler(ImageValidationService imageValidationService, ImageValidationProperties properties) {
+  public ImageTrackingScheduler(
+    ImageValidationService imageValidationService,
+    ImageValidationProperties properties) {
     this.imageValidationService = imageValidationService;
     this.properties = properties;
   }

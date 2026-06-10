@@ -16,20 +16,26 @@ public class InstanceResponseAssembler {
   private final ConnectionStringBuilder connBuilder;
   private final DeploymentConfigRepository configRepo;
 
-  public InstanceResponseAssembler(ConnectionStringBuilder connBuilder, DeploymentConfigRepository configRepo) {
+  public InstanceResponseAssembler(
+    ConnectionStringBuilder connBuilder,
+    DeploymentConfigRepository configRepo) {
     this.connBuilder = connBuilder;
     this.configRepo = configRepo;
   }
 
-  public InstanceResponse fromConfig(DeploymentResponse deploymentResponse) {
+  public InstanceResponse fromConfig(
+    DeploymentResponse deploymentResponse) {
     return build(deploymentResponse.getDeploymentConfig(), deploymentResponse.getDeployedContainer());
   }
 
-  public InstanceResponse fromContainer(DeployedContainer container) {
+  public InstanceResponse fromContainer(
+    DeployedContainer container) {
     return build(container.getConfig(), container);
   }
 
-  private InstanceResponse build(DeploymentConfig config, DeployedContainer container) {
+  private InstanceResponse build(
+    DeploymentConfig config,
+    DeployedContainer container) {
     var def = DatabaseCatalog.get(config.getDbType());
     String display = def != null ? def.displayName() : config.getDbType().name();
     String icon = def != null ? def.icon() : "🗄️";

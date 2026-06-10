@@ -15,7 +15,8 @@ public class ContainerStartStep implements DeployStep {
 
   private final DockerDeployEngine docker;
 
-  public ContainerStartStep(DockerDeployEngine docker) {
+  public ContainerStartStep(
+    DockerDeployEngine docker) {
     this.docker = docker;
   }
 
@@ -25,7 +26,9 @@ public class ContainerStartStep implements DeployStep {
   }
 
   @Override
-  public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
+  public String execute(
+    DeploymentConfig config,
+    DeployedContainer container) throws StepExecutionException {
     log.info("[pipeline] Starting container '{}'", container.getContainerName());
     try {
       docker.startContainer(container);

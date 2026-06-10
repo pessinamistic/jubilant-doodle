@@ -10,7 +10,8 @@ public class StatusSyncScheduler {
 
   private final DbInstanceService service;
 
-  public StatusSyncScheduler(DbInstanceService service) {
+  public StatusSyncScheduler(
+    DbInstanceService service) {
     this.service = service;
   }
 

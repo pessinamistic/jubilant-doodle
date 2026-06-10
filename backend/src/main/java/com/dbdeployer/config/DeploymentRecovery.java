@@ -47,8 +47,11 @@ public class DeploymentRecovery implements ApplicationRunner {
   private final DeploymentPipelineRepository pipelineRepo;
   private final PipelineStepRepository stepRepo;
 
-  public DeploymentRecovery(DeployedContainerRepository containerRepo, DockerDeployEngine docker,
-      DeploymentPipelineRepository pipelineRepo, PipelineStepRepository stepRepo) {
+  public DeploymentRecovery(
+    DeployedContainerRepository containerRepo,
+    DockerDeployEngine docker,
+    DeploymentPipelineRepository pipelineRepo,
+    PipelineStepRepository stepRepo) {
     this.containerRepo = containerRepo;
     this.docker = docker;
     this.pipelineRepo = pipelineRepo;
@@ -57,7 +60,8 @@ public class DeploymentRecovery implements ApplicationRunner {
 
   @Override
   @Transactional
-  public void run(ApplicationArguments args) {
+  public void run(
+    ApplicationArguments args) {
     recoverContainers();
     recoverPipelines();
   }

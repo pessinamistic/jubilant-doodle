@@ -8,7 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DeploymentPipelineRepository extends JpaRepository<DeploymentPipeline, String> {
 
-  Optional<DeploymentPipeline> findTopByConfigIdOrderByCreatedAtDesc(String configId);
+  Optional<DeploymentPipeline> findTopByConfigIdOrderByCreatedAtDesc(
+    String configId);
 
-  List<DeploymentPipeline> findByStatus(PipelineStatus status);
+  Optional<DeploymentPipeline> findTopByDeploymentContainerIdOrderByCreatedAtDesc(
+    String configId);
+
+  List<DeploymentPipeline> findByStatus(
+    PipelineStatus status);
 }

@@ -8,9 +8,11 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeploymentConfigRepository extends JpaRepository<DeploymentConfig, String> {
-  boolean existsByName(String name);
+  boolean existsByName(
+    String name);
 
-  boolean existsByHostPort(int hostPort);
+  boolean existsByHostPort(
+    int hostPort);
 
   // /**
   // * Returns true if any non-removed instance is already using this port.
@@ -28,15 +30,20 @@ public interface DeploymentConfigRepository extends JpaRepository<DeploymentConf
 
   List<DeploymentConfig> findAllByIsTemplateFalse();
 
-  Optional<DeploymentConfig> findByIdAndIsTemplateFalse(String id);
+  Optional<DeploymentConfig> findByIdAndIsTemplateFalse(
+    String id);
 
   // ── Template queries (is_template = true) ─────────────────────────────────
 
   List<DeploymentConfig> findAllByIsTemplateTrueOrderByCreatedAtDesc();
 
-  Optional<DeploymentConfig> findByIdAndIsTemplateTrue(String id);
+  Optional<DeploymentConfig> findByIdAndIsTemplateTrue(
+    String id);
 
-  boolean existsByNameAndIsTemplateTrue(String name);
+  boolean existsByNameAndIsTemplateTrue(
+    String name);
 
-  boolean existsByNameAndIsTemplateTrueAndIdNot(String name, String id);
+  boolean existsByNameAndIsTemplateTrueAndIdNot(
+    String name,
+    String id);
 }
