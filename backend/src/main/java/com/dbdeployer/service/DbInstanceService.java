@@ -187,6 +187,9 @@ public class DbInstanceService {
     // ── Container row ── (starts as DEPLOYING; pipeline transitions it)
     DeployedContainer container = new DeployedContainer();
     container.setId(UUID.randomUUID().toString());
+    String containerName = "dbdeployer-%s-%s".formatted(config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
+        UUID.randomUUID().toString().substring(0, 8));
+    container.setContainerName(containerName);
     container.setConfig(config);
     container.setContainerPort(def.defaultPort());
     container.setHostPort(req.hostPort());

@@ -155,8 +155,10 @@ public class DockerDeployEngine {
     DeployedContainer container) throws Exception {
     var def = DatabaseCatalog.get(config.getDbType());
     String image = def.dockerImage() + ":" + config.getVersion();
-    String containerName = "dbdeployer-%s-%s".formatted(config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
-        UUID.randomUUID().toString().substring(0, 8));
+    String containerName = container.getContainerName() != null
+        ? container.getContainerName()
+        : "dbdeployer-%s-%s".formatted(config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
+            UUID.randomUUID().toString().substring(0, 8));
 
     log.info("[docker] Creating container '{}' from image {} on hostPort={} containerPort={}",
         containerName,
