@@ -26,6 +26,7 @@ import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
 import com.dbdeployer.store.DeployedContainerRepository;
 import com.dbdeployer.store.DeploymentConfigRepository;
+import com.dbdeployer.validations.DeploymentValidations;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +49,8 @@ public class DbInstanceService {
     private final BrewDeployEngine brew;
     private final OsDetector osDetector;
     private final DockerDeployEngine docker;
+    private final ToolMetricsProbe toolMetrics;
+    private final DeploymentValidations deploymentValidations;
     private final PipelineStepRepository stepRepo;
     private final PipelineOrchestrator orchestrator;
     private final ConnectionStringBuilder connBuilder;
@@ -55,20 +58,19 @@ public class DbInstanceService {
     private final ImageValidationService imageValidation;
     private final DeployedContainerRepository containerRepo;
     private final DeploymentPipelineRepository pipelineRepo;
-    private final ToolMetricsProbe toolMetrics;
 
     public DbInstanceService(
-            DeploymentConfigRepository configRepo,
-            DeployedContainerRepository containerRepo,
-            DockerDeployEngine docker,
-            BrewDeployEngine brew,
-            ConnectionStringBuilder connBuilder,
-            OsDetector osDetector,
-            PipelineOrchestrator orchestrator,
-            DeploymentPipelineRepository pipelineRepo,
-            PipelineStepRepository stepRepo,
-            ImageValidationService imageValidation,
-            ToolMetricsProbe toolMetrics) {
+        DeploymentConfigRepository configRepo,
+        DeployedContainerRepository containerRepo,
+        DockerDeployEngine docker,
+        BrewDeployEngine brew,
+        ConnectionStringBuilder connBuilder,
+        OsDetector osDetector,
+        PipelineOrchestrator orchestrator,
+        DeploymentPipelineRepository pipelineRepo,
+        PipelineStepRepository stepRepo,
+        ImageValidationService imageValidation,
+        ToolMetricsProbe toolMetrics, DeploymentValidations deploymentValidations) {
         this.configRepo = configRepo;
         this.containerRepo = containerRepo;
         this.docker = docker;
@@ -80,6 +82,7 @@ public class DbInstanceService {
         this.stepRepo = stepRepo;
         this.imageValidation = imageValidation;
         this.toolMetrics = toolMetrics;
+        this.deploymentValidations = deploymentValidations;
     }
 
     // ── Queries ────────────────────────────────────────────────────────────────
@@ -165,14 +168,7 @@ public class DbInstanceService {
                 req.version(),
                 req.hostPort());
 
-        if (configRepo.existsByName(req.name())) {
-            log.warn("[deploy] Rejecting request: name already exists '{}'", req.name());
-            throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
-        }
-        if (configRepo.existsByHostPortAndNotRemoved(req.hostPort())) {
-            log.warn("[deploy] Rejecting request: host port {} already in use", req.hostPort());
-            throw new IllegalArgumentException("Port " + req.hostPort() + " is already in use");
-        }
+        validateDeployRequest(req);
 
         var def = DatabaseCatalog.get(req.dbType());
         if (def == null) {
@@ -239,8 +235,6 @@ public class DbInstanceService {
         container.setStatus(InstanceStatus.DEPLOYING);
         containerRepo.save(container);
 
-        config.getContainers().add(container);
-
         // ── Create pipeline + fire async runner after commit ──
         orchestrator.createAndLaunch(config, container);
         containerRepo.save(container); // persist latestPipelineId set by orchestrator
@@ -253,6 +247,23 @@ public class DbInstanceService {
                 container.getLatestPipelineId());
 
         return new DeploymentResponse(config, container);
+    }
+
+    private void validateDeployRequest(DeployRequest req) {
+        if (configRepo.existsByName(req.name())) {
+            log.warn("[deploy] Rejecting request: name already exists '{}'", req.name());
+            throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
+        }
+
+        if (containerRepo.existsByName(req.name())) {
+            log.warn("[deploy] Rejecting request: name already exists '{}'", req.name());
+            throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
+        }
+
+        if (containerRepo.existsByHostPortAndNotRemoved(req.hostPort())) {
+            log.warn("[deploy] Rejecting request: host port {} already in use", req.hostPort());
+            throw new IllegalArgumentException("Port " + req.hostPort() + " is already in use");
+        }
     }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -456,7 +467,6 @@ public class DbInstanceService {
         container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
         containerRepo.save(container);
 
-        // config.getContainers().add(container);
         return new DeploymentResponse(config, container);
     }
 
@@ -528,7 +538,7 @@ public class DbInstanceService {
         container.setContainerName(trimmed); // keep container name in sync with instance name for easier identification
         containerRepo.save(container);
         return new DeploymentResponse(config, container);
-//        return configRepo.save(config);
+        //        return configRepo.save(config);
     }
 
     public String getConnectionString(String id) {

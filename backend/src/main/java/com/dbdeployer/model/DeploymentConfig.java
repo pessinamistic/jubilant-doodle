@@ -4,17 +4,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
-import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -114,17 +110,6 @@ public class DeploymentConfig {
      */
     @Column(name = "deploy_count", nullable = false)
     private int deployCount = 0;
-
-    /**
-     * Historical deployments created from this config.
-     *
-     * This is intentionally not cascaded. Deployment containers should be created,
-     * updated, and removed through DeployedContainerRepository/service logic, not by
-     * saving DeploymentConfig.
-     */
-    @OneToMany(mappedBy = "config", fetch = FetchType.LAZY)
-    @ToString.Exclude
-    private List<DeployedContainer> containers;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

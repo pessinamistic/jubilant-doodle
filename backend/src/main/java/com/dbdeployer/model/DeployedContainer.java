@@ -4,7 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -38,9 +37,8 @@ public class DeployedContainer {
     private String id;
 
     /** The config this container belongs to. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne // (fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "config_id", nullable = false, updatable = false)
-    @ToString.Exclude
     private DeploymentConfig config;
 
     /** Docker container ID (64-char hex). Null while DEPLOYING. */
@@ -54,7 +52,7 @@ public class DeployedContainer {
     // In DeployedContainer.java
     @Column(name = "host_port", nullable = false)
     private int hostPort;
-    
+
     @Column(name = "container_port", nullable = false)
     private int containerPort;
 

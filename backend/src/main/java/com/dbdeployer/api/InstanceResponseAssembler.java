@@ -22,7 +22,6 @@ public class InstanceResponseAssembler {
     }
 
     public InstanceResponse fromConfig(DeploymentResponse deploymentResponse) {
-
         return build(deploymentResponse.getDeploymentConfig(), deploymentResponse.getDeployedContainer());
     }
 
