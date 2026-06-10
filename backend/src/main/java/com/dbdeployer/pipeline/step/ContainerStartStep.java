@@ -13,29 +13,29 @@ import org.springframework.stereotype.Component;
 @Component
 public class ContainerStartStep implements DeployStep {
 
-    private final DockerDeployEngine docker;
+  private final DockerDeployEngine docker;
 
-    public ContainerStartStep(DockerDeployEngine docker) {
-        this.docker = docker;
-    }
+  public ContainerStartStep(DockerDeployEngine docker) {
+    this.docker = docker;
+  }
 
-    @Override
-    public StepType type() {
-        return StepType.START_CONTAINER;
-    }
+  @Override
+  public StepType type() {
+    return StepType.START_CONTAINER;
+  }
 
-    @Override
-    public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
-        log.info("[pipeline] Starting container '{}'", container.getContainerName());
-        try {
-            docker.startContainer(container);
-        } catch (com.github.dockerjava.api.exception.NotModifiedException e) {
-            // Container is already running — treat as success
-            log.warn("[pipeline] Container already running: {}", container.getContainerName());
-        } catch (Exception e) {
-            throw new StepExecutionException(
-                    DeployErrorCode.CONTAINER_START_FAILED, "Failed to start container: " + e.getMessage(), e);
-        }
-        return "Container started: " + container.getContainerName();
+  @Override
+  public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
+    log.info("[pipeline] Starting container '{}'", container.getContainerName());
+    try {
+      docker.startContainer(container);
+    } catch (com.github.dockerjava.api.exception.NotModifiedException e) {
+      // Container is already running — treat as success
+      log.warn("[pipeline] Container already running: {}", container.getContainerName());
+    } catch (Exception e) {
+      throw new StepExecutionException(DeployErrorCode.CONTAINER_START_FAILED,
+          "Failed to start container: " + e.getMessage(), e);
     }
+    return "Container started: " + container.getContainerName();
+  }
 }

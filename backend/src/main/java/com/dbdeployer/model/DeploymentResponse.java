@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DeploymentResponse {
-    DeploymentConfig deploymentConfig;
-    DeployedContainer deployedContainer;
+  DeploymentConfig deploymentConfig;
+  DeployedContainer deployedContainer;
 }

@@ -42,88 +42,87 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class DeploymentRecovery implements ApplicationRunner {
 
-    private final DeployedContainerRepository containerRepo;
-    private final DockerDeployEngine docker;
-    private final DeploymentPipelineRepository pipelineRepo;
-    private final PipelineStepRepository stepRepo;
+  private final DeployedContainerRepository containerRepo;
+  private final DockerDeployEngine docker;
+  private final DeploymentPipelineRepository pipelineRepo;
+  private final PipelineStepRepository stepRepo;
 
-    public DeploymentRecovery(
-            DeployedContainerRepository containerRepo,
-            DockerDeployEngine docker,
-            DeploymentPipelineRepository pipelineRepo,
-            PipelineStepRepository stepRepo) {
-        this.containerRepo = containerRepo;
-        this.docker = docker;
-        this.pipelineRepo = pipelineRepo;
-        this.stepRepo = stepRepo;
-    }
+  public DeploymentRecovery(DeployedContainerRepository containerRepo, DockerDeployEngine docker,
+      DeploymentPipelineRepository pipelineRepo, PipelineStepRepository stepRepo) {
+    this.containerRepo = containerRepo;
+    this.docker = docker;
+    this.pipelineRepo = pipelineRepo;
+    this.stepRepo = stepRepo;
+  }
 
-    @Override
-    @Transactional
-    public void run(ApplicationArguments args) {
-        recoverContainers();
-        recoverPipelines();
-    }
+  @Override
+  @Transactional
+  public void run(ApplicationArguments args) {
+    recoverContainers();
+    recoverPipelines();
+  }
 
-    // ── Container recovery ─────────────────────────────────────────────────────
+  // ── Container recovery ─────────────────────────────────────────────────────
 
-    private void recoverContainers() {
-        List<DeployedContainer> stuck = containerRepo.findByStatus(InstanceStatus.DEPLOYING);
-        if (stuck.isEmpty()) return;
+  private void recoverContainers() {
+    List<DeployedContainer> stuck = containerRepo.findByStatus(InstanceStatus.DEPLOYING);
+    if (stuck.isEmpty())
+      return;
 
-        log.info("DeploymentRecovery: {} container(s) stuck in DEPLOYING — resolving...", stuck.size());
+    log.info("DeploymentRecovery: {} container(s) stuck in DEPLOYING — resolving...", stuck.size());
 
-        for (DeployedContainer container : stuck) {
-            String name = container.getConfig() != null ? container.getConfig().getName() : container.getId();
+    for (DeployedContainer container : stuck) {
+      String name = container.getConfig() != null ? container.getConfig().getName() : container.getId();
 
-            if (container.getContainerId() == null) {
-                log.warn("DeploymentRecovery: '{}' has no containerId — marking ERROR", name);
-                container.setStatus(InstanceStatus.ERROR);
-            } else {
-                InstanceStatus actual = docker.getStatus(container);
-                log.info("DeploymentRecovery: '{}' has containerId — Docker reports {}", name, actual);
-                container.setStatus(actual);
-                if (actual == InstanceStatus.RUNNING && container.getStartedAt() == null) {
-                    container.setStartedAt(docker.getStartedAt(container.getContainerId()));
-                }
-            }
-            containerRepo.save(container);
+      if (container.getContainerId() == null) {
+        log.warn("DeploymentRecovery: '{}' has no containerId — marking ERROR", name);
+        container.setStatus(InstanceStatus.ERROR);
+      } else {
+        InstanceStatus actual = docker.getStatus(container);
+        log.info("DeploymentRecovery: '{}' has containerId — Docker reports {}", name, actual);
+        container.setStatus(actual);
+        if (actual == InstanceStatus.RUNNING && container.getStartedAt() == null) {
+          container.setStartedAt(docker.getStartedAt(container.getContainerId()));
         }
-
-        log.info("DeploymentRecovery: container recovery done");
+      }
+      containerRepo.save(container);
     }
 
-    // ── Pipeline recovery ──────────────────────────────────────────────────────
+    log.info("DeploymentRecovery: container recovery done");
+  }
 
-    private void recoverPipelines() {
-        List<DeploymentPipeline> stuck = pipelineRepo.findByStatus(PipelineStatus.RUNNING);
-        if (stuck.isEmpty()) return;
+  // ── Pipeline recovery ──────────────────────────────────────────────────────
 
-        log.info("DeploymentRecovery: {} pipeline(s) stuck in RUNNING — marking FAILED...", stuck.size());
+  private void recoverPipelines() {
+    List<DeploymentPipeline> stuck = pipelineRepo.findByStatus(PipelineStatus.RUNNING);
+    if (stuck.isEmpty())
+      return;
 
-        for (DeploymentPipeline pipeline : stuck) {
-            log.warn("DeploymentRecovery: pipeline {} stuck RUNNING — marking FAILED", pipeline.getId());
+    log.info("DeploymentRecovery: {} pipeline(s) stuck in RUNNING — marking FAILED...", stuck.size());
 
-            // RUNNING steps → FAILED; PENDING steps → SKIPPED
-            stepRepo.findByPipelineIdOrderByStepOrderAsc(pipeline.getId()).forEach(step -> {
-                if (step.getStatus() == StepStatus.RUNNING) {
-                    step.setStatus(StepStatus.FAILED);
-                    step.setMessage("Recovered: app restarted while step was running");
-                    step.setCompletedAt(Instant.now());
-                    stepRepo.save(step);
-                } else if (step.getStatus() == StepStatus.PENDING) {
-                    step.setStatus(StepStatus.SKIPPED);
-                    step.setCompletedAt(Instant.now());
-                    stepRepo.save(step);
-                }
-            });
+    for (DeploymentPipeline pipeline : stuck) {
+      log.warn("DeploymentRecovery: pipeline {} stuck RUNNING — marking FAILED", pipeline.getId());
 
-            pipeline.setStatus(PipelineStatus.FAILED);
-            pipeline.setErrorMessage("Recovered: app restarted while pipeline was running");
-            pipeline.setCompletedAt(Instant.now());
-            pipelineRepo.save(pipeline);
+      // RUNNING steps → FAILED; PENDING steps → SKIPPED
+      stepRepo.findByPipelineIdOrderByStepOrderAsc(pipeline.getId()).forEach(step -> {
+        if (step.getStatus() == StepStatus.RUNNING) {
+          step.setStatus(StepStatus.FAILED);
+          step.setMessage("Recovered: app restarted while step was running");
+          step.setCompletedAt(Instant.now());
+          stepRepo.save(step);
+        } else if (step.getStatus() == StepStatus.PENDING) {
+          step.setStatus(StepStatus.SKIPPED);
+          step.setCompletedAt(Instant.now());
+          stepRepo.save(step);
         }
+      });
 
-        log.info("DeploymentRecovery: pipeline recovery done");
+      pipeline.setStatus(PipelineStatus.FAILED);
+      pipeline.setErrorMessage("Recovered: app restarted while pipeline was running");
+      pipeline.setCompletedAt(Instant.now());
+      pipelineRepo.save(pipeline);
     }
+
+    log.info("DeploymentRecovery: pipeline recovery done");
+  }
 }

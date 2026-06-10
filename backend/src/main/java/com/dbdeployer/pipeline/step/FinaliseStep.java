@@ -17,50 +17,49 @@ import org.springframework.stereotype.Component;
 @Component
 public class FinaliseStep implements DeployStep {
 
-    private final DockerDeployEngine docker;
+  private final DockerDeployEngine docker;
 
-    public FinaliseStep(DockerDeployEngine docker) {
-        this.docker = docker;
+  public FinaliseStep(DockerDeployEngine docker) {
+    this.docker = docker;
+  }
+
+  @Override
+  public StepType type() {
+    return StepType.FINALISE;
+  }
+
+  @Override
+  public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
+    InstanceStatus status = docker.getStatus(container);
+    log.info("[pipeline] Finalise — Docker reports status {}", status);
+
+    container.setStatus(status);
+    if (status == InstanceStatus.RUNNING) {
+      var startedAt = docker.getStartedAt(container.getContainerId());
+      if (startedAt != null)
+        container.setStartedAt(startedAt);
+
+      // Brief settle check: some containers start then immediately crash
+      // (e.g. bad config / missing env). Wait 2 s and re-verify.
+      try {
+        Thread.sleep(2_000);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+      }
+      InstanceStatus settled = docker.getStatus(container);
+      if (settled != InstanceStatus.RUNNING) {
+        log.warn("[pipeline] Finalise — container exited after settle wait, status now {}", settled);
+        container.setStatus(settled);
+        throw new StepExecutionException(com.dbdeployer.pipeline.model.DeployErrorCode.CONTAINER_EXITED_IMMEDIATELY,
+            "Container exited shortly after start — status: " + settled);
+      }
     }
 
-    @Override
-    public StepType type() {
-        return StepType.FINALISE;
+    if (status != InstanceStatus.RUNNING) {
+      throw new StepExecutionException(com.dbdeployer.pipeline.model.DeployErrorCode.CONTAINER_EXITED_IMMEDIATELY,
+          "Container exited immediately after start — status: " + status);
     }
 
-    @Override
-    public String execute(DeploymentConfig config, DeployedContainer container) throws StepExecutionException {
-        InstanceStatus status = docker.getStatus(container);
-        log.info("[pipeline] Finalise — Docker reports status {}", status);
-
-        container.setStatus(status);
-        if (status == InstanceStatus.RUNNING) {
-            var startedAt = docker.getStartedAt(container.getContainerId());
-            if (startedAt != null) container.setStartedAt(startedAt);
-
-            // Brief settle check: some containers start then immediately crash
-            // (e.g. bad config / missing env). Wait 2 s and re-verify.
-            try {
-                Thread.sleep(2_000);
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
-            InstanceStatus settled = docker.getStatus(container);
-            if (settled != InstanceStatus.RUNNING) {
-                log.warn("[pipeline] Finalise — container exited after settle wait, status now {}", settled);
-                container.setStatus(settled);
-                throw new StepExecutionException(
-                        com.dbdeployer.pipeline.model.DeployErrorCode.CONTAINER_EXITED_IMMEDIATELY,
-                        "Container exited shortly after start — status: " + settled);
-            }
-        }
-
-        if (status != InstanceStatus.RUNNING) {
-            throw new StepExecutionException(
-                    com.dbdeployer.pipeline.model.DeployErrorCode.CONTAINER_EXITED_IMMEDIATELY,
-                    "Container exited immediately after start — status: " + status);
-        }
-
-        return "Container is RUNNING";
-    }
+    return "Container is RUNNING";
+  }
 }

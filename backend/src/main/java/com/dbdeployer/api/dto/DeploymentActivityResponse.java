@@ -7,12 +7,14 @@ import java.util.List;
  * {@code GET
  * /api/system/metrics/activity}.
  */
-public record DeploymentActivityResponse(
-        List<DayCount> deploymentsByDay, List<LabelCount> instancesByDbType, List<LabelCount> instancesByStatus) {
+public record DeploymentActivityResponse(List<DayCount> deploymentsByDay, List<LabelCount> instancesByDbType,
+    List<LabelCount> instancesByStatus) {
 
-    /** Deployments on a given date (ISO yyyy-MM-dd). */
-    public record DayCount(String date, long count) {}
+  /** Deployments on a given date (ISO yyyy-MM-dd). */
+  public record DayCount(String date, long count) {
+  }
 
-    /** Count of instances sharing a label (db type or status string). */
-    public record LabelCount(String label, long count) {}
+  /** Count of instances sharing a label (db type or status string). */
+  public record LabelCount(String label, long count) {
+  }
 }

@@ -13,12 +13,13 @@ public class DeploymentValidations implements ValidationInterface {
   private final ImageValidationService imageValidation;
   private final DeployedContainerRepository containerRepo;
 
-  public DeploymentValidations(DeploymentConfigRepository configRepo, ImageValidationService imageValidation, DeployedContainerRepository containerRepo) {
+  public DeploymentValidations(DeploymentConfigRepository configRepo, ImageValidationService imageValidation,
+      ImageValidationService imageValidation1, ImageValidationService imageValidation2,
+      DeployedContainerRepository containerRepo) {
     this.configRepo = configRepo;
-    this.imageValidation = imageValidation;
+    this.imageValidation = imageValidation2;
     this.containerRepo = containerRepo;
   }
-
 
   @Override
   public boolean validate(DeployRequest deployRequest) {

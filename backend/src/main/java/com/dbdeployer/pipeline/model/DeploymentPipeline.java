@@ -23,105 +23,106 @@ import java.time.Instant;
 @Table(name = "deployment_pipeline")
 public class DeploymentPipeline {
 
-    @Id
-    @Column(name = "id", nullable = false, updatable = false)
-    private String id;
+  @Id
+  @Column(name = "id", nullable = false, updatable = false)
+  private String id;
 
-    /**
-     * Foreign key to {@code deployment_config.id} — kept as a plain string (no FK
-     * join).
-     */
-    @Column(name = "config_id", nullable = false, updatable = false)
-    private String configId;
+  /**
+   * Foreign key to {@code deployment_config.id} — kept as a plain string (no FK
+   * join).
+   */
+  @Column(name = "config_id", nullable = false, updatable = false)
+  private String configId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private PipelineStatus status;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false)
+  private PipelineStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "error_code")
-    private DeployErrorCode errorCode;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "error_code")
+  private DeployErrorCode errorCode;
 
-    @Column(name = "error_message", length = 1000)
-    private String errorMessage;
+  @Column(name = "error_message", length = 1000)
+  private String errorMessage;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "started_at")
-    private Instant startedAt;
+  @Column(name = "started_at")
+  private Instant startedAt;
 
-    @Column(name = "completed_at")
-    private Instant completedAt;
+  @Column(name = "completed_at")
+  private Instant completedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) createdAt = Instant.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    if (createdAt == null)
+      createdAt = Instant.now();
+  }
 
-    // ── Getters & Setters ──────────────────────────────────────────────────────
+  // ── Getters & Setters ──────────────────────────────────────────────────────
 
-    public String getId() {
-        return id;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  public void setId(String id) {
+    this.id = id;
+  }
 
-    public String getConfigId() {
-        return configId;
-    }
+  public String getConfigId() {
+    return configId;
+  }
 
-    public void setConfigId(String configId) {
-        this.configId = configId;
-    }
+  public void setConfigId(String configId) {
+    this.configId = configId;
+  }
 
-    public PipelineStatus getStatus() {
-        return status;
-    }
+  public PipelineStatus getStatus() {
+    return status;
+  }
 
-    public void setStatus(PipelineStatus status) {
-        this.status = status;
-    }
+  public void setStatus(PipelineStatus status) {
+    this.status = status;
+  }
 
-    public DeployErrorCode getErrorCode() {
-        return errorCode;
-    }
+  public DeployErrorCode getErrorCode() {
+    return errorCode;
+  }
 
-    public void setErrorCode(DeployErrorCode ec) {
-        this.errorCode = ec;
-    }
+  public void setErrorCode(DeployErrorCode ec) {
+    this.errorCode = ec;
+  }
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
+  public String getErrorMessage() {
+    return errorMessage;
+  }
 
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
+  public void setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public void setCreatedAt(Instant t) {
-        this.createdAt = t;
-    }
+  public void setCreatedAt(Instant t) {
+    this.createdAt = t;
+  }
 
-    public Instant getStartedAt() {
-        return startedAt;
-    }
+  public Instant getStartedAt() {
+    return startedAt;
+  }
 
-    public void setStartedAt(Instant t) {
-        this.startedAt = t;
-    }
+  public void setStartedAt(Instant t) {
+    this.startedAt = t;
+  }
 
-    public Instant getCompletedAt() {
-        return completedAt;
-    }
+  public Instant getCompletedAt() {
+    return completedAt;
+  }
 
-    public void setCompletedAt(Instant t) {
-        this.completedAt = t;
-    }
+  public void setCompletedAt(Instant t) {
+    this.completedAt = t;
+  }
 }
