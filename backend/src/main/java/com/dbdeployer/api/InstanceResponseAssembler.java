@@ -41,9 +41,9 @@ public class InstanceResponseAssembler {
     String icon = def != null ? def.icon() : "🗄️";
     String conn = connBuilder.build(config);
     String masked = connBuilder.buildMasked(config);
-    String templateId = config.getTemplateId();
+    String templateId = config.getId();
     String templateName = templateId != null
-        ? configRepo.findById(templateId).map(t -> t.getName()).orElse(null)
+        ? configRepo.findById(templateId).map(DeploymentConfig::getName).orElse(null)
         : null;
 
     return InstanceResponse.from(config, container, conn, masked, display, icon, templateId, templateName);
