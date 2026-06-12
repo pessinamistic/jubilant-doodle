@@ -566,7 +566,7 @@ public class DockerDeployEngine {
 
     Map<String, String> extra = new LinkedHashMap<>();
     if (config.getExtraEnvJson() != null && !config.getExtraEnvJson().isBlank()) {
-      extra = objectMapper.readValue(config.getExtraEnvJson(), new TypeReference<Map<String, String>>() {
+      extra = objectMapper.readValue(config.getExtraEnvJson(), new TypeReference<>() {
       });
     }
 
@@ -577,8 +577,6 @@ public class DockerDeployEngine {
           case "POSTGRES_PASSWORD", "MYSQL_PASSWORD", "MARIADB_PASSWORD", "MONGO_INITDB_ROOT_PASSWORD",
               "REDIS_PASSWORD", "CASSANDRA_PASSWORD", "COUCHDB_PASSWORD", "CLICKHOUSE_PASSWORD", "ELASTIC_PASSWORD" ->
             config.getPassword() != null && !config.getPassword().isBlank() ? config.getPassword() : ev.placeholder();
-          case "MYSQL_ROOT_PASSWORD", "MARIADB_ROOT_PASSWORD", "SA_PASSWORD" ->
-            extra.getOrDefault(ev.name(), ev.placeholder());
           default -> extra.getOrDefault(ev.name(), ev.placeholder());
         };
         case DATABASE -> config.getDatabaseName() != null && !config.getDatabaseName().isBlank()
@@ -682,28 +680,7 @@ public class DockerDeployEngine {
     }
 
     // ── 3b. CPU throttling ──────────────────────────────────────────────
-    double cpuThrottledPct = 0.0;
-    try {
-      var currCpu = stats.getCpuStats();
-      var prevCpu = stats.getPreCpuStats();
-      if (currCpu != null && prevCpu != null && currCpu.getThrottlingData() != null
-          && prevCpu.getThrottlingData() != null) {
-        Long currT = currCpu.getThrottlingData().getThrottledTime();
-        Long prevT = prevCpu.getThrottlingData().getThrottledTime();
-        Long currP = currCpu.getThrottlingData().getPeriods();
-        Long prevP = prevCpu.getThrottlingData().getPeriods();
-        if (currT != null && prevT != null && currP != null && prevP != null) {
-          long periodDelta = currP - prevP;
-          long throttleDelta = currT - prevT;
-          // throttledTime is in ns; periods × ~100ms each.
-          if (periodDelta > 0) {
-            double avgPeriodNs = 100_000_000.0; // default 100ms
-            cpuThrottledPct = Math.min(100.0, ((double) throttleDelta / (periodDelta * avgPeriodNs)) * 100.0);
-          }
-        }
-      }
-    } catch (Exception ignored) {
-    }
+    double cpuThrottledPct = getCpuThrottledPct(stats);
 
     // ── 4. Network I/O ───────────────────────────────────────────────────
     long netRx = 0, netTx = 0, netRxPkts = 0, netTxPkts = 0, netRxErr = 0, netTxErr = 0;
@@ -814,6 +791,32 @@ public class DockerDeployEngine {
         Math.round(memPercent * 100.0) / 100.0, netRx, netTx, netRxPkts, netTxPkts, netRxErr, netTxErr, blkRead,
         blkWrite, blkReadOps, blkWriteOps, pids, pidsLimit, restartCount, image, containerState, healthStatus,
         oomKilled, startedAtIso, uptimeSecs, portReachable, portLatencyMs, java.util.Map.of());
+  }
+
+  private static double getCpuThrottledPct(Statistics stats) {
+    double cpuThrottledPct = 0.0;
+    try {
+      var currCpu = stats.getCpuStats();
+      var prevCpu = stats.getPreCpuStats();
+      if (currCpu != null && prevCpu != null && currCpu.getThrottlingData() != null
+          && prevCpu.getThrottlingData() != null) {
+        Long currT = currCpu.getThrottlingData().getThrottledTime();
+        Long prevT = prevCpu.getThrottlingData().getThrottledTime();
+        Long currP = currCpu.getThrottlingData().getPeriods();
+        Long prevP = prevCpu.getThrottlingData().getPeriods();
+        if (currT != null && prevT != null && currP != null && prevP != null) {
+          long periodDelta = currP - prevP;
+          long throttleDelta = currT - prevT;
+          // throttledTime is in ns; periods × ~100ms each.
+          if (periodDelta > 0) {
+            double avgPeriodNs = 100_000_000.0; // default 100ms
+            cpuThrottledPct = Math.min(100.0, ((double) throttleDelta / (periodDelta * avgPeriodNs)) * 100.0);
+          }
+        }
+      }
+    } catch (Exception ignored) {
+    }
+    return cpuThrottledPct;
   }
 
   // ── Container exec ─────────────────────────────────────────────────────────

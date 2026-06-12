@@ -125,9 +125,18 @@ public class ToolMetricsProbe {
 
   // ── Redis ─────────────────────────────────────────────────────────────
   private static final Pattern REDIS_KV = Pattern.compile("^([a-zA-Z0-9_]+):(.+)$");
-  private static final java.util.Set<String> REDIS_KEYS = java.util.Set.of("connected_clients", "used_memory",
-      "used_memory_peak", "uptime_in_seconds", "total_commands_processed", "instantaneous_ops_per_sec", "keyspace_hits",
-      "keyspace_misses", "evicted_keys", "expired_keys", "total_connections_received", "rejected_connections");
+  private static final java.util.Set<String> REDIS_KEYS = java.util.Set.of("connected_clients",
+      "used_memory",
+      "used_memory_peak",
+      "uptime_in_seconds",
+      "total_commands_processed",
+      "instantaneous_ops_per_sec",
+      "keyspace_hits",
+      "keyspace_misses",
+      "evicted_keys",
+      "expired_keys",
+      "total_connections_received",
+      "rejected_connections");
 
   private Map<String, Object> probeRedis(
     String containerId) {
@@ -201,7 +210,9 @@ public class ToolMetricsProbe {
       int eq = line.indexOf('=');
       if (eq <= 0)
         continue;
-      putLong(m, line.substring(0, eq).trim(), line.substring(eq + 1).trim());
+      putLong(m,
+          line.substring(0, eq).trim(),
+          line.substring(eq + 1).trim());
     }
     return m;
   }

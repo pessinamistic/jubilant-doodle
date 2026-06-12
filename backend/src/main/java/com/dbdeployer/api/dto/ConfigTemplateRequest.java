@@ -15,6 +15,5 @@ public record ConfigTemplateRequest(
     String username,
     String password,
     String databaseName,
-    String extraEnvJson
-) {
+    String extraEnvJson) {
 }

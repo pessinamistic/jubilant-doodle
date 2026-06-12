@@ -29,7 +29,7 @@ public class DockerSocketResolver {
    */
   public static String resolve() {
     String uri = detect();
-    // Zerodep transport reads the DOCKER_HOST system property at client-build time
+    // zerodep transport reads the DOCKER_HOST system property at client-build time
     System.setProperty("DOCKER_HOST", uri);
     return uri;
   }
