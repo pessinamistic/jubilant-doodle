@@ -36,7 +36,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
   public static final String RUNTIME_HOST_PORT_PROPERTY = "dbdeployer.system-db.runtime.host-port";
 
   @Override
-  public void initialize(ConfigurableApplicationContext ctx) {
+  public void initialize(
+    ConfigurableApplicationContext ctx) {
     ConfigurableEnvironment env = ctx.getEnvironment();
 
     // When the system DB is provided externally (e.g. docker-compose), skip
@@ -92,7 +93,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
 
   // ── Container lifecycle ────────────────────────────────────────────────────
 
-  private SystemContainerState ensureContainerRunning(DockerClient docker,
+  private SystemContainerState ensureContainerRunning(
+    DockerClient docker,
     String containerName,
     String image,
     int hostPort,
@@ -127,7 +129,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
     }
   }
 
-  private void createAndStartContainer(DockerClient docker,
+  private void createAndStartContainer(
+    DockerClient docker,
     String containerName,
     String image,
     int hostPort,
@@ -177,7 +180,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
 
   // ── Readiness probe ───────────────────────────────────────────────────────
 
-  private void waitForPostgres(int port,
+  private void waitForPostgres(
+    int port,
     int maxSeconds) {
     log.info("Waiting for system Postgres to accept connections on port {}...", port);
     int safeMaxSeconds = Math.max(1, maxSeconds);
@@ -202,7 +206,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
         + port + ". Check Docker logs for container 'dbdeployer-system-db'.");
   }
 
-  private String formatProgressBar(int elapsedSeconds,
+  private String formatProgressBar(
+    int elapsedSeconds,
     int maxSeconds,
     boolean ready) {
     int safeMaxSeconds = Math.max(1, maxSeconds);
@@ -217,7 +222,8 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
     return bar + " " + percent + "% (" + clampedElapsed + "s/" + safeMaxSeconds + "s, " + status + ")";
   }
 
-  private boolean isPortOpen(String host,
+  private boolean isPortOpen(
+    String host,
     int port) {
     try (Socket ignored = new Socket(host, port)) {
       return true;

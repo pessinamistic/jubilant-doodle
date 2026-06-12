@@ -26,13 +26,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 class SystemDbRegistrarTest {
 
   @Mock
+  private JdbcTemplate jdbc;
+  @Mock
   private DeploymentConfigRepository configRepo;
-
   @Mock
   private DeployedContainerRepository containerRepo;
-
-  @Mock
-  private JdbcTemplate jdbc;
 
   @Test
   void run_createsSystemRowsOnce_andEnrichesContainerId() {

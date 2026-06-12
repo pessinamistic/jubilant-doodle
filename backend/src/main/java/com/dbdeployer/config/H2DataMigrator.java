@@ -53,7 +53,8 @@ public class H2DataMigrator implements ApplicationRunner {
   @Value("${app.h2-source-path:${user.home}/.db-deployer/system/dbdeployer}")
   private String h2SourcePath;
 
-  public H2DataMigrator(JdbcTemplate pgJdbc) {
+  public H2DataMigrator(
+    JdbcTemplate pgJdbc) {
     this.pgJdbc = pgJdbc;
   }
 

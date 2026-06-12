@@ -52,9 +52,10 @@ public class SystemDbRegistrar implements ApplicationRunner {
   @Value(("${dbdeployer.system-db.data-dir}"))
   private String dataDir;
 
-  public SystemDbRegistrar(JdbcTemplate jdbc,
-                           DeploymentConfigRepository configRepo,
-                           DeployedContainerRepository containerRepo) {
+  public SystemDbRegistrar(
+    JdbcTemplate jdbc,
+    DeploymentConfigRepository configRepo,
+    DeployedContainerRepository containerRepo) {
     this.jdbc = jdbc;
     this.configRepo = configRepo;
     this.containerRepo = containerRepo;

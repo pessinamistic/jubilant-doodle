@@ -66,90 +66,90 @@ val frontendDir = layout.projectDirectory.dir("../frontend")
 val embeddedStaticDir = layout.projectDirectory.dir("src/main/resources/static")
 val frontendStaticOutput = layout.buildDirectory.dir("generated/frontend-static")
 
-val syncFrontendAssets = if (frontendDir.asFile.exists()) {
-    val frontendPackageJson = frontendDir.file("package.json").asFile
-    val frontendLockFile = frontendDir.file("package-lock.json").asFile
-    val frontendNodeModules = frontendDir.dir("node_modules").asFile
-    val frontendDistDir = frontendDir.dir("dist").asFile
+//val syncFrontendAssets = if (frontendDir.asFile.exists()) {
+//    val frontendPackageJson = frontendDir.file("package.json").asFile
+//    val frontendLockFile = frontendDir.file("package-lock.json").asFile
+//    val frontendNodeModules = frontendDir.dir("node_modules").asFile
+//    val frontendDistDir = frontendDir.dir("dist").asFile
+//
+//    val npmExecutable = if (isWindows) "npm.cmd" else "npm"
+//    val frontendInstallCommand = if (frontendLockFile.exists()) "ci" else "install"
+//
+//    val frontendInstall = tasks.register<Exec>("frontendInstall") {
+//        group = "build"
+//        description = "Installs frontend dependencies used for packaging."
+//
+//        workingDir = frontendDir.asFile
+//        executable = npmExecutable
+//        args(frontendInstallCommand)
+//
+//        inputs.file(frontendPackageJson)
+//        if (frontendLockFile.exists()) {
+//            inputs.file(frontendLockFile)
+//        }
+//        outputs.dir(frontendNodeModules)
+//    }
+//
+//    val frontendBuild = tasks.register<Exec>("frontendBuild") {
+//        group = "build"
+//        description = "Builds frontend static assets for the Spring Boot jar."
+//
+//        dependsOn(frontendInstall)
+//        workingDir = frontendDir.asFile
+//        executable = npmExecutable
+//        args("run", "build")
+//
+//        inputs.files(
+//            fileTree(frontendDir.asFile) {
+//                include("src/**")
+//                include("public/**")
+//                include("index.html")
+//                include("vite.config.js")
+//                include("package.json")
+//                include("package-lock.json")
+//            }
+//        )
+//        outputs.dir(frontendDistDir)
+//    }
+//
+//    tasks.register<Sync>("syncFrontendAssets") {
+//        group = "build"
+//        description = "Copies frontend dist assets into the backend build directory."
+//
+//        dependsOn(frontendBuild)
+//        from(frontendDistDir)
+//        into(frontendStaticOutput)
+//    }
+//} else {
+//    tasks.register<Sync>("syncFrontendAssets") {
+//        group = "build"
+//        description = "Copies prebuilt static assets when frontend source is not available."
+//
+//        from(embeddedStaticDir)
+//        into(frontendStaticOutput)
+//
+//        doFirst {
+//            if (!embeddedStaticDir.asFile.exists()) {
+//                error(
+//                    "Frontend source not found at ${frontendDir.asFile}. " +
+//                        "Expected prebuilt assets at ${embeddedStaticDir.asFile}."
+//                )
+//            }
+//            logger.lifecycle(
+//                "Frontend source not found at {}. Using prebuilt static assets from {}",
+//                frontendDir.asFile,
+//                embeddedStaticDir.asFile
+//            )
+//        }
+//    }
+//}
 
-    val npmExecutable = if (isWindows) "npm.cmd" else "npm"
-    val frontendInstallCommand = if (frontendLockFile.exists()) "ci" else "install"
-
-    val frontendInstall = tasks.register<Exec>("frontendInstall") {
-        group = "build"
-        description = "Installs frontend dependencies used for packaging."
-
-        workingDir = frontendDir.asFile
-        executable = npmExecutable
-        args(frontendInstallCommand)
-
-        inputs.file(frontendPackageJson)
-        if (frontendLockFile.exists()) {
-            inputs.file(frontendLockFile)
-        }
-        outputs.dir(frontendNodeModules)
-    }
-
-    val frontendBuild = tasks.register<Exec>("frontendBuild") {
-        group = "build"
-        description = "Builds frontend static assets for the Spring Boot jar."
-
-        dependsOn(frontendInstall)
-        workingDir = frontendDir.asFile
-        executable = npmExecutable
-        args("run", "build")
-
-        inputs.files(
-            fileTree(frontendDir.asFile) {
-                include("src/**")
-                include("public/**")
-                include("index.html")
-                include("vite.config.js")
-                include("package.json")
-                include("package-lock.json")
-            }
-        )
-        outputs.dir(frontendDistDir)
-    }
-
-    tasks.register<Sync>("syncFrontendAssets") {
-        group = "build"
-        description = "Copies frontend dist assets into the backend build directory."
-
-        dependsOn(frontendBuild)
-        from(frontendDistDir)
-        into(frontendStaticOutput)
-    }
-} else {
-    tasks.register<Sync>("syncFrontendAssets") {
-        group = "build"
-        description = "Copies prebuilt static assets when frontend source is not available."
-
-        from(embeddedStaticDir)
-        into(frontendStaticOutput)
-
-        doFirst {
-            if (!embeddedStaticDir.asFile.exists()) {
-                error(
-                    "Frontend source not found at ${frontendDir.asFile}. " +
-                        "Expected prebuilt assets at ${embeddedStaticDir.asFile}."
-                )
-            }
-            logger.lifecycle(
-                "Frontend source not found at {}. Using prebuilt static assets from {}",
-                frontendDir.asFile,
-                embeddedStaticDir.asFile
-            )
-        }
-    }
-}
-
-tasks.named<BootJar>("bootJar") {
-    dependsOn(syncFrontendAssets)
-    from(syncFrontendAssets) {
-        into("BOOT-INF/classes/static")
-    }
-}
+//tasks.named<BootJar>("bootJar") {
+//    dependsOn(syncFrontendAssets)
+//    from(syncFrontendAssets) {
+//        into("BOOT-INF/classes/static")
+//    }
+//}
 
 // ── jpackage — native installer (DMG on macOS, EXE on Windows) ───────────────
 // Usage:
