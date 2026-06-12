@@ -1,11 +1,10 @@
 package com.dbdeployer.validations;
 
-import com.dbdeployer.api.dto.DeployRequest;
+import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.model.ImageValidationDecision;
 import com.dbdeployer.service.ImageValidationService;
 import com.dbdeployer.store.DeployedContainerRepository;
-import com.dbdeployer.store.DeploymentConfigRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -13,27 +12,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class DeploymentValidations {
 
-  private final DeploymentConfigRepository configRepo;
   private final ImageValidationService imageValidation;
   private final DeployedContainerRepository containerRepo;
 
   public DeploymentValidations(
-    DeploymentConfigRepository configRepo,
     ImageValidationService imageValidation,
     DeployedContainerRepository containerRepo) {
-    this.configRepo = configRepo;
     this.imageValidation = imageValidation;
     this.containerRepo = containerRepo;
   }
 
   // @Override
-  public boolean validate(
-    DeployRequest deployRequest,
+  public void validate(
+    ConfigTemplateRequest deployRequest,
     boolean isTemplate) {
-    if (configRepo.existsByName(deployRequest.name())) {
-      log.error("[deploy] Rejecting request: name already exists '{}'", deployRequest.name());
-      throw new IllegalArgumentException("An instance named '" + deployRequest.name() + "' already exists");
-    }
 
     if (containerRepo.existsByContainerName(deployRequest.name())) {
       log.error("[deploy] Rejecting request: name already exists '{}'", deployRequest.name());
@@ -64,6 +56,5 @@ public class DeploymentValidations {
     if (imageCheck.decision() == ImageValidationDecision.ALLOW_WITH_WARNING) {
       log.warn("Proceeding with deployment '{}' despite warning: {}", deployRequest.name(), imageCheck.message());
     }
-    return true;
   }
 }

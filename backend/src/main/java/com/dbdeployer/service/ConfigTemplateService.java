@@ -2,7 +2,8 @@ package com.dbdeployer.service;
 
 import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.api.dto.DeployFromTemplateRequest;
-import com.dbdeployer.api.dto.DeployRequest;
+import com.dbdeployer.deploy.DatabaseCatalog;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.store.DeploymentConfigRepository;
@@ -19,8 +20,9 @@ public class ConfigTemplateService {
   private final DbInstanceService instanceService;
   private final DeploymentConfigRepository configRepo;
 
-  public ConfigTemplateService(DbInstanceService instanceService,
-                               DeploymentConfigRepository configRepo) {
+  public ConfigTemplateService(
+    DbInstanceService instanceService,
+    DeploymentConfigRepository configRepo) {
     this.instanceService = instanceService;
     this.configRepo = configRepo;
   }
@@ -29,7 +31,9 @@ public class ConfigTemplateService {
     return configRepo.findAllByIsTemplateTrueOrderByCreatedAtDesc();
   }
 
-  public DeploymentConfig getById(String id, boolean isTemplate) {
+  public DeploymentConfig getById(
+    String id,
+    boolean isTemplate) {
     return configRepo.findByIdAndIsTemplate(id, isTemplate)
         .orElseThrow(() -> new IllegalArgumentException("Configuration template not found: " + id));
   }
@@ -62,7 +66,7 @@ public class ConfigTemplateService {
   @Transactional
   public void delete(
     String id) {
-    DeploymentConfig t = getById(id,  true);
+    DeploymentConfig t = getById(id, true);
     configRepo.delete(t);
   }
 
@@ -78,7 +82,8 @@ public class ConfigTemplateService {
     DeployFromTemplateRequest req) {
     DeploymentConfig deploymentConfig = getById(templateId, true);
 
-    DeployRequest deployReq = new DeployRequest(req.instanceName(),
+    ConfigTemplateRequest deployReq = new ConfigTemplateRequest(req.instanceName(),
+        "",
         deploymentConfig.getDbType(),
         deploymentConfig.getVersion(),
         req.hostPort(),
@@ -89,7 +94,9 @@ public class ConfigTemplateService {
 
     log.info("Deploying new instance from template {} with request {}", templateId, deployReq);
 
-    DeploymentResponse deploymentResponse = instanceService.deploy(deployReq, templateId, true);
+    DeploymentResponse deploymentResponse = instanceService.deploy(deployReq,
+        deploymentConfig,
+        true);
 
     deploymentConfig.setDeployCount(deploymentConfig.getDeployCount() + 1);
     DeploymentConfig save = configRepo.save(deploymentConfig);
@@ -100,15 +107,33 @@ public class ConfigTemplateService {
 
   private void applyRequest(
     DeploymentConfig deploymentConfig,
-    ConfigTemplateRequest req) {
-    deploymentConfig.setName(req.name());
-    deploymentConfig.setDescription(req.description());
-    deploymentConfig.setDbType(req.dbType());
-    deploymentConfig.setVersion(req.version());
-    deploymentConfig.setHostPort(req.hostPort());
-    deploymentConfig.setUsername(req.username());
-    deploymentConfig.setPassword(req.password());
-    deploymentConfig.setDatabaseName(req.databaseName());
-    deploymentConfig.setExtraEnvJson(req.extraEnvJson());
+    ConfigTemplateRequest configTemplateRequest) {
+    deploymentConfig.setName(configTemplateRequest.name());
+    deploymentConfig.setDescription(configTemplateRequest.description());
+    deploymentConfig.setDbType(configTemplateRequest.dbType());
+    deploymentConfig.setVersion(configTemplateRequest.version());
+    deploymentConfig.setHostPort(configTemplateRequest.hostPort());
+    deploymentConfig.setDeployMethod(DeployMethod.DOCKER);
+
+    var def = DatabaseCatalog.get(configTemplateRequest.dbType());
+    // Apply catalog defaults for any credentials the user left blank
+    String username = resolveCredential(configTemplateRequest.username(), def, DatabaseCatalog.EnvVarType.TEXT);
+    String password = resolveCredential(configTemplateRequest.password(), def, DatabaseCatalog.EnvVarType.PASSWORD);
+    String databaseName = resolveCredential(configTemplateRequest.databaseName(), def,
+        DatabaseCatalog.EnvVarType.DATABASE);
+    deploymentConfig.setUsername(username);
+    deploymentConfig.setPassword(password);
+    deploymentConfig.setDatabaseName(databaseName);
+    deploymentConfig.setExtraEnvJson(configTemplateRequest.extraEnvJson());
+  }
+
+  private String resolveCredential(
+    String supplied,
+    DatabaseCatalog.DbDefinition def,
+    DatabaseCatalog.EnvVarType type) {
+    if (supplied != null && !supplied.isBlank())
+      return supplied;
+    return def.credentialEnvVars().stream().filter(ev -> ev.type() == type).map(DatabaseCatalog.EnvVar::placeholder)
+        .findFirst().orElse(null);
   }
 }

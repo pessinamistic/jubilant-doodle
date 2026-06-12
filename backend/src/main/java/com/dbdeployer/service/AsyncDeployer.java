@@ -18,14 +18,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class AsyncDeployer {
 
-  private final DeployedContainerRepository containerRepo;
-  private final DockerDeployEngine docker;
+  private final DockerDeployEngine dockerDeployEngine;
+  private final DeployedContainerRepository deployedContainerRepository;
 
   public AsyncDeployer(
-    DeployedContainerRepository containerRepo,
-    DockerDeployEngine docker) {
-    this.containerRepo = containerRepo;
-    this.docker = docker;
+    DockerDeployEngine dockerDeployEngine,
+    DeployedContainerRepository containerRepo) {
+    this.dockerDeployEngine = dockerDeployEngine;
+    this.deployedContainerRepository = containerRepo;
   }
 
   /**
@@ -39,7 +39,7 @@ public class AsyncDeployer {
     DeployedContainer container) {
     try {
       log.info("Async deploy starting for '{}' ({})", config.getName(), config.getId());
-      docker.deploy(config, container); // mutates container in-place
+      dockerDeployEngine.deploy(config, container); // mutates container in-place
       // status + containerId + startedAt are set by DockerDeployEngine.deploy()
       log.info("Async deploy complete for '{}' — container {}", config.getName(),
           container.getContainerId() != null ? container.getContainerId().substring(0, 12) : "?");
@@ -47,6 +47,6 @@ public class AsyncDeployer {
       log.error("Async deploy failed for '{}' ({}): {}", config.getName(), config.getId(), e.getMessage(), e);
       container.setStatus(InstanceStatus.ERROR);
     }
-    containerRepo.save(container);
+    deployedContainerRepository.save(container);
   }
 }

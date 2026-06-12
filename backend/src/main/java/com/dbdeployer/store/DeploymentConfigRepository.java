@@ -37,9 +37,12 @@ public interface DeploymentConfigRepository extends JpaRepository<DeploymentConf
 
   List<DeploymentConfig> findAllByIsTemplateTrueOrderByCreatedAtDesc();
 
-  Optional<DeploymentConfig> findByIdAndIsTemplateTrue(String id);
+  Optional<DeploymentConfig> findByIdAndIsTemplateTrue(
+    String id);
 
-  Optional<DeploymentConfig> findByIdAndIsTemplate(String id, boolean isTemplate);
+  Optional<DeploymentConfig> findByIdAndIsTemplate(
+    String id,
+    boolean isTemplate);
 
   boolean existsByNameAndIsTemplateTrue(
     String name);

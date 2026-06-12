@@ -11,6 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -25,10 +26,8 @@ import lombok.ToString;
  * providing a permanent audit trail without losing the parent
  * {@link DeploymentConfig}.
  */
-@Setter
-@Getter
+@Data
 @Entity
-@ToString
 @Table(name = "deployed_container")
 public class DeployedContainer {
 

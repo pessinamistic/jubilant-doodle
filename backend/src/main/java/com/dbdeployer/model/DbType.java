@@ -1,5 +1,8 @@
 package com.dbdeployer.model;
 
+import lombok.ToString;
+
+@ToString
 public enum DbType {
   // ── Relational databases ──────────────────────────────────────────────────
   POSTGRESQL, MYSQL, H2, MARIADB, MSSQL,

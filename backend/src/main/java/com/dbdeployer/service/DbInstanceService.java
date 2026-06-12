@@ -2,7 +2,6 @@ package com.dbdeployer.service;
 
 import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.api.dto.ContainerMetricsResponse;
-import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.api.dto.ImportRequest;
 import com.dbdeployer.api.dto.InstanceStatsResponse;
@@ -10,7 +9,6 @@ import com.dbdeployer.api.dto.PipelineResponse;
 import com.dbdeployer.api.dto.PipelineStepResponse;
 import com.dbdeployer.api.dto.ReImportRequest;
 import com.dbdeployer.deploy.BrewDeployEngine;
-import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.deploy.ToolMetricsProbe;
@@ -45,41 +43,34 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DbInstanceService {
 
-
   private final BrewDeployEngine brew;
   private final DockerDeployEngine docker;
   private final ToolMetricsProbe toolMetrics;
   private final PipelineStepRepository stepRepo;
   private final PipelineOrchestrator orchestrator;
-  private final ConnectionStringBuilder connBuilder;
   private final DeploymentConfigRepository configRepo;
   private final DeployedContainerRepository containerRepo;
   private final DeploymentPipelineRepository pipelineRepo;
- // private final ConfigTemplateService configTemplateService;
   private final DeploymentValidations deploymentValidations;
 
   public DbInstanceService(
-      BrewDeployEngine brew,
-      DockerDeployEngine docker,
-      ToolMetricsProbe toolMetrics,
-      PipelineStepRepository stepRepo,
-      PipelineOrchestrator orchestrator,
-      ConnectionStringBuilder connBuilder,
-      DeploymentConfigRepository configRepo,
-      DeployedContainerRepository containerRepo,
-      DeploymentPipelineRepository pipelineRepo,
-    //  ConfigTemplateService configTemplateService,
-      DeploymentValidations deploymentValidations) {
+    BrewDeployEngine brew,
+    DockerDeployEngine docker,
+    ToolMetricsProbe toolMetrics,
+    PipelineStepRepository stepRepo,
+    PipelineOrchestrator orchestrator,
+    DeploymentConfigRepository configRepo,
+    DeployedContainerRepository containerRepo,
+    DeploymentPipelineRepository pipelineRepo,
+    DeploymentValidations deploymentValidations) {
     this.brew = brew;
     this.docker = docker;
     this.toolMetrics = toolMetrics;
     this.stepRepo = stepRepo;
     this.orchestrator = orchestrator;
-    this.connBuilder = connBuilder;
     this.configRepo = configRepo;
     this.containerRepo = containerRepo;
     this.pipelineRepo = pipelineRepo;
-  //  this.configTemplateService = configTemplateService;
     this.deploymentValidations = deploymentValidations;
   }
 
@@ -151,8 +142,8 @@ public class DbInstanceService {
 
   @Transactional
   public DeploymentResponse deploy(
-    DeployRequest req,
-    String configId,
+    ConfigTemplateRequest req,
+    DeploymentConfig deploymentConfig,
     boolean isTemplate) {
     log.info("[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
         req.name(),
@@ -163,69 +154,36 @@ public class DbInstanceService {
     deploymentValidations.validate(req, isTemplate);
 
     var def = DatabaseCatalog.get(req.dbType());
-    // Apply catalog defaults for any credentials the user left blank
-    String username = resolveCredential(req.username(), def, DatabaseCatalog.EnvVarType.TEXT);
-    String password = resolveCredential(req.password(), def, DatabaseCatalog.EnvVarType.PASSWORD);
-    String databaseName = resolveCredential(req.databaseName(), def, DatabaseCatalog.EnvVarType.DATABASE);
 
-    DeploymentConfig config;
-//    if (isTemplate) {
-//      config = configTemplateService.getById(configId, true); // just validate existence of the template; no need to fetch the whole object
-//    } else {
-//      config = configTemplateService.create(new ConfigTemplateRequest(req.name(),
-//          "",
-//          req.dbType(),
-//          req.version(),
-//          req.hostPort(),
-//          username,
-//          password,
-//          databaseName,
-//          req.extraEnvJson()));
-//    }
-
-    // ── Config row ──
-
-    config = new DeploymentConfig();
-    if (configId == null) {
-      config.setId(UUID.randomUUID().toString());
-      config.setName(req.name());
-      config.setDbType(req.dbType());
-      config.setVersion(req.version());
-      config.setHostPort(req.hostPort());
-      config.setUsername(username);
-      config.setPassword(password);
-      config.setDatabaseName(databaseName);
-      config.setDeployMethod(DeployMethod.DOCKER);
-      config.setExtraEnvJson(req.extraEnvJson());
-      config.setTemplateId(UUID.randomUUID().toString());
-      config.setTemplate(true);
-      config.setDeployCount(1);
-      configRepo.save(config);
-    } else {
-      config = configRepo.findById(configId)
-          .orElseThrow(() -> new IllegalArgumentException("Config not found: " + configId));
+    if (!isTemplate) {
+      deploymentConfig.setDeployCount(deploymentConfig.getDeployCount() + 1);
+      configRepo.save(deploymentConfig);
     }
 
     // ── Container row ── (starts as DEPLOYING; pipeline transitions it)
     DeployedContainer container = new DeployedContainer();
     container.setId(UUID.randomUUID().toString());
-    String containerName = "dbdeployer-%s-%s".formatted(config.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
+    String containerName = "dbdeployer-%s-%s".formatted(
+        deploymentConfig.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
         UUID.randomUUID().toString().substring(0, 8));
     container.setContainerName(containerName);
-    container.setConfig(config);
+    container.setConfig(deploymentConfig);
     container.setContainerPort(def.defaultPort());
     container.setHostPort(req.hostPort());
     container.setStatus(InstanceStatus.DEPLOYING);
     containerRepo.save(container);
 
     // ── Create pipeline + fire async runner after commit ──
-    orchestrator.createAndLaunch(config, container, isTemplate);
+    orchestrator.createAndLaunch(deploymentConfig, container);
     containerRepo.save(container); // persist latestPipelineId set by orchestrator
 
-    log.info("[deploy] Accepted deployment '{}' (configId={}, containerRecordId={}, pipelineId={})", config.getName(),
-        config.getId(), container.getId(), container.getLatestPipelineId());
+    log.info("[deploy] Accepted deployment '{}' (configId={}, containerRecordId={}, pipelineId={})",
+        deploymentConfig.getName(),
+        deploymentConfig.getId(),
+        container.getId(),
+        container.getLatestPipelineId());
 
-    return new DeploymentResponse(config, container);
+    return new DeploymentResponse(deploymentConfig, container);
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -503,12 +461,6 @@ public class DbInstanceService {
     docker.renameContainer(container, trimmed);
     containerRepo.save(container);
     return new DeploymentResponse(config, container);
-    // return configRepo.save(config);
-  }
-
-  public String getConnectionString(
-    String id) {
-    return connBuilder.build(getById(id).getConfig());
   }
 
   public String getLogs(
@@ -532,16 +484,6 @@ public class DbInstanceService {
       throw new IllegalArgumentException(
           "The system database cannot be " + action + "ped. It is managed automatically by Port Wrangler.");
     }
-  }
-
-  private String resolveCredential(
-    String supplied,
-    DatabaseCatalog.DbDefinition def,
-    DatabaseCatalog.EnvVarType type) {
-    if (supplied != null && !supplied.isBlank())
-      return supplied;
-    return def.credentialEnvVars().stream().filter(ev -> ev.type() == type).map(DatabaseCatalog.EnvVar::placeholder)
-        .findFirst().orElse(null);
   }
 
   private InstanceStatus getContainerStatus(

@@ -25,7 +25,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
- * Executes a deploy pipeline asynchronously, step by step.
+ * Executes a deployment pipeline asynchronously, step by step.
  *
  * <p>
  * Re-fetches all entities from the DB by ID before doing any work so that the
@@ -35,26 +35,26 @@ import org.springframework.stereotype.Service;
 @Service
 public class PipelineRunner {
 
-  private final DeploymentPipelineRepository pipelineRepo;
-  private final PipelineStepRepository stepRepo;
-  private final DeploymentConfigRepository configRepo;
-  private final DeployedContainerRepository containerRepo;
-  private final Map<StepType, DeployStep> stepRegistry;
-  private final PipelineProperties props;
+  private final PipelineProperties pipelineProperties;
+  private final PipelineStepRepository pipelineStepRepository;
+  private final Map<StepType, DeployStep> deploymentStepRegistry;
+  private final DeploymentConfigRepository deploymentConfigRepository;
+  private final DeployedContainerRepository deployedContainerRepository;
+  private final DeploymentPipelineRepository deploymentPipelineRepository;
 
   public PipelineRunner(
-    DeploymentPipelineRepository pipelineRepo,
-    PipelineStepRepository stepRepo,
-    DeploymentConfigRepository configRepo,
-    DeployedContainerRepository containerRepo,
     List<DeployStep> steps,
-    PipelineProperties props) {
-    this.pipelineRepo = pipelineRepo;
-    this.stepRepo = stepRepo;
-    this.configRepo = configRepo;
-    this.containerRepo = containerRepo;
-    this.props = props;
-    this.stepRegistry = steps.stream().collect(Collectors.toMap(DeployStep::type, Function.identity()));
+    PipelineProperties pipelineProperties,
+    PipelineStepRepository pipelineStepRepository,
+    DeploymentConfigRepository deploymentConfigRepository,
+    DeployedContainerRepository deployedContainerRepository,
+    DeploymentPipelineRepository deploymentPipelineRepository) {
+    this.pipelineProperties = pipelineProperties;
+    this.pipelineStepRepository = pipelineStepRepository;
+    this.deploymentConfigRepository = deploymentConfigRepository;
+    this.deployedContainerRepository = deployedContainerRepository;
+    this.deploymentPipelineRepository = deploymentPipelineRepository;
+    this.deploymentStepRegistry = steps.stream().collect(Collectors.toMap(DeployStep::type, Function.identity()));
   }
 
   @Async
@@ -63,71 +63,72 @@ public class PipelineRunner {
     log.info("[runner] Starting pipeline {}", pipelineId);
 
     // ── Re-fetch everything fresh (post-TX) ──
-    DeploymentPipeline pipeline = pipelineRepo.findById(pipelineId)
+    DeploymentPipeline pipeline = deploymentPipelineRepository.findById(pipelineId)
         .orElseThrow(() -> new IllegalStateException("Pipeline not found: " + pipelineId));
 
-    DeploymentConfig config = configRepo.findById(pipeline.getConfigId())
+    DeploymentConfig config = deploymentConfigRepository.findById(pipeline.getConfigId())
         .orElseThrow(() -> new IllegalStateException("Config not found for pipeline: " + pipelineId));
 
-    DeployedContainer container = containerRepo.findById(pipeline.getDeploymentContainerId())
+    DeployedContainer container = deployedContainerRepository.findById(pipeline.getDeploymentContainerId())
         .orElseThrow(() -> new IllegalStateException("Container record not found for config: " + config.getId()));
 
-    List<PipelineStep> steps = stepRepo.findByPipelineIdOrderByStepOrderAsc(pipelineId);
+    List<PipelineStep> pipelineSteps = pipelineStepRepository.findByPipelineIdOrderByStepOrderAsc(pipelineId);
 
     // ── Mark pipeline RUNNING ──
     pipeline.setStatus(PipelineStatus.RUNNING);
     pipeline.setStartedAt(Instant.now());
-    pipelineRepo.save(pipeline);
+    deploymentPipelineRepository.save(pipeline);
 
     boolean failed = false;
 
-    for (PipelineStep step : steps) {
+    for (PipelineStep pipelineStep : pipelineSteps) {
       if (failed) {
-        step.setStatus(StepStatus.SKIPPED);
-        stepRepo.save(step);
+        pipelineStep.setStatus(StepStatus.SKIPPED);
+        pipelineStepRepository.save(pipelineStep);
         continue;
       }
 
       // ── Step: RUNNING ──
-      step.setStatus(StepStatus.RUNNING);
-      step.setStartedAt(Instant.now());
-      stepRepo.save(step);
+      pipelineStep.setStatus(StepStatus.RUNNING);
+      pipelineStep.setStartedAt(Instant.now());
+      pipelineStepRepository.save(pipelineStep);
 
-      // ── Inter-step delay (cosmetic) ──
-      if (step.getStepOrder() > 0 && props.getStepDelayMs() > 0) {
+      // ── Inter-pipelineStep delay (cosmetic) ──
+      if (pipelineStep.getStepOrder() > 0 && pipelineProperties.getStepDelayMs() > 0) {
         try {
-          Thread.sleep(props.getStepDelayMs());
+          Thread.sleep(pipelineProperties.getStepDelayMs());
         } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
         }
       }
 
-      DeployStep impl = stepRegistry.get(step.getStepType());
+      DeployStep impl = deploymentStepRegistry.get(pipelineStep.getStepType());
       if (impl == null) {
-        log.error("[runner] No impl registered for step type {}", step.getStepType());
-        markStepFailed(step, DeployErrorCode.UNEXPECTED_ERROR, "No handler registered for step: " + step.getStepType());
+        log.error("[runner] No impl registered for pipelineStep type {}", pipelineStep.getStepType());
+        markStepFailed(pipelineStep, DeployErrorCode.UNEXPECTED_ERROR,
+            "No handler registered for pipelineStep: " + pipelineStep.getStepType());
         failed = true;
         continue;
       }
 
       try {
         String msg = impl.execute(config, container);
-        step.setStatus(StepStatus.SUCCESS);
-        step.setMessage(msg);
-        step.setCompletedAt(Instant.now());
-        stepRepo.save(step);
-        // Persist any container mutations made by this step
-        containerRepo.save(container);
-        log.info("[runner] Step {} SUCCESS: {}", step.getStepType(), msg);
+        pipelineStep.setStatus(StepStatus.SUCCESS);
+        pipelineStep.setMessage(msg);
+        pipelineStep.setCompletedAt(Instant.now());
+        pipelineStepRepository.save(pipelineStep);
+        // Persist any container mutations made by this pipelineStep
+        deployedContainerRepository.save(container);
+        log.info("[runner] Step {} SUCCESS: {}", pipelineStep.getStepType(), msg);
       } catch (StepExecutionException e) {
-        log.error("[runner] Step {} FAILED [{}]: {}", step.getStepType(), e.getErrorCode(), e.getMessage(), e);
-        markStepFailed(step, e.getErrorCode(), e.getMessage());
+        log.error("[runner] Step {} FAILED [{}]: {}", pipelineStep.getStepType(), e.getErrorCode(), e.getMessage(), e);
+        markStepFailed(pipelineStep, e.getErrorCode(), e.getMessage());
         pipeline.setErrorCode(e.getErrorCode());
         pipeline.setErrorMessage(e.getMessage());
         failed = true;
       } catch (Exception e) {
-        log.error("[runner] Step {} unexpected error: {}", step.getStepType(), e.getMessage(), e);
-        markStepFailed(step, DeployErrorCode.UNEXPECTED_ERROR, e.getMessage());
+        log.error("[runner] Step {} unexpected error: {}", pipelineStep.getStepType(), e.getMessage(), e);
+        markStepFailed(pipelineStep, DeployErrorCode.UNEXPECTED_ERROR, e.getMessage());
         pipeline.setErrorCode(DeployErrorCode.UNEXPECTED_ERROR);
         pipeline.setErrorMessage(e.getMessage());
         failed = true;
@@ -137,14 +138,14 @@ public class PipelineRunner {
     // ── Finalise pipeline ──
     pipeline.setStatus(failed ? PipelineStatus.FAILED : PipelineStatus.SUCCESS);
     pipeline.setCompletedAt(Instant.now());
-    pipelineRepo.save(pipeline);
+    deploymentPipelineRepository.save(pipeline);
 
     if (failed) {
       // Mark container ERROR if the deployment failed before the container was
       // started
       if (container.getStatus() == InstanceStatus.DEPLOYING) {
         container.setStatus(InstanceStatus.ERROR);
-        containerRepo.save(container);
+        deployedContainerRepository.save(container);
       }
       log.error("[runner] Pipeline {} FAILED — error: {} — {}", pipelineId, pipeline.getErrorCode(),
           pipeline.getErrorMessage());
@@ -154,8 +155,6 @@ public class PipelineRunner {
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
   private void markStepFailed(
     PipelineStep step,
     DeployErrorCode code,
@@ -163,6 +162,6 @@ public class PipelineRunner {
     step.setStatus(StepStatus.FAILED);
     step.setMessage("[" + code + "] " + message);
     step.setCompletedAt(Instant.now());
-    stepRepo.save(step);
+    pipelineStepRepository.save(step);
   }
 }

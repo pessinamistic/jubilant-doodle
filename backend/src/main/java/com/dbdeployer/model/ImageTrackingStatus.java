@@ -10,10 +10,12 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /**
  * Stores source-aware image availability checks for a catalog tool image tag.
  */
+@Data
 @Entity
 @Table(name = "image_tracking_status", uniqueConstraints = @UniqueConstraint(name = "uk_image_tracking_target", columnNames = {
     "db_type", "image_name", "image_tag"}))
@@ -76,120 +78,4 @@ public class ImageTrackingStatus {
     updatedAt = LocalDateTime.now();
   }
 
-  public String getId() {
-    return id;
-  }
-
-  public void setId(
-    String id) {
-    this.id = id;
-  }
-
-  public DbType getDbType() {
-    return dbType;
-  }
-
-  public void setDbType(
-    DbType dbType) {
-    this.dbType = dbType;
-  }
-
-  public String getImageName() {
-    return imageName;
-  }
-
-  public void setImageName(
-    String imageName) {
-    this.imageName = imageName;
-  }
-
-  public String getImageTag() {
-    return imageTag;
-  }
-
-  public void setImageTag(
-    String imageTag) {
-    this.imageTag = imageTag;
-  }
-
-  public boolean isDockerHubManaged() {
-    return dockerHubManaged;
-  }
-
-  public void setDockerHubManaged(
-    boolean dockerHubManaged) {
-    this.dockerHubManaged = dockerHubManaged;
-  }
-
-  public ImageAvailabilityState getLocalStatus() {
-    return localStatus;
-  }
-
-  public void setLocalStatus(
-    ImageAvailabilityState localStatus) {
-    this.localStatus = localStatus;
-  }
-
-  public ImageAvailabilityState getDockerHubStatus() {
-    return dockerHubStatus;
-  }
-
-  public void setDockerHubStatus(
-    ImageAvailabilityState dockerHubStatus) {
-    this.dockerHubStatus = dockerHubStatus;
-  }
-
-  public ImageValidationDecision getDecision() {
-    return decision;
-  }
-
-  public void setDecision(
-    ImageValidationDecision decision) {
-    this.decision = decision;
-  }
-
-  public String getMessage() {
-    return message;
-  }
-
-  public void setMessage(
-    String message) {
-    this.message = message;
-  }
-
-  public LocalDateTime getLocalCheckedAt() {
-    return localCheckedAt;
-  }
-
-  public void setLocalCheckedAt(
-    LocalDateTime localCheckedAt) {
-    this.localCheckedAt = localCheckedAt;
-  }
-
-  public LocalDateTime getDockerHubCheckedAt() {
-    return dockerHubCheckedAt;
-  }
-
-  public void setDockerHubCheckedAt(
-    LocalDateTime dockerHubCheckedAt) {
-    this.dockerHubCheckedAt = dockerHubCheckedAt;
-  }
-
-  public LocalDateTime getCreatedAt() {
-    return createdAt;
-  }
-
-  public void setCreatedAt(
-    LocalDateTime createdAt) {
-    this.createdAt = createdAt;
-  }
-
-  public LocalDateTime getUpdatedAt() {
-    return updatedAt;
-  }
-
-  public void setUpdatedAt(
-    LocalDateTime updatedAt) {
-    this.updatedAt = updatedAt;
-  }
 }

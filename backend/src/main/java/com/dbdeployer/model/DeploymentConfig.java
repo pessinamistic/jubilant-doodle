@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -25,10 +26,8 @@ import org.checkerframework.common.aliasing.qual.Unique;
  * {@link DeployedContainer} carrying status {@link InstanceStatus#REMOVED}.
  * This gives a full deployment history.
  */
-@Setter
-@Getter
+@Data
 @Entity
-@ToString
 @Table(name = "deployment_config")
 public class DeploymentConfig {
 
@@ -82,10 +81,6 @@ public class DeploymentConfig {
    */
   @Column(name = "is_imported", nullable = false, columnDefinition = "boolean default false")
   private boolean isImported = false;
-
-  @Unique
-  @Column(name = "template_id")
-  private String templateId;
 
   /**
    * When true this row is a reusable configuration blueprint, not a live

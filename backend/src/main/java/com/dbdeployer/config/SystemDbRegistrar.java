@@ -49,6 +49,9 @@ public class SystemDbRegistrar implements ApplicationRunner {
   @Value("${dbdeployer.system-db.runtime.container-name:}")
   private String runtimeContainerName;
 
+  @Value(("${dbdeployer.system-db.data-dir}"))
+  private String dataDir;
+
   public SystemDbRegistrar(
     DeploymentConfigRepository configRepo,
     DeployedContainerRepository containerRepo,
@@ -71,7 +74,7 @@ public class SystemDbRegistrar implements ApplicationRunner {
         config.setVersion(resolvePostgresVersion());
         config.setHostPort(systemDbHostPort);
         config.setUsername("dbdeployer");
-        config.setPassword(null); // not exposed in the UI
+        config.setPassword("dbdeployer_internal"); // not exposed in the UI
         config.setDatabaseName("dbdeployer");
         config.setDeployMethod(DeployMethod.DOCKER);
         config.setSystem(true);
@@ -98,6 +101,9 @@ public class SystemDbRegistrar implements ApplicationRunner {
       if (container == null) {
         container = new DeployedContainer();
         container.setId(UUID.randomUUID().toString());
+        container.setHostPort(systemDbHostPort);
+        container.setContainerPort(5432);
+        container.setDataDirectory(dataDir);
         container.setConfig(config);
         changed = true;
       }

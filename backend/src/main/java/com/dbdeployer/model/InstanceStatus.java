@@ -1,5 +1,8 @@
 package com.dbdeployer.model;
 
+import lombok.ToString;
+
+@ToString
 public enum InstanceStatus {
   DEPLOYING, RUNNING, RESTARTING, STOPPED, ERROR, REMOVING,
   /**

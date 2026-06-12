@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <ol>
  * <li><b>Containers stuck in DEPLOYING</b> — app crashed before async deploy
  * finished. If {@code
- *       containerId == null}: mark ERROR. Otherwise ask Docker for ground
+ *       containerId == null}: mark ERROR. Otherwise, ask Docker for ground
  * truth.
  * <li><b>Pipelines stuck in RUNNING</b> — app crashed while a pipeline was
  * executing. Mark the pipeline FAILED, mark RUNNING steps FAILED, mark PENDING
@@ -42,20 +42,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class DeploymentRecovery implements ApplicationRunner {
 
-  private final DeployedContainerRepository containerRepo;
-  private final DockerDeployEngine docker;
-  private final DeploymentPipelineRepository pipelineRepo;
-  private final PipelineStepRepository stepRepo;
+  private final DockerDeployEngine dockerDeployEngine;
+  private final PipelineStepRepository pipelineStepRepository;
+  private final DeployedContainerRepository deployedContainerRepository;
+  private final DeploymentPipelineRepository deploymentPipelineRepository;
 
   public DeploymentRecovery(
-    DeployedContainerRepository containerRepo,
-    DockerDeployEngine docker,
-    DeploymentPipelineRepository pipelineRepo,
-    PipelineStepRepository stepRepo) {
-    this.containerRepo = containerRepo;
-    this.docker = docker;
-    this.pipelineRepo = pipelineRepo;
-    this.stepRepo = stepRepo;
+    DockerDeployEngine dockerDeployEngine,
+    PipelineStepRepository pipelineStepRepository,
+    DeployedContainerRepository deployedContainerRepository,
+    DeploymentPipelineRepository deploymentPipelineRepository) {
+    this.dockerDeployEngine = dockerDeployEngine;
+    this.pipelineStepRepository = pipelineStepRepository;
+    this.deployedContainerRepository = deployedContainerRepository;
+    this.deploymentPipelineRepository = deploymentPipelineRepository;
   }
 
   @Override
@@ -69,7 +69,7 @@ public class DeploymentRecovery implements ApplicationRunner {
   // ── Container recovery ─────────────────────────────────────────────────────
 
   private void recoverContainers() {
-    List<DeployedContainer> stuck = containerRepo.findByStatus(InstanceStatus.DEPLOYING);
+    List<DeployedContainer> stuck = deployedContainerRepository.findByStatus(InstanceStatus.DEPLOYING);
     if (stuck.isEmpty())
       return;
 
@@ -82,14 +82,14 @@ public class DeploymentRecovery implements ApplicationRunner {
         log.warn("DeploymentRecovery: '{}' has no containerId — marking ERROR", name);
         container.setStatus(InstanceStatus.ERROR);
       } else {
-        InstanceStatus actual = docker.getStatus(container);
+        InstanceStatus actual = dockerDeployEngine.getStatus(container);
         log.info("DeploymentRecovery: '{}' has containerId — Docker reports {}", name, actual);
         container.setStatus(actual);
         if (actual == InstanceStatus.RUNNING && container.getStartedAt() == null) {
-          container.setStartedAt(docker.getStartedAt(container.getContainerId()));
+          container.setStartedAt(dockerDeployEngine.getStartedAt(container.getContainerId()));
         }
       }
-      containerRepo.save(container);
+      deployedContainerRepository.save(container);
     }
 
     log.info("DeploymentRecovery: container recovery done");
@@ -98,7 +98,7 @@ public class DeploymentRecovery implements ApplicationRunner {
   // ── Pipeline recovery ──────────────────────────────────────────────────────
 
   private void recoverPipelines() {
-    List<DeploymentPipeline> stuck = pipelineRepo.findByStatus(PipelineStatus.RUNNING);
+    List<DeploymentPipeline> stuck = deploymentPipelineRepository.findByStatus(PipelineStatus.RUNNING);
     if (stuck.isEmpty())
       return;
 
@@ -108,23 +108,23 @@ public class DeploymentRecovery implements ApplicationRunner {
       log.warn("DeploymentRecovery: pipeline {} stuck RUNNING — marking FAILED", pipeline.getId());
 
       // RUNNING steps → FAILED; PENDING steps → SKIPPED
-      stepRepo.findByPipelineIdOrderByStepOrderAsc(pipeline.getId()).forEach(step -> {
+      pipelineStepRepository.findByPipelineIdOrderByStepOrderAsc(pipeline.getId()).forEach(step -> {
         if (step.getStatus() == StepStatus.RUNNING) {
           step.setStatus(StepStatus.FAILED);
           step.setMessage("Recovered: app restarted while step was running");
           step.setCompletedAt(Instant.now());
-          stepRepo.save(step);
+          pipelineStepRepository.save(step);
         } else if (step.getStatus() == StepStatus.PENDING) {
           step.setStatus(StepStatus.SKIPPED);
           step.setCompletedAt(Instant.now());
-          stepRepo.save(step);
+          pipelineStepRepository.save(step);
         }
       });
 
       pipeline.setStatus(PipelineStatus.FAILED);
       pipeline.setErrorMessage("Recovered: app restarted while pipeline was running");
       pipeline.setCompletedAt(Instant.now());
-      pipelineRepo.save(pipeline);
+      deploymentPipelineRepository.save(pipeline);
     }
 
     log.info("DeploymentRecovery: pipeline recovery done");

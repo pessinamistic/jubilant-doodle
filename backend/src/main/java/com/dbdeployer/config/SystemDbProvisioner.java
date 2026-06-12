@@ -71,8 +71,14 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
           e);
     }
 
-    SystemContainerState containerState = ensureContainerRunning(docker, containerName, image, hostPort, username,
-        password, database, dataDir);
+    SystemContainerState containerState = ensureContainerRunning(docker,
+        containerName,
+        image,
+        hostPort,
+        username,
+        password,
+        database,
+        dataDir);
 
     if (containerState.containerId() != null && !containerState.containerId().isBlank()) {
       System.setProperty(RUNTIME_CONTAINER_ID_PROPERTY, containerState.containerId());
@@ -150,7 +156,10 @@ public class SystemDbProvisioner implements ApplicationContextInitializer<Config
     Volume pgDataVolume = new Volume("/var/lib/postgresql/data");
 
     docker.createContainerCmd(image).withName(containerName)
-        .withEnv("POSTGRES_USER=" + username, "POSTGRES_PASSWORD=" + password, "POSTGRES_DB=" + database, "TZ=UTC",
+        .withEnv("POSTGRES_USER=" + username,
+            "POSTGRES_PASSWORD=" + password,
+            "POSTGRES_DB=" + database,
+            "TZ=UTC",
             "PGTZ=UTC")
         .withExposedPorts(containerPort).withVolumes(pgDataVolume)
         .withHostConfig(HostConfig.newHostConfig().withPortBindings(portBindings)

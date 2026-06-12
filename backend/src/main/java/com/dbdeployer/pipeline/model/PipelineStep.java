@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.Data;
 
 /**
  * One step within a {@link DeploymentPipeline}.
@@ -18,6 +19,7 @@ import java.time.Instant;
  * Steps are ordered by {@code stepOrder} and executed sequentially. If any step
  * fails, all subsequent PENDING steps are marked SKIPPED.
  */
+@Data
 @Entity
 @Table(name = "pipeline_step")
 public class PipelineStep {
@@ -53,77 +55,4 @@ public class PipelineStep {
   @Column(name = "completed_at")
   private Instant completedAt;
 
-  // ── Getters & Setters ──────────────────────────────────────────────────────
-
-  public String getId() {
-    return id;
-  }
-
-  public void setId(
-    String id) {
-    this.id = id;
-  }
-
-  public DeploymentPipeline getPipeline() {
-    return pipeline;
-  }
-
-  public void setPipeline(
-    DeploymentPipeline p) {
-    this.pipeline = p;
-  }
-
-  public StepType getStepType() {
-    return stepType;
-  }
-
-  public void setStepType(
-    StepType t) {
-    this.stepType = t;
-  }
-
-  public int getStepOrder() {
-    return stepOrder;
-  }
-
-  public void setStepOrder(
-    int order) {
-    this.stepOrder = order;
-  }
-
-  public StepStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(
-    StepStatus s) {
-    this.status = s;
-  }
-
-  public String getMessage() {
-    return message;
-  }
-
-  public void setMessage(
-    String msg) {
-    this.message = msg;
-  }
-
-  public Instant getStartedAt() {
-    return startedAt;
-  }
-
-  public void setStartedAt(
-    Instant t) {
-    this.startedAt = t;
-  }
-
-  public Instant getCompletedAt() {
-    return completedAt;
-  }
-
-  public void setCompletedAt(
-    Instant t) {
-    this.completedAt = t;
-  }
 }
