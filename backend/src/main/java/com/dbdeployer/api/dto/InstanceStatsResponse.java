@@ -22,6 +22,14 @@ package com.dbdeployer.api.dto;
  * @param untracked
  *          Imported containers that have been untracked (container still alive)
  */
-public record InstanceStatsResponse(int total, int running, int restarting, int stopped, int deploying, int removing,
-    int error, int removed, int untracked) {
+public record InstanceStatsResponse(
+    int total,
+    int running,
+    int restarting,
+    int stopped,
+    int deploying,
+    int removing,
+    int error,
+    int removed,
+    int untracked) {
 }

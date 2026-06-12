@@ -41,7 +41,7 @@ class SystemDbRegistrarTest {
     when(jdbc.queryForObject("SELECT version()", String.class))
         .thenReturn("PostgreSQL 16.3 on aarch64-unknown-linux-musl");
 
-    SystemDbRegistrar registrar = new SystemDbRegistrar(configRepo, containerRepo, jdbc);
+    SystemDbRegistrar registrar = new SystemDbRegistrar(jdbc, configRepo, containerRepo);
     ReflectionTestUtils.setField(registrar, "systemDbHostPort", 5499);
     ReflectionTestUtils.setField(registrar, "systemDbContainerName", "dbdeployer-system-db");
     ReflectionTestUtils.setField(registrar, "autoProvision", true);
@@ -85,7 +85,7 @@ class SystemDbRegistrarTest {
     when(configRepo.findById(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.of(existingConfig));
     when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.of(existingContainer));
 
-    SystemDbRegistrar registrar = new SystemDbRegistrar(configRepo, containerRepo, jdbc);
+    SystemDbRegistrar registrar = new SystemDbRegistrar(jdbc, configRepo, containerRepo);
     ReflectionTestUtils.setField(registrar, "systemDbHostPort", 5499);
     ReflectionTestUtils.setField(registrar, "systemDbContainerName", "dbdeployer-system-db");
     ReflectionTestUtils.setField(registrar, "autoProvision", true);

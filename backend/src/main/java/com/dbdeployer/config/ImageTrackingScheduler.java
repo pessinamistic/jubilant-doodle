@@ -10,17 +10,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class ImageTrackingScheduler {
 
-  private final ImageValidationService imageValidationService;
   private final ImageValidationProperties properties;
+  private final ImageValidationService imageValidationService;
 
   public ImageTrackingScheduler(
-    ImageValidationService imageValidationService,
-    ImageValidationProperties properties) {
+    ImageValidationProperties properties,
+    ImageValidationService imageValidationService) {
     this.imageValidationService = imageValidationService;
     this.properties = properties;
   }
 
-  @Scheduled(fixedDelayString = "${dbdeployer.image-validation.local-refresh-interval-ms:120000}", initialDelayString = "${dbdeployer.image-validation.local-refresh-initial-delay-ms:10000}")
+  @Scheduled(fixedDelayString = "${dbdeployer.image-validation.local-refresh-interval-ms:120000}",
+      initialDelayString = "${dbdeployer.image-validation.local-refresh-initial-delay-ms:10000}")
   public void refreshLocal() {
     if (!properties.isSchedulerEnabled())
       return;
@@ -32,7 +33,8 @@ public class ImageTrackingScheduler {
     }
   }
 
-  @Scheduled(fixedDelayString = "${dbdeployer.image-validation.docker-hub-refresh-interval-ms:21600000}", initialDelayString = "${dbdeployer.image-validation.docker-hub-refresh-initial-delay-ms:30000}")
+  @Scheduled(fixedDelayString = "${dbdeployer.image-validation.docker-hub-refresh-interval-ms:21600000}",
+      initialDelayString = "${dbdeployer.image-validation.docker-hub-refresh-initial-delay-ms:30000}")
   public void refreshDockerHub() {
     if (!properties.isSchedulerEnabled())
       return;

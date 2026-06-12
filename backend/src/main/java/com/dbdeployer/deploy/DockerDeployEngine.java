@@ -793,7 +793,8 @@ public class DockerDeployEngine {
         oomKilled, startedAtIso, uptimeSecs, portReachable, portLatencyMs, java.util.Map.of());
   }
 
-  private static double getCpuThrottledPct(Statistics stats) {
+  private static double getCpuThrottledPct(
+    Statistics stats) {
     double cpuThrottledPct = 0.0;
     try {
       var currCpu = stats.getCpuStats();

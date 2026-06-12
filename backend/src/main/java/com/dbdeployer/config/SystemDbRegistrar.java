@@ -30,9 +30,9 @@ public class SystemDbRegistrar implements ApplicationRunner {
 
   static final String SYSTEM_CONFIG_ID = "system";
 
+  private final JdbcTemplate jdbc;
   private final DeploymentConfigRepository configRepo;
   private final DeployedContainerRepository containerRepo;
-  private final JdbcTemplate jdbc;
 
   @Value("${dbdeployer.system-db.host-port:5499}")
   private int systemDbHostPort;
@@ -52,13 +52,12 @@ public class SystemDbRegistrar implements ApplicationRunner {
   @Value(("${dbdeployer.system-db.data-dir}"))
   private String dataDir;
 
-  public SystemDbRegistrar(
-    DeploymentConfigRepository configRepo,
-    DeployedContainerRepository containerRepo,
-    JdbcTemplate jdbc) {
+  public SystemDbRegistrar(JdbcTemplate jdbc,
+                           DeploymentConfigRepository configRepo,
+                           DeployedContainerRepository containerRepo) {
+    this.jdbc = jdbc;
     this.configRepo = configRepo;
     this.containerRepo = containerRepo;
-    this.jdbc = jdbc;
   }
 
   @Override

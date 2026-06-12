@@ -42,8 +42,11 @@ public class DockerHealthChecker {
     String socketUri = DockerSocketResolver.resolve();
     log.debug("Probing Docker daemon at {}", socketUri);
 
-    try (var httpClient = new ZerodepDockerHttpClient.Builder().dockerHost(URI.create(socketUri))
-        .connectionTimeout(Duration.ofSeconds(5)).responseTimeout(Duration.ofSeconds(10)).build()) {
+    try (var httpClient = new ZerodepDockerHttpClient
+        .Builder().dockerHost(URI.create(socketUri))
+        .connectionTimeout(Duration.ofSeconds(5))
+        .responseTimeout(Duration.ofSeconds(10))
+        .build()) {
 
       var config = DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost(socketUri).build();
 

@@ -1,8 +1,10 @@
 package com.dbdeployer.config;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** Configuration for image status checks and background refresh schedules. */
+@Data
 @ConfigurationProperties(prefix = "dbdeployer.image-validation")
 public class ImageValidationProperties {
 
@@ -25,48 +27,4 @@ public class ImageValidationProperties {
    */
   private int hubRequestConcurrency = 10;
 
-  public int getDockerHubTimeoutMs() {
-    return dockerHubTimeoutMs;
-  }
-
-  public void setDockerHubTimeoutMs(
-    int dockerHubTimeoutMs) {
-    this.dockerHubTimeoutMs = dockerHubTimeoutMs;
-  }
-
-  public long getLocalRefreshIntervalMs() {
-    return localRefreshIntervalMs;
-  }
-
-  public void setLocalRefreshIntervalMs(
-    long localRefreshIntervalMs) {
-    this.localRefreshIntervalMs = localRefreshIntervalMs;
-  }
-
-  public long getDockerHubRefreshIntervalMs() {
-    return dockerHubRefreshIntervalMs;
-  }
-
-  public void setDockerHubRefreshIntervalMs(
-    long dockerHubRefreshIntervalMs) {
-    this.dockerHubRefreshIntervalMs = dockerHubRefreshIntervalMs;
-  }
-
-  public boolean isSchedulerEnabled() {
-    return schedulerEnabled;
-  }
-
-  public void setSchedulerEnabled(
-    boolean schedulerEnabled) {
-    this.schedulerEnabled = schedulerEnabled;
-  }
-
-  public int getHubRequestConcurrency() {
-    return hubRequestConcurrency;
-  }
-
-  public void setHubRequestConcurrency(
-    int hubRequestConcurrency) {
-    this.hubRequestConcurrency = hubRequestConcurrency;
-  }
 }
