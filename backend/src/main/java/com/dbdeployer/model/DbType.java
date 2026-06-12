@@ -5,35 +5,49 @@ import lombok.ToString;
 @ToString
 public enum DbType {
   // ── Relational databases ──────────────────────────────────────────────────
-  POSTGRESQL, MYSQL, H2, MARIADB, MSSQL,
+  POSTGRESQL,
+  MYSQL,
+  H2,
+  MARIADB,
+  MSSQL,
 
   // ── Document / NoSQL databases ────────────────────────────────────────────
-  MONGODB, COUCHDB, NEO4J, DYNAMODB_LOCAL,
+  MONGODB,
+  COUCHDB,
+  NEO4J,
+  DYNAMODB_LOCAL,
 
   // ── Key-value / cache ─────────────────────────────────────────────────────
   REDIS,
 
   // ── Wide-column & OLAP ────────────────────────────────────────────────────
-  CASSANDRA, CLICKHOUSE,
+  CASSANDRA,
+  CLICKHOUSE,
 
   // ── Search engines ────────────────────────────────────────────────────────
   ELASTICSEARCH,
 
   // ── Messaging & streaming ─────────────────────────────────────────────────
-  RABBITMQ, KAFKA, CONDUKTOR,
+  RABBITMQ,
+  KAFKA,
+  CONDUKTOR,
 
   // ── Observability ─────────────────────────────────────────────────────────
-  GRAFANA, PROMETHEUS, LOKI,
+  GRAFANA,
+  PROMETHEUS,
+  LOKI,
 
   // ── Object storage ────────────────────────────────────────────────────────
   MINIO,
 
   // ── Identity & secrets ────────────────────────────────────────────────────
-  KEYCLOAK, VAULT,
+  KEYCLOAK,
+  VAULT,
 
   // ── Web / proxy ───────────────────────────────────────────────────────────
   NGINX,
 
   // ── DB admin UIs ─────────────────────────────────────────────────────────
-  ADMINER, PGADMIN
+  ADMINER,
+  PGADMIN
 }

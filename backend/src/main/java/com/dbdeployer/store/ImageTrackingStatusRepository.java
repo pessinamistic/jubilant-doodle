@@ -10,12 +10,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ImageTrackingStatusRepository extends JpaRepository<ImageTrackingStatus, String> {
   Optional<ImageTrackingStatus> findByDbTypeAndImageNameAndImageTag(
-    DbType dbType,
-    String imageName,
-    String imageTag);
+      DbType dbType, String imageName, String imageTag);
 
   List<ImageTrackingStatus> findAllByOrderByDbTypeAscImageNameAscImageTagAsc();
 
-  List<ImageTrackingStatus> findByDbTypeOrderByImageNameAscImageTagAsc(
-    DbType dbType);
+  List<ImageTrackingStatus> findByDbTypeOrderByImageNameAscImageTagAsc(DbType dbType);
 }

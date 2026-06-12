@@ -15,9 +15,8 @@ import lombok.Data;
 /**
  * One step within a {@link DeploymentPipeline}.
  *
- * <p>
- * Steps are ordered by {@code stepOrder} and executed sequentially. If any step
- * fails, all subsequent PENDING steps are marked SKIPPED.
+ * <p>Steps are ordered by {@code stepOrder} and executed sequentially. If any step fails, all
+ * subsequent PENDING steps are marked SKIPPED.
  */
 @Data
 @Entity
@@ -54,5 +53,4 @@ public class PipelineStep {
 
   @Column(name = "completed_at")
   private Instant completedAt;
-
 }

@@ -13,9 +13,9 @@ public record PipelineStepResponse(
     String message,
     Instant startedAt,
     Instant completedAt) {
-  public static PipelineStepResponse from(
-    PipelineStep s) {
-    return new PipelineStepResponse(s.getId(),
+  public static PipelineStepResponse from(PipelineStep s) {
+    return new PipelineStepResponse(
+        s.getId(),
         s.getStepType(),
         s.getStepOrder(),
         s.getStatus(),

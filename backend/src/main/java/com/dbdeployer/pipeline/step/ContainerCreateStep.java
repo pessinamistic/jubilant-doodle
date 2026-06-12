@@ -18,8 +18,7 @@ public class ContainerCreateStep implements DeployStep {
 
   private final DockerDeployEngine docker;
 
-  public ContainerCreateStep(
-    DockerDeployEngine docker) {
+  public ContainerCreateStep(DockerDeployEngine docker) {
     this.docker = docker;
   }
 
@@ -29,23 +28,29 @@ public class ContainerCreateStep implements DeployStep {
   }
 
   @Override
-  public String execute(
-    DeploymentConfig config,
-    DeployedContainer container) throws StepExecutionException {
+  public String execute(DeploymentConfig config, DeployedContainer container)
+      throws StepExecutionException {
     log.info("[pipeline] Creating container for '{}'", config.getName());
     try {
       docker.createContainer(config, container);
     } catch (com.github.dockerjava.api.exception.ConflictException e) {
-      throw new StepExecutionException(DeployErrorCode.CONTAINER_NAME_CONFLICT,
-          "Container name conflict: " + e.getMessage(), e);
+      throw new StepExecutionException(
+          DeployErrorCode.CONTAINER_NAME_CONFLICT, "Container name conflict: " + e.getMessage(), e);
     } catch (java.io.IOException e) {
-      throw new StepExecutionException(DeployErrorCode.VOLUME_CREATE_FAILED,
-          "Failed to create data directory: " + e.getMessage(), e);
+      throw new StepExecutionException(
+          DeployErrorCode.VOLUME_CREATE_FAILED,
+          "Failed to create data directory: " + e.getMessage(),
+          e);
     } catch (Exception e) {
-      throw new StepExecutionException(DeployErrorCode.CONTAINER_CREATE_FAILED,
-          "Failed to create container: " + e.getMessage(), e);
+      throw new StepExecutionException(
+          DeployErrorCode.CONTAINER_CREATE_FAILED,
+          "Failed to create container: " + e.getMessage(),
+          e);
     }
-    return "Created container: " + container.getContainerName() + " (" + container.getContainerId().substring(0, 12)
+    return "Created container: "
+        + container.getContainerName()
+        + " ("
+        + container.getContainerId().substring(0, 12)
         + ")";
   }
 }

@@ -20,5 +20,4 @@ public class PipelineProperties {
 
   /** Delay in ms between each pipeline step. Default: 1500. */
   private long stepDelayMs = 1500;
-
 }

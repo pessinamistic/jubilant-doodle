@@ -15,8 +15,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Collects JVM heap and HikariCP pool metrics on a fixed 30-second schedule,
- * keeping the last 60 samples in a ring buffer (~30-minute window).
+ * Collects JVM heap and HikariCP pool metrics on a fixed 30-second schedule, keeping the last 60
+ * samples in a ring buffer (~30-minute window).
  */
 @Service
 public class MetricsHistoryService {
@@ -30,8 +30,7 @@ public class MetricsHistoryService {
   private final JdbcTemplate jdbc;
   private final Deque<MetricSample> ring = new ArrayDeque<>(MAX_SAMPLES + 1);
 
-  public MetricsHistoryService(
-    DataSource dataSource) {
+  public MetricsHistoryService(DataSource dataSource) {
     this.dataSource = dataSource;
     this.jdbc = new JdbcTemplate(dataSource);
   }
@@ -57,28 +56,37 @@ public class MetricsHistoryService {
       }
     }
 
-    String ts = Instant.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    String ts =
+        Instant.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
     double pgDbSizeMb = 0.0;
     int pgActiveConns = 0;
     try {
-      Double sizeResult = jdbc.queryForObject("SELECT pg_database_size(current_database()) / (1024.0 * 1024.0)",
-          Double.class);
-      if (sizeResult != null)
-        pgDbSizeMb = Math.round(sizeResult * 100.0) / 100.0;
-      Integer connResult = jdbc.queryForObject(
-          "SELECT count(*)::int FROM pg_stat_activity WHERE datname = current_database() AND state IS NOT NULL",
-          Integer.class);
-      if (connResult != null)
-        pgActiveConns = connResult;
+      Double sizeResult =
+          jdbc.queryForObject(
+              "SELECT pg_database_size(current_database()) / (1024.0 * 1024.0)", Double.class);
+      if (sizeResult != null) pgDbSizeMb = Math.round(sizeResult * 100.0) / 100.0;
+      Integer connResult =
+          jdbc.queryForObject(
+              "SELECT count(*)::int FROM pg_stat_activity WHERE datname = current_database() AND state IS NOT NULL",
+              Integer.class);
+      if (connResult != null) pgActiveConns = connResult;
     } catch (Exception ignored) {
       // Non-fatal: Postgres metrics default to 0 if unavailable
     }
 
     ring.addLast(
-        new MetricSample(ts, heapUsed, heapMax, heapPct, poolActive, poolMax, poolPct, pgDbSizeMb, pgActiveConns));
-    while (ring.size() > MAX_SAMPLES)
-      ring.removeFirst();
+        new MetricSample(
+            ts,
+            heapUsed,
+            heapMax,
+            heapPct,
+            poolActive,
+            poolMax,
+            poolPct,
+            pgDbSizeMb,
+            pgActiveConns));
+    while (ring.size() > MAX_SAMPLES) ring.removeFirst();
   }
 
   /** Returns an immutable snapshot of the ring buffer. */

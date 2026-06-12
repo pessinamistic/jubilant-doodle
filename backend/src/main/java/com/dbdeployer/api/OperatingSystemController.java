@@ -17,8 +17,7 @@ public class OperatingSystemController {
   private final OperatingSystemService operatingSystemService;
 
   public OperatingSystemController(
-    SystemDbStatsService statsService,
-    OperatingSystemService operatingSystemService) {
+      SystemDbStatsService statsService, OperatingSystemService operatingSystemService) {
     this.statsService = statsService;
     this.operatingSystemService = operatingSystemService;
   }
@@ -29,13 +28,9 @@ public class OperatingSystemController {
     return operatingSystemService.getSystemInfo();
   }
 
-  /**
-   * Live stats for the system database (schema row counts, pool, JVM heap,
-   * uptime)
-   */
+  /** Live stats for the system database (schema row counts, pool, JVM heap, uptime) */
   @GetMapping("/stats")
   public SystemDbStatsResponse systemStats() {
     return statsService.getStats();
   }
-
 }

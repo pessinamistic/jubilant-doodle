@@ -15,12 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
  * Metrics endpoints for the Port Wrangler system dashboard.
  *
  * <ul>
- * <li>{@code GET /api/system/metrics/history} — Rolling 30-min JVM + pool
- * time-series
- * <li>{@code GET /api/system/metrics/activity} — Deployment frequency +
- * instance breakdown
- * <li>{@code GET /api/system/docker-status} — Live Docker daemon reachability
- * probe
+ *   <li>{@code GET /api/system/metrics/history} — Rolling 30-min JVM + pool time-series
+ *   <li>{@code GET /api/system/metrics/activity} — Deployment frequency + instance breakdown
+ *   <li>{@code GET /api/system/docker-status} — Live Docker daemon reachability probe
  * </ul>
  */
 @RestController
@@ -32,9 +29,9 @@ public class SystemMetricsController {
   private final DockerHealthChecker dockerHealthChecker;
 
   public SystemMetricsController(
-    MetricsHistoryService historyService,
-    JdbcTemplate jdbc,
-    DockerHealthChecker dockerHealthChecker) {
+      MetricsHistoryService historyService,
+      JdbcTemplate jdbc,
+      DockerHealthChecker dockerHealthChecker) {
     this.historyService = historyService;
     this.jdbc = jdbc;
     this.dockerHealthChecker = dockerHealthChecker;
@@ -50,56 +47,64 @@ public class SystemMetricsController {
    * Deployment frequency and instance breakdown suitable for chart rendering:
    *
    * <ul>
-   * <li>Deployments per day for the last 30 days
-   * <li>Instance counts grouped by database type
-   * <li>Instance counts grouped by runtime status
+   *   <li>Deployments per day for the last 30 days
+   *   <li>Instance counts grouped by database type
+   *   <li>Instance counts grouped by runtime status
    * </ul>
    */
   @GetMapping("/activity")
   public DeploymentActivityResponse activity() {
 
     // ── Deployments per calendar day (last 30 days) ─────────────────────
-    List<DeploymentActivityResponse.DayCount> byDay = jdbc.query("""
+    List<DeploymentActivityResponse.DayCount> byDay =
+        jdbc.query(
+            """
         SELECT created_at::date AS deploy_date, COUNT(*) AS cnt
         FROM deployment_config
         WHERE is_system = false
           AND created_at >= NOW() - INTERVAL '30 days'
         GROUP BY created_at::date
         ORDER BY deploy_date
-        """, (
-      rs,
-      i) -> new DeploymentActivityResponse.DayCount(rs.getDate("deploy_date").toLocalDate().toString(),
-          rs.getLong("cnt")));
+        """,
+            (rs, i) ->
+                new DeploymentActivityResponse.DayCount(
+                    rs.getDate("deploy_date").toLocalDate().toString(), rs.getLong("cnt")));
 
     // ── Instances by database type ───────────────────────────────────────
-    List<DeploymentActivityResponse.LabelCount> byType = jdbc.query("""
+    List<DeploymentActivityResponse.LabelCount> byType =
+        jdbc.query(
+            """
         SELECT db_type AS label, COUNT(*) AS cnt
         FROM deployment_config
         WHERE is_system = false
         GROUP BY db_type
         ORDER BY cnt DESC
-        """, (
-      rs,
-      i) -> new DeploymentActivityResponse.LabelCount(rs.getString("label"), rs.getLong("cnt")));
+        """,
+            (rs, i) ->
+                new DeploymentActivityResponse.LabelCount(
+                    rs.getString("label"), rs.getLong("cnt")));
 
     // ── Instances by status ──────────────────────────────────────────────
-    List<DeploymentActivityResponse.LabelCount> byStatus = jdbc.query("""
+    List<DeploymentActivityResponse.LabelCount> byStatus =
+        jdbc.query(
+            """
         SELECT dc.status AS label, COUNT(*) AS cnt
         FROM deployed_container dc
         JOIN deployment_config cfg ON cfg.id = dc.config_id
         WHERE cfg.is_system = false
         GROUP BY dc.status
         ORDER BY cnt DESC
-        """, (
-      rs,
-      i) -> new DeploymentActivityResponse.LabelCount(rs.getString("label"), rs.getLong("cnt")));
+        """,
+            (rs, i) ->
+                new DeploymentActivityResponse.LabelCount(
+                    rs.getString("label"), rs.getLong("cnt")));
 
     return new DeploymentActivityResponse(byDay, byType, byStatus);
   }
 
   /**
-   * Live probe of the Docker daemon — useful for the UI to surface a warning
-   * banner if Docker goes down after the app has started.
+   * Live probe of the Docker daemon — useful for the UI to surface a warning banner if Docker goes
+   * down after the app has started.
    */
   @GetMapping("/docker-status")
   public DockerStatus dockerStatus() {

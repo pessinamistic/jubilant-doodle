@@ -20,8 +20,7 @@ public class CatalogController {
 
   private final ImageValidationService imageValidationService;
 
-  public CatalogController(
-    ImageValidationService imageValidationService) {
+  public CatalogController(ImageValidationService imageValidationService) {
     this.imageValidationService = imageValidationService;
   }
 
@@ -31,13 +30,10 @@ public class CatalogController {
     return DatabaseCatalog.all();
   }
 
-  /**
-   * Resolve deployable versions dynamically from the image registry for one tool.
-   */
+  /** Resolve deployable versions dynamically from the image registry for one tool. */
   @GetMapping("/{dbType}/versions")
   public List<String> catalogVersions(
-    @PathVariable DbType dbType,
-    @RequestParam(defaultValue = "false") boolean refresh) {
+      @PathVariable DbType dbType, @RequestParam(defaultValue = "false") boolean refresh) {
     log.info("[api] catalog versions requested: dbType={}, refresh={}", dbType, refresh);
     List<String> versions = imageValidationService.discoverAndTrackVersions(dbType, refresh);
     log.info("[api] catalog versions resolved: dbType={}, count={}", dbType, versions.size());

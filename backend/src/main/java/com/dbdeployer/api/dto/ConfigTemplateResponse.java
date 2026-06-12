@@ -22,12 +22,12 @@ public record ConfigTemplateResponse(
     Instant createdAt,
     Instant updatedAt) {
 
-  public static ConfigTemplateResponse from(
-    DeploymentConfig t) {
+  public static ConfigTemplateResponse from(DeploymentConfig t) {
     var def = DatabaseCatalog.get(t.getDbType());
     String display = def != null ? def.displayName() : t.getDbType().name();
     String icon = def != null ? def.icon() : "🗄️";
-    return new ConfigTemplateResponse(t.getId(),
+    return new ConfigTemplateResponse(
+        t.getId(),
         t.getName(),
         t.getDescription(),
         t.getDbType(),

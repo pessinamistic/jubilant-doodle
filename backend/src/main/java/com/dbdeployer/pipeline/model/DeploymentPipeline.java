@@ -11,14 +11,12 @@ import java.time.Instant;
 import lombok.Data;
 
 /**
- * Persisted record of a single deploy pipeline run for one
- * {@link com.dbdeployer.model.DeploymentConfig}.
+ * Persisted record of a single deploy pipeline run for one {@link
+ * com.dbdeployer.model.DeploymentConfig}.
  *
- * <p>
- * A new pipeline is created each time a deployment is triggered. The
- * relationship to {@code
- * DeploymentConfig} is denormalized as a plain String {@code configId} so that
- * pipeline rows remain readable even if a config were ever deleted.
+ * <p>A new pipeline is created each time a deployment is triggered. The relationship to {@code
+ * DeploymentConfig} is denormalized as a plain String {@code configId} so that pipeline rows remain
+ * readable even if a config were ever deleted.
  */
 @Data
 @Entity
@@ -29,10 +27,7 @@ public class DeploymentPipeline {
   @Column(name = "id", nullable = false, updatable = false)
   private String id;
 
-  /**
-   * Foreign key to {@code deployment_config.id} — kept as a plain string (no FK
-   * join).
-   */
+  /** Foreign key to {@code deployment_config.id} — kept as a plain string (no FK join). */
   @Column(name = "config_id", nullable = false, updatable = false)
   private String configId;
 
@@ -64,8 +59,6 @@ public class DeploymentPipeline {
 
   @PrePersist
   protected void onCreate() {
-    if (createdAt == null)
-      createdAt = Instant.now();
+    if (createdAt == null) createdAt = Instant.now();
   }
-
 }

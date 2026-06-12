@@ -19,32 +19,27 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-/**
- * Produces a live snapshot of Port Wrangler's system (PostgreSQL) database
- * stats.
- */
+/** Produces a live snapshot of Port Wrangler's system (PostgreSQL) database stats. */
 @Slf4j
 @Service
 public class SystemDbStatsService {
 
-  private static final List<String> TRACKED_TABLES = List.of("deployment_config", "deployed_container",
-      "deployment_pipeline", "pipeline_step");
+  private static final List<String> TRACKED_TABLES =
+      List.of("deployment_config", "deployed_container", "deployment_pipeline", "pipeline_step");
 
   private final DataSource dataSource;
   private final JdbcTemplate jdbc;
   private final Environment env;
 
-  public SystemDbStatsService(
-    DataSource dataSource,
-    JdbcTemplate jdbc,
-    Environment env) {
+  public SystemDbStatsService(DataSource dataSource, JdbcTemplate jdbc, Environment env) {
     this.dataSource = dataSource;
     this.jdbc = jdbc;
     this.env = env;
   }
 
   public SystemDbStatsResponse getStats() {
-    return new SystemDbStatsResponse(buildDbInfo(), buildSchemaInfo(), buildPoolInfo(), buildAppInfo(), buildJvmInfo());
+    return new SystemDbStatsResponse(
+        buildDbInfo(), buildSchemaInfo(), buildPoolInfo(), buildAppInfo(), buildJvmInfo());
   }
 
   // ── Sections ──────────────────────────────────────────────────────────────
@@ -62,10 +57,14 @@ public class SystemDbStatsService {
   }
 
   private SchemaInfo buildSchemaInfo() {
-    List<TableStat> tables = TRACKED_TABLES.stream().map(table -> {
-      Long count = safeCount(table);
-      return new TableStat(table, count != null ? count : -1L);
-    }).toList();
+    List<TableStat> tables =
+        TRACKED_TABLES.stream()
+            .map(
+                table -> {
+                  Long count = safeCount(table);
+                  return new TableStat(table, count != null ? count : -1L);
+                })
+            .toList();
     return new SchemaInfo(tables.size(), tables);
   }
 
@@ -73,8 +72,12 @@ public class SystemDbStatsService {
     if (dataSource instanceof HikariDataSource hds) {
       var pool = hds.getHikariPoolMXBean();
       if (pool != null) {
-        return new PoolInfo(hds.getMaximumPoolSize(), pool.getActiveConnections(), pool.getIdleConnections(),
-            pool.getThreadsAwaitingConnection(), pool.getTotalConnections());
+        return new PoolInfo(
+            hds.getMaximumPoolSize(),
+            pool.getActiveConnections(),
+            pool.getIdleConnections(),
+            pool.getThreadsAwaitingConnection(),
+            pool.getTotalConnections());
       }
     }
     return new PoolInfo(0, 0, 0, 0, 0);
@@ -84,8 +87,10 @@ public class SystemDbStatsService {
     var mx = ManagementFactory.getRuntimeMXBean();
     long uptimeMs = mx.getUptime();
     long startMs = mx.getStartTime();
-    String started = Instant.ofEpochMilli(startMs).atOffset(ZoneOffset.UTC)
-        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    String started =
+        Instant.ofEpochMilli(startMs)
+            .atOffset(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     return new AppInfo(uptimeMs / 1000L, started);
   }
 
@@ -102,10 +107,8 @@ public class SystemDbStatsService {
    * Extracts the host from a Postgres JDBC URL like {@code
    * jdbc:postgresql://localhost:5499/dbdeployer}.
    */
-  static String extractPgHost(
-    String url) {
-    if (url == null || url.isBlank())
-      return "localhost";
+  static String extractPgHost(String url) {
+    if (url == null || url.isBlank()) return "localhost";
     try {
       // Strip jdbc: prefix so java.net.URI can parse it
       java.net.URI uri = new java.net.URI(url.replaceFirst("^jdbc:", ""));
@@ -117,13 +120,11 @@ public class SystemDbStatsService {
   }
 
   /**
-   * Extracts the port from a Postgres JDBC URL. Falls back to {@code 5432} if the
-   * URL contains no explicit port.
+   * Extracts the port from a Postgres JDBC URL. Falls back to {@code 5432} if the URL contains no
+   * explicit port.
    */
-  static int extractPgPort(
-    String url) {
-    if (url == null || url.isBlank())
-      return 5432;
+  static int extractPgPort(String url) {
+    if (url == null || url.isBlank()) return 5432;
     try {
       java.net.URI uri = new java.net.URI(url.replaceFirst("^jdbc:", ""));
       int p = uri.getPort();
@@ -134,21 +135,16 @@ public class SystemDbStatsService {
   }
 
   /**
-   * Parses a short version string from the Postgres {@code version()} banner.
-   * e.g. {@code
+   * Parses a short version string from the Postgres {@code version()} banner. e.g. {@code
    * "PostgreSQL 16.3 on aarch64..."} → {@code "16.3"}
    */
-  private static String parsePostgresVersion(
-    String banner) {
-    if (banner == null)
-      return "unknown";
+  private static String parsePostgresVersion(String banner) {
+    if (banner == null) return "unknown";
     String[] parts = banner.split("\\s+");
     return parts.length >= 2 ? parts[1] : banner;
   }
 
-  private String safeQuery(
-    String sql,
-    String fallback) {
+  private String safeQuery(String sql, String fallback) {
     try {
       return jdbc.queryForObject(sql, String.class);
     } catch (Exception e) {
@@ -157,8 +153,7 @@ public class SystemDbStatsService {
     }
   }
 
-  private long safeCountLong(
-    String sql) {
+  private long safeCountLong(String sql) {
     try {
       Long v = jdbc.queryForObject(sql, Long.class);
       return v != null ? v : 0L;
@@ -168,8 +163,7 @@ public class SystemDbStatsService {
     }
   }
 
-  private Long safeCount(
-    String table) {
+  private Long safeCount(String table) {
     try {
       return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class);
     } catch (Exception e) {

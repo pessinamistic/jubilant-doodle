@@ -19,9 +19,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Runs at startup ({@code @Order(1)}). Creates the system DB rows once and then
- * only backfills missing runtime metadata (for example container ID) from the
- * provisioner so we do not rewrite the system config on every run.
+ * Runs at startup ({@code @Order(1)}). Creates the system DB rows once and then only backfills
+ * missing runtime metadata (for example container ID) from the provisioner so we do not rewrite the
+ * system config on every run.
  */
 @Slf4j
 @Order(1)
@@ -53,17 +53,16 @@ public class SystemDbRegistrar implements ApplicationRunner {
   private String dataDir;
 
   public SystemDbRegistrar(
-    JdbcTemplate jdbc,
-    DeploymentConfigRepository configRepo,
-    DeployedContainerRepository containerRepo) {
+      JdbcTemplate jdbc,
+      DeploymentConfigRepository configRepo,
+      DeployedContainerRepository containerRepo) {
     this.jdbc = jdbc;
     this.configRepo = configRepo;
     this.containerRepo = containerRepo;
   }
 
   @Override
-  public void run(
-    ApplicationArguments args) {
+  public void run(ApplicationArguments args) {
     try {
       DeploymentConfig config = configRepo.findById(SYSTEM_CONFIG_ID).orElse(null);
       if (config == null) {
@@ -108,14 +107,16 @@ public class SystemDbRegistrar implements ApplicationRunner {
         changed = true;
       }
 
-      String effectiveContainerName = firstNonBlank(resolveRuntimeContainerName(), systemDbContainerName);
+      String effectiveContainerName =
+          firstNonBlank(resolveRuntimeContainerName(), systemDbContainerName);
       if (!Objects.equals(container.getContainerName(), effectiveContainerName)) {
         container.setContainerName(effectiveContainerName);
         changed = true;
       }
 
       String effectiveContainerId = resolveRuntimeContainerId();
-      if (effectiveContainerId != null && !effectiveContainerId.isBlank()
+      if (effectiveContainerId != null
+          && !effectiveContainerId.isBlank()
           && !Objects.equals(container.getContainerId(), effectiveContainerId)) {
         container.setContainerId(effectiveContainerId);
         changed = true;
@@ -136,7 +137,9 @@ public class SystemDbRegistrar implements ApplicationRunner {
 
       if (changed) {
         containerRepo.save(container);
-        log.info("System DB container metadata updated (name={}, id={})", container.getContainerName(),
+        log.info(
+            "System DB container metadata updated (name={}, id={})",
+            container.getContainerName(),
             abbreviate(container.getContainerId()));
       }
 
@@ -147,17 +150,19 @@ public class SystemDbRegistrar implements ApplicationRunner {
   }
 
   private String resolveRuntimeContainerId() {
-    String fromSystemProperty = System.getProperty(SystemDbProvisioner.RUNTIME_CONTAINER_ID_PROPERTY, "").trim();
-    if (!fromSystemProperty.isBlank())
-      return fromSystemProperty;
+    String fromSystemProperty =
+        System.getProperty(SystemDbProvisioner.RUNTIME_CONTAINER_ID_PROPERTY, "").trim();
+    if (!fromSystemProperty.isBlank()) return fromSystemProperty;
     return runtimeContainerId != null && !runtimeContainerId.isBlank() ? runtimeContainerId : null;
   }
 
   private String resolveRuntimeContainerName() {
-    String fromSystemProperty = System.getProperty(SystemDbProvisioner.RUNTIME_CONTAINER_NAME_PROPERTY, "").trim();
-    if (!fromSystemProperty.isBlank())
-      return fromSystemProperty;
-    return runtimeContainerName != null && !runtimeContainerName.isBlank() ? runtimeContainerName : null;
+    String fromSystemProperty =
+        System.getProperty(SystemDbProvisioner.RUNTIME_CONTAINER_NAME_PROPERTY, "").trim();
+    if (!fromSystemProperty.isBlank()) return fromSystemProperty;
+    return runtimeContainerName != null && !runtimeContainerName.isBlank()
+        ? runtimeContainerName
+        : null;
   }
 
   private String resolvePostgresVersion() {
@@ -170,42 +175,31 @@ public class SystemDbRegistrar implements ApplicationRunner {
     }
   }
 
-  private static String firstNonBlank(
-    String first,
-    String second) {
-    if (first != null && !first.isBlank())
-      return first;
+  private static String firstNonBlank(String first, String second) {
+    if (first != null && !first.isBlank()) return first;
     return second;
   }
 
-  private static String abbreviate(
-    String value) {
-    if (value == null || value.isBlank())
-      return "n/a";
+  private static String abbreviate(String value) {
+    if (value == null || value.isBlank()) return "n/a";
     return value.length() > 12 ? value.substring(0, 12) : value;
   }
 
   /**
    * Extracts a short version string from the Postgres {@code version()} banner.
    *
-   * <p>
-   * Example input:
-   * {@code "PostgreSQL 16.3 on aarch64-unknown-linux-musl, compiled by gcc 13.2.1
+   * <p>Example input: {@code "PostgreSQL 16.3 on aarch64-unknown-linux-musl, compiled by gcc 13.2.1
    * ..."}
    *
-   * <p>
-   * Returns: {@code "16.3"}
+   * <p>Returns: {@code "16.3"}
    */
-  private static String parsePostgresVersion(
-    String banner) {
-    if (banner == null)
-      return "16";
+  private static String parsePostgresVersion(String banner) {
+    if (banner == null) return "16";
     // Banner starts with "PostgreSQL <major>.<minor>" (optionally followed by more
     // text)
     String[] parts = banner.split("\\s+");
     // parts[0] = "PostgreSQL", parts[1] = "16.3"
-    if (parts.length >= 2)
-      return parts[1];
+    if (parts.length >= 2) return parts[1];
     return "16";
   }
 }

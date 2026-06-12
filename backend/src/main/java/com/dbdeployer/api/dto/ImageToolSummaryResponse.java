@@ -14,5 +14,4 @@ public record ImageToolSummaryResponse(
     int blockedCount,
     int localAvailableCount,
     int dockerHubAvailableCount,
-    LocalDateTime updatedAt) {
-}
+    LocalDateTime updatedAt) {}

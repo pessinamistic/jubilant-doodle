@@ -18,9 +18,7 @@ public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
 
   @Override
   public boolean preHandle(
-    HttpServletRequest request,
-    HttpServletResponse response,
-    Object handler) {
+      HttpServletRequest request, HttpServletResponse response, Object handler) {
     request.setAttribute(START_TIME_ATTR, System.nanoTime());
 
     String method = request.getMethod();
@@ -28,8 +26,13 @@ public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
     String query = request.getQueryString();
 
     if (verbose) {
-      log.info("[api:req] method={} path={} query={} remote={} userAgent={}", method, uri, query != null ? query : "",
-          request.getRemoteAddr(), request.getHeader("User-Agent"));
+      log.info(
+          "[api:req] method={} path={} query={} remote={} userAgent={}",
+          method,
+          uri,
+          query != null ? query : "",
+          request.getRemoteAddr(),
+          request.getHeader("User-Agent"));
     } else {
       log.info("[api:req] {} {}", method, uri);
     }
@@ -39,30 +42,33 @@ public class ApiRequestLoggingInterceptor implements HandlerInterceptor {
 
   @Override
   public void afterCompletion(
-    HttpServletRequest request,
-    HttpServletResponse response,
-    Object handler,
-    Exception ex) {
+      HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
     long durationMs = resolveDurationMs(request);
     String method = request.getMethod();
     String uri = request.getRequestURI();
     int status = response.getStatus();
 
     if (ex != null) {
-      log.warn("[api:res] {} {} status={} durationMs={} errorType={} message={}", method, uri, status, durationMs,
-          ex.getClass().getSimpleName(), ex.getMessage());
+      log.warn(
+          "[api:res] {} {} status={} durationMs={} errorType={} message={}",
+          method,
+          uri,
+          status,
+          durationMs,
+          ex.getClass().getSimpleName(),
+          ex.getMessage());
       return;
     }
 
     if (verbose) {
-      log.info("[api:res] method={} path={} status={} durationMs={}", method, uri, status, durationMs);
+      log.info(
+          "[api:res] method={} path={} status={} durationMs={}", method, uri, status, durationMs);
     } else {
       log.info("[api:res] {} {} -> {} ({} ms)", method, uri, status, durationMs);
     }
   }
 
-  private long resolveDurationMs(
-    HttpServletRequest request) {
+  private long resolveDurationMs(HttpServletRequest request) {
     Object start = request.getAttribute(START_TIME_ATTR);
     if (!(start instanceof Long startNanos)) {
       return -1L;

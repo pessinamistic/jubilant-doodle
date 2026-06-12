@@ -23,23 +23,25 @@ public class ImageController {
 
   private final ImageValidationService imageValidationService;
 
-  public ImageController(
-    ImageValidationService imageValidationService) {
+  public ImageController(ImageValidationService imageValidationService) {
     this.imageValidationService = imageValidationService;
   }
 
-  /**
-   * Check one database tool image tag against local Docker + Docker Hub fallback.
-   */
+  /** Check one database tool image tag against local Docker + Docker Hub fallback. */
   @GetMapping("/check")
   public ImageCheckResponse checkImage(
-    @RequestParam DbType dbType,
-    @RequestParam String tag,
-    @RequestParam(defaultValue = "false") boolean refresh) {
+      @RequestParam DbType dbType,
+      @RequestParam String tag,
+      @RequestParam(defaultValue = "false") boolean refresh) {
     log.debug("[api] image check requested: dbType={}, tag={}, refresh={}", dbType, tag, refresh);
     ImageCheckResponse result = imageValidationService.check(dbType, tag, refresh);
-    log.debug("[api] image check result: dbType={}, tag={}, decision={}, local={}, hub={}", dbType, tag,
-        result.decision(), result.localStatus(), result.dockerHubStatus());
+    log.debug(
+        "[api] image check result: dbType={}, tag={}, decision={}, local={}, hub={}",
+        dbType,
+        tag,
+        result.decision(),
+        result.localStatus(),
+        result.dockerHubStatus());
     return result;
   }
 
@@ -64,8 +66,7 @@ public class ImageController {
   /** Per-tool image details loaded on demand for drill-down pages. */
   @GetMapping("/tools/{dbType}")
   public ImageToolDetailResponse imageToolDetails(
-    @PathVariable DbType dbType,
-    @RequestParam(defaultValue = "false") boolean refresh) {
+      @PathVariable DbType dbType, @RequestParam(defaultValue = "false") boolean refresh) {
     log.debug("[api] image tool detail requested: dbType={}, refresh={}", dbType, refresh);
     ImageToolDetailResponse detail = imageValidationService.getToolDetails(dbType, refresh);
     log.debug("[api] image tool detail returned: dbType={}, tags={}", dbType, detail.totalTags());
@@ -75,24 +76,28 @@ public class ImageController {
   /** Manually refresh image statuses for one tool only. */
   @PostMapping("/tools/{dbType}/refresh")
   public Map<String, Object> refreshImageTool(
-    @PathVariable DbType dbType,
-    @RequestParam(defaultValue = "all") String scope) {
+      @PathVariable DbType dbType, @RequestParam(defaultValue = "all") String scope) {
     log.info("[api] image tool refresh requested: dbType={}, scope={}", dbType, scope);
     var parsedScope = ImageValidationService.RefreshScope.from(scope);
     int updated = imageValidationService.refreshToolStatuses(dbType, parsedScope);
-    log.info("[api] image tool refresh completed: dbType={}, scope={}, updated={}", dbType,
-        parsedScope.name().toLowerCase(), updated);
+    log.info(
+        "[api] image tool refresh completed: dbType={}, scope={}, updated={}",
+        dbType,
+        parsedScope.name().toLowerCase(),
+        updated);
     return Map.of("dbType", dbType, "scope", parsedScope.name().toLowerCase(), "updated", updated);
   }
 
   /** Manually refresh tracked image statuses. Scope: local, hub, or all. */
   @PostMapping("/refresh")
-  public Map<String, Object> refreshImages(
-    @RequestParam(defaultValue = "all") String scope) {
+  public Map<String, Object> refreshImages(@RequestParam(defaultValue = "all") String scope) {
     log.info("[api] image refresh requested: scope={}", scope);
     var parsedScope = ImageValidationService.RefreshScope.from(scope);
     int updated = imageValidationService.refresh(parsedScope);
-    log.info("[api] image refresh completed: scope={}, updated={}", parsedScope.name().toLowerCase(), updated);
+    log.info(
+        "[api] image refresh completed: scope={}, updated={}",
+        parsedScope.name().toLowerCase(),
+        updated);
     return Map.of("scope", parsedScope.name().toLowerCase(), "updated", updated);
   }
 }

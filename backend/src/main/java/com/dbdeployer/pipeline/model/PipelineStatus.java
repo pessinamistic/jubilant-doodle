@@ -4,5 +4,8 @@ import lombok.ToString;
 
 @ToString
 public enum PipelineStatus {
-  PENDING, RUNNING, SUCCESS, FAILED
+  PENDING,
+  RUNNING,
+  SUCCESS,
+  FAILED
 }

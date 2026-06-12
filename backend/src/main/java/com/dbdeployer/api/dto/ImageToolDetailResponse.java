@@ -16,5 +16,4 @@ public record ImageToolDetailResponse(
     int localAvailableCount,
     int dockerHubAvailableCount,
     LocalDateTime updatedAt,
-    List<ImageCheckResponse> tags) {
-}
+    List<ImageCheckResponse> tags) {}

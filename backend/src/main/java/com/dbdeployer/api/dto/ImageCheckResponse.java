@@ -18,5 +18,4 @@ public record ImageCheckResponse(
     String message,
     LocalDateTime localCheckedAt,
     LocalDateTime dockerHubCheckedAt,
-    LocalDateTime updatedAt) {
-}
+    LocalDateTime updatedAt) {}

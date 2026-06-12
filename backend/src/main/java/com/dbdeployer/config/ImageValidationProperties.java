@@ -21,10 +21,8 @@ public class ImageValidationProperties {
   private boolean schedulerEnabled = true;
 
   /**
-   * Maximum number of concurrent Docker Hub checkTag HTTP calls during a batch
-   * refresh. Keeps the app from hammering the public API and hitting 429
-   * rate-limit responses.
+   * Maximum number of concurrent Docker Hub checkTag HTTP calls during a batch refresh. Keeps the
+   * app from hammering the public API and hitting 429 rate-limit responses.
    */
   private int hubRequestConcurrency = 10;
-
 }

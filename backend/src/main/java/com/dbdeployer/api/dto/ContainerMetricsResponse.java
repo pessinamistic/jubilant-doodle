@@ -3,13 +3,11 @@ package com.dbdeployer.api.dto;
 import java.util.Map;
 
 /**
- * Live container metrics snapshot — Docker stats + inspect + a port
- * reachability probe + optional tool-specific telemetry (e.g. Postgres
- * connection count).
+ * Live container metrics snapshot — Docker stats + inspect + a port reachability probe + optional
+ * tool-specific telemetry (e.g. Postgres connection count).
  *
- * <p>
- * All byte values are raw bytes. The frontend converts to human-readable units.
- * If the container is not running, {@code available} will be {@code false}.
+ * <p>All byte values are raw bytes. The frontend converts to human-readable units. If the container
+ * is not running, {@code available} will be {@code false}.
  */
 public record ContainerMetricsResponse(
 
@@ -21,10 +19,7 @@ public record ContainerMetricsResponse(
     double cpuPercent,
     /** Number of CPU cores visible to the container */
     int cpuCores,
-    /**
-     * Approx % of CPU time the kernel throttled this container (0-100). 0 when
-     * unavailable.
-     */
+    /** Approx % of CPU time the kernel throttled this container (0-100). 0 when unavailable. */
     double cpuThrottledPercent,
 
     // ── Memory ───────────────────────────────────────────────────────────
@@ -38,14 +33,18 @@ public record ContainerMetricsResponse(
     double memPercent,
 
     // ── Network I/O (cumulative since container start) ───────────────────
-    long netRxBytes, long netTxBytes, long netRxPackets, long netTxPackets,
+    long netRxBytes,
+    long netTxBytes,
+    long netRxPackets,
+    long netTxPackets,
     /** Cumulative receive errors across all interfaces */
     long netRxErrors,
     /** Cumulative transmit errors across all interfaces */
     long netTxErrors,
 
     // ── Block I/O (cumulative) ───────────────────────────────────────────
-    long blockReadBytes, long blockWriteBytes,
+    long blockReadBytes,
+    long blockWriteBytes,
     /** Cumulative read operation count, when the kernel exposes it */
     long blockReadOps,
     /** Cumulative write operation count */
@@ -78,50 +77,20 @@ public record ContainerMetricsResponse(
     long portLatencyMs,
 
     // ── Tool-specific telemetry ─────────────────────────────────────────
-    /**
-     * Tool-specific metrics (Postgres connections, Redis ops/sec, etc.). Never
-     * null.
-     */
+    /** Tool-specific metrics (Postgres connections, Redis ops/sec, etc.). Never null. */
     Map<String, Object> toolMetrics) {
 
   /** Sentinel returned when the container is stopped / unavailable. */
   public static ContainerMetricsResponse unavailable() {
-    return new ContainerMetricsResponse(false,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        null,
-        "stopped",
-        "none",
-        false,
-        null,
-        0,
-        false,
-        -1,
-        Map.of());
+    return new ContainerMetricsResponse(
+        false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null, "stopped", "none",
+        false, null, 0, false, -1, Map.of());
   }
 
   /** Returns a copy of this response with {@code toolMetrics} replaced. */
-  public ContainerMetricsResponse withToolMetrics(
-    Map<String, Object> tools) {
-    return new ContainerMetricsResponse(available,
+  public ContainerMetricsResponse withToolMetrics(Map<String, Object> tools) {
+    return new ContainerMetricsResponse(
+        available,
         cpuPercent,
         cpuCores,
         cpuThrottledPercent,

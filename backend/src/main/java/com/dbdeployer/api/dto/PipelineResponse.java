@@ -17,10 +17,9 @@ public record PipelineResponse(
     Instant startedAt,
     Instant completedAt,
     List<PipelineStepResponse> steps) {
-  public static PipelineResponse from(
-    DeploymentPipeline p,
-    List<PipelineStepResponse> steps) {
-    return new PipelineResponse(p.getId(),
+  public static PipelineResponse from(DeploymentPipeline p, List<PipelineStepResponse> steps) {
+    return new PipelineResponse(
+        p.getId(),
         p.getConfigId(),
         p.getDeploymentContainerId(),
         p.getStatus(),

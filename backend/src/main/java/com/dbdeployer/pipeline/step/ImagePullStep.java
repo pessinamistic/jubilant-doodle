@@ -18,9 +18,7 @@ public class ImagePullStep implements DeployStep {
   private final DockerDeployEngine docker;
   private final ImageValidationService imageValidationService;
 
-  public ImagePullStep(
-    DockerDeployEngine docker,
-    ImageValidationService imageValidationService) {
+  public ImagePullStep(DockerDeployEngine docker, ImageValidationService imageValidationService) {
     this.docker = docker;
     this.imageValidationService = imageValidationService;
   }
@@ -31,9 +29,8 @@ public class ImagePullStep implements DeployStep {
   }
 
   @Override
-  public String execute(
-    DeploymentConfig config,
-    DeployedContainer container) throws StepExecutionException {
+  public String execute(DeploymentConfig config, DeployedContainer container)
+      throws StepExecutionException {
     var def = DatabaseCatalog.get(config.getDbType());
     String imageName = def.dockerImage();
     String tag = config.getVersion();
@@ -47,7 +44,10 @@ public class ImagePullStep implements DeployStep {
       try {
         imageValidationService.refreshLocalOnly(config.getDbType(), tag);
       } catch (Exception trackingEx) {
-        log.warn("[pipeline] Local image tracking sync skipped for {}: {}", image, trackingEx.getMessage());
+        log.warn(
+            "[pipeline] Local image tracking sync skipped for {}: {}",
+            image,
+            trackingEx.getMessage());
       }
 
       if (pulled) {
@@ -57,12 +57,16 @@ public class ImagePullStep implements DeployStep {
       log.info("[pipeline] Image already local; pull skipped: {}", image);
       return "Image already available locally: " + image;
     } catch (com.github.dockerjava.api.exception.NotFoundException e) {
-      throw new StepExecutionException(DeployErrorCode.IMAGE_NOT_FOUND, "Image not found: " + image, e);
+      throw new StepExecutionException(
+          DeployErrorCode.IMAGE_NOT_FOUND, "Image not found: " + image, e);
     } catch (java.util.concurrent.TimeoutException e) {
-      throw new StepExecutionException(DeployErrorCode.IMAGE_PULL_TIMEOUT, "Timed out pulling image: " + image, e);
+      throw new StepExecutionException(
+          DeployErrorCode.IMAGE_PULL_TIMEOUT, "Timed out pulling image: " + image, e);
     } catch (Exception e) {
-      throw new StepExecutionException(DeployErrorCode.IMAGE_PULL_FAILED,
-          "Failed to pull image " + image + ": " + e.getMessage(), e);
+      throw new StepExecutionException(
+          DeployErrorCode.IMAGE_PULL_FAILED,
+          "Failed to pull image " + image + ": " + e.getMessage(),
+          e);
     }
   }
 }

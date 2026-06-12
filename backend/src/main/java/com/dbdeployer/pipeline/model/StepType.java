@@ -4,5 +4,8 @@ import lombok.ToString;
 
 @ToString
 public enum StepType {
-  PULL_IMAGE, CREATE_CONTAINER, START_CONTAINER, FINALISE
+  PULL_IMAGE,
+  CREATE_CONTAINER,
+  START_CONTAINER,
+  FINALISE
 }

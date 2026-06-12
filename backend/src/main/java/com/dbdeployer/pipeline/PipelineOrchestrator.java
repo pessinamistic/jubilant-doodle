@@ -22,12 +22,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /**
  * Orchestrates pipeline creation and fires the async runner.
  *
- * <p>
- * Called inside the same transaction as the deployment service method.
- * Registers an {@code
- * afterCommit} hook so that {@link PipelineRunner#run(String)} is only fired
- * after the pipeline + step rows are committed to the DB, avoiding a not-found
- * race condition in the async thread.
+ * <p>Called inside the same transaction as the deployment service method. Registers an {@code
+ * afterCommit} hook so that {@link PipelineRunner#run(String)} is only fired after the pipeline +
+ * step rows are committed to the DB, avoiding a not-found race condition in the async thread.
  */
 @Slf4j
 @Service
@@ -39,10 +36,10 @@ public class PipelineOrchestrator {
   private final DeploymentPipelineRepository pipelineRepo;
 
   public PipelineOrchestrator(
-    PipelineRunner pipelineRunner,
-    PipelineStepRepository stepRepo,
-    DeploymentPipelineRepository pipelineRepo,
-    @Qualifier("pipelineHandlers") List<DeployStep> pipelineHandlers) {
+      PipelineRunner pipelineRunner,
+      PipelineStepRepository stepRepo,
+      DeploymentPipelineRepository pipelineRepo,
+      @Qualifier("pipelineHandlers") List<DeployStep> pipelineHandlers) {
     this.pipelineRunner = pipelineRunner;
     this.stepRepo = stepRepo;
     this.pipelineRepo = pipelineRepo;
@@ -50,18 +47,13 @@ public class PipelineOrchestrator {
   }
 
   /**
-   * Create pipeline + step rows in the current TX, then fire the async runner via
-   * {@code
+   * Create pipeline + step rows in the current TX, then fire the async runner via {@code
    * afterCommit}.
    *
-   * <p>
-   * Updates {@code container.latestPipelineId} (caller must persist the
-   * container).
+   * <p>Updates {@code container.latestPipelineId} (caller must persist the container).
    */
   @Transactional
-  public DeploymentPipeline createAndLaunch(
-    DeploymentConfig config,
-    DeployedContainer container) {
+  public DeploymentPipeline createAndLaunch(DeploymentConfig config, DeployedContainer container) {
     // ── Create pipeline row ──
     DeploymentPipeline pipeline = new DeploymentPipeline();
     pipeline.setId(UUID.randomUUID().toString());
@@ -87,13 +79,14 @@ public class PipelineOrchestrator {
 
     // ── Fire runner after commit ──
     String pipelineId = pipeline.getId();
-    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-      @Override
-      public void afterCommit() {
-        log.info("[orchestrator] TX committed — firing pipeline runner for {}", pipelineId);
-        pipelineRunner.run(pipelineId);
-      }
-    });
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            log.info("[orchestrator] TX committed — firing pipeline runner for {}", pipelineId);
+            pipelineRunner.run(pipelineId);
+          }
+        });
 
     log.info("[orchestrator] Pipeline {} created for config '{}'", pipelineId, config.getName());
     return pipeline;

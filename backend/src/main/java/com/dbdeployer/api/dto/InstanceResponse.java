@@ -7,7 +7,8 @@ import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import java.time.Instant;
 
-public record InstanceResponse(String id,
+public record InstanceResponse(
+    String id,
     String name,
     DbType dbType,
     String dbTypeDisplay,
@@ -33,21 +34,20 @@ public record InstanceResponse(String id,
     String latestPipelineId, // ID of the most recent deploy pipeline, if any
     String templateId, // nullable — ID of the ConfigTemplate this was launched from
     String templateName // nullable — denormalized display name of the source template
-) {
+    ) {
   /**
-   * Build an {@link InstanceResponse} from the two-table model. {@code container}
-   * may be {@code
+   * Build an {@link InstanceResponse} from the two-table model. {@code container} may be {@code
    * null} while a deploy is being set up.
    */
   public static InstanceResponse from(
-    DeploymentConfig config,
-    DeployedContainer container,
-    String connectionString,
-    String connectionStringMasked,
-    String displayName,
-    String icon,
-    String templateId,
-    String templateName) {
+      DeploymentConfig config,
+      DeployedContainer container,
+      String connectionString,
+      String connectionStringMasked,
+      String displayName,
+      String icon,
+      String templateId,
+      String templateName) {
     return new InstanceResponse(
         container != null ? container.getId() : null,
         container != null ? container.getContainerName() : null,

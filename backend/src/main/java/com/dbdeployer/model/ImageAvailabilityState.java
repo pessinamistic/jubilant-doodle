@@ -5,5 +5,8 @@ import lombok.ToString;
 /** Availability state of an image tag in a specific source. */
 @ToString
 public enum ImageAvailabilityState {
-  AVAILABLE, MISSING, UNKNOWN, NOT_APPLICABLE
+  AVAILABLE,
+  MISSING,
+  UNKNOWN,
+  NOT_APPLICABLE
 }

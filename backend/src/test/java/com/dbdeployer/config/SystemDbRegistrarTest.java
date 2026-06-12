@@ -25,17 +25,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class SystemDbRegistrarTest {
 
-  @Mock
-  private JdbcTemplate jdbc;
-  @Mock
-  private DeploymentConfigRepository configRepo;
-  @Mock
-  private DeployedContainerRepository containerRepo;
+  @Mock private JdbcTemplate jdbc;
+  @Mock private DeploymentConfigRepository configRepo;
+  @Mock private DeployedContainerRepository containerRepo;
 
   @Test
   void run_createsSystemRowsOnce_andEnrichesContainerId() {
     when(configRepo.findById(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.empty());
-    when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.empty());
+    when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID))
+        .thenReturn(Optional.empty());
     when(jdbc.queryForObject("SELECT version()", String.class))
         .thenReturn("PostgreSQL 16.3 on aarch64-unknown-linux-musl");
 
@@ -56,7 +54,8 @@ class SystemDbRegistrarTest {
     assertThat(savedConfig.getDeployMethod()).isEqualTo(DeployMethod.DOCKER);
     assertThat(savedConfig.getVersion()).isEqualTo("16.3");
 
-    ArgumentCaptor<DeployedContainer> containerCaptor = ArgumentCaptor.forClass(DeployedContainer.class);
+    ArgumentCaptor<DeployedContainer> containerCaptor =
+        ArgumentCaptor.forClass(DeployedContainer.class);
     verify(containerRepo).save(containerCaptor.capture());
     DeployedContainer savedContainer = containerCaptor.getValue();
     assertThat(savedContainer.getContainerId()).isEqualTo("abcdef1234567890");
@@ -80,8 +79,10 @@ class SystemDbRegistrarTest {
     existingContainer.setStatus(InstanceStatus.RUNNING);
     existingContainer.setStartedAt(Instant.now());
 
-    when(configRepo.findById(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.of(existingConfig));
-    when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID)).thenReturn(Optional.of(existingContainer));
+    when(configRepo.findById(SystemDbRegistrar.SYSTEM_CONFIG_ID))
+        .thenReturn(Optional.of(existingConfig));
+    when(containerRepo.findByConfigId(SystemDbRegistrar.SYSTEM_CONFIG_ID))
+        .thenReturn(Optional.of(existingContainer));
 
     SystemDbRegistrar registrar = new SystemDbRegistrar(jdbc, configRepo, containerRepo);
     ReflectionTestUtils.setField(registrar, "systemDbHostPort", 5499);

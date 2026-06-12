@@ -7,25 +7,21 @@ import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Resolves the correct Docker socket URI for the current machine and sets it as
- * the DOCKER_HOST system property so all docker-java transports (including
- * zerodep) pick it up automatically.
+ * Resolves the correct Docker socket URI for the current machine and sets it as the DOCKER_HOST
+ * system property so all docker-java transports (including zerodep) pick it up automatically.
  *
- * <p>
- * Priority order: 1. DOCKER_HOST environment variable (user override) 2.
- * DOCKER_HOST system property (JVM override) 3. Windows named pipe
- * (npipe:////./pipe/docker_engine) 4. Colima default socket
- * (~/.colima/default/docker.sock) 5. Colima named profile
- * (~/.colima/<profile>/docker.sock) 6. Standard Unix socket
- * (/var/run/docker.sock) 7. Rootless Docker socket (~/.docker/run/docker.sock)
- * 8. Docker Desktop socket (~/.docker/desktop/run/docker.sock) [macOS]
+ * <p>Priority order: 1. DOCKER_HOST environment variable (user override) 2. DOCKER_HOST system
+ * property (JVM override) 3. Windows named pipe (npipe:////./pipe/docker_engine) 4. Colima default
+ * socket (~/.colima/default/docker.sock) 5. Colima named profile (~/.colima/<profile>/docker.sock)
+ * 6. Standard Unix socket (/var/run/docker.sock) 7. Rootless Docker socket
+ * (~/.docker/run/docker.sock) 8. Docker Desktop socket (~/.docker/desktop/run/docker.sock) [macOS]
  */
 @Slf4j
 public class DockerSocketResolver {
 
   /**
-   * Resolves the Docker socket URI and also exports it as the {@code DOCKER_HOST}
-   * system property so zerodep transport picks it up.
+   * Resolves the Docker socket URI and also exports it as the {@code DOCKER_HOST} system property
+   * so zerodep transport picks it up.
    */
   public static String resolve() {
     String uri = detect();
@@ -71,8 +67,12 @@ public class DockerSocketResolver {
     Path colimaDir = Paths.get(home, ".colima");
     if (Files.isDirectory(colimaDir)) {
       try (var profiles = Files.list(colimaDir)) {
-        var found = profiles.filter(Files::isDirectory).map(p -> p.resolve("docker.sock")).filter(Files::exists)
-            .findFirst();
+        var found =
+            profiles
+                .filter(Files::isDirectory)
+                .map(p -> p.resolve("docker.sock"))
+                .filter(Files::exists)
+                .findFirst();
         if (found.isPresent()) {
           String uri = "unix://" + found.get().toAbsolutePath();
           log.info("Docker socket resolved to Colima profile: {}", uri);

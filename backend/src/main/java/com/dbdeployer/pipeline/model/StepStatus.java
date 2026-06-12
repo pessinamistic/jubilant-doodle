@@ -4,5 +4,9 @@ import lombok.ToString;
 
 @ToString
 public enum StepStatus {
-  PENDING, RUNNING, SUCCESS, FAILED, SKIPPED
+  PENDING,
+  RUNNING,
+  SUCCESS,
+  FAILED,
+  SKIPPED
 }

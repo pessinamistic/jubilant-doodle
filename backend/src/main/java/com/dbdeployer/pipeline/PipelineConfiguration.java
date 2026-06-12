@@ -14,13 +14,10 @@ public class PipelineConfiguration {
 
   @Bean
   public List<DeployStep> pipelineHandlers(
-    ImagePullStep imagePullStep,
-    ContainerCreateStep containerCreateStep,
-    ContainerStartStep containerStartStep,
-    FinaliseStep finaliseStep) {
-    return List.of(imagePullStep,
-        containerCreateStep,
-        containerStartStep,
-        finaliseStep);
+      ImagePullStep imagePullStep,
+      ContainerCreateStep containerCreateStep,
+      ContainerStartStep containerStartStep,
+      FinaliseStep finaliseStep) {
+    return List.of(imagePullStep, containerCreateStep, containerStartStep, finaliseStep);
   }
 }

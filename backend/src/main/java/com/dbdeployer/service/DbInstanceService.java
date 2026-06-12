@@ -54,15 +54,15 @@ public class DbInstanceService {
   private final DeploymentValidations deploymentValidations;
 
   public DbInstanceService(
-    BrewDeployEngine brew,
-    DockerDeployEngine docker,
-    ToolMetricsProbe toolMetrics,
-    PipelineStepRepository stepRepo,
-    PipelineOrchestrator orchestrator,
-    DeploymentConfigRepository configRepo,
-    DeployedContainerRepository containerRepo,
-    DeploymentPipelineRepository pipelineRepo,
-    DeploymentValidations deploymentValidations) {
+      BrewDeployEngine brew,
+      DockerDeployEngine docker,
+      ToolMetricsProbe toolMetrics,
+      PipelineStepRepository stepRepo,
+      PipelineOrchestrator orchestrator,
+      DeploymentConfigRepository configRepo,
+      DeployedContainerRepository containerRepo,
+      DeploymentPipelineRepository pipelineRepo,
+      DeploymentValidations deploymentValidations) {
     this.brew = brew;
     this.docker = docker;
     this.toolMetrics = toolMetrics;
@@ -81,12 +81,17 @@ public class DbInstanceService {
     return containerRepo.findAll();
   }
 
-  /**
-   * Aggregate status counts across all instances. Derived directly from the DB.
-   */
+  /** Aggregate status counts across all instances. Derived directly from the DB. */
   public InstanceStatsResponse getStats() {
     List<DeployedContainer> all = containerRepo.findAll();
-    int running = 0, restarting = 0, stopped = 0, deploying = 0, removing = 0, error = 0, removed = 0, untracked = 0;
+    int running = 0,
+        restarting = 0,
+        stopped = 0,
+        deploying = 0,
+        removing = 0,
+        error = 0,
+        removed = 0,
+        untracked = 0;
     for (DeployedContainer c : all) {
       switch (c.getStatus()) {
         case RUNNING -> running++;
@@ -100,52 +105,53 @@ public class DbInstanceService {
       }
     }
     int total = running + restarting + stopped + deploying + removing + error; // active only
-    return new InstanceStatsResponse(total, running, restarting, stopped, deploying, removing, error, removed,
-        untracked);
+    return new InstanceStatsResponse(
+        total, running, restarting, stopped, deploying, removing, error, removed, untracked);
   }
 
-  public DeployedContainer getById(
-    String id) {
-    return containerRepo.findById(id)
+  public DeployedContainer getById(String id) {
+    return containerRepo
+        .findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + id));
   }
 
   /** Live Docker container metrics snapshot for a non-system instance. */
-  public ContainerMetricsResponse getContainerMetrics(
-    String configId) {
+  public ContainerMetricsResponse getContainerMetrics(String configId) {
     DeployedContainer container = getById(configId);
     if (container == null || container.getContainerId() == null) {
       return ContainerMetricsResponse.unavailable();
     }
-    ContainerMetricsResponse base = docker.getContainerMetrics(container.getContainerId(),
-        container.getConfig().getHostPort());
-    if (!base.available())
-      return base;
+    ContainerMetricsResponse base =
+        docker.getContainerMetrics(container.getContainerId(), container.getConfig().getHostPort());
+    if (!base.available()) return base;
     // Best-effort tool-specific telemetry (never blocks the response).
-    java.util.Map<String, Object> tools = toolMetrics.collect(container.getConfig(), container.getContainerId());
+    java.util.Map<String, Object> tools =
+        toolMetrics.collect(container.getConfig(), container.getContainerId());
     return tools.isEmpty() ? base : base.withToolMetrics(tools);
   }
 
-  /**
-   * Returns the most recent pipeline for an instance (or null if none exists).
-   */
-  public PipelineResponse getLatestPipeline(
-    String configId) {
-    return pipelineRepo.findTopByDeploymentContainerIdOrderByCreatedAtDesc(configId).map(p -> {
-      var steps = stepRepo.findByPipelineIdOrderByStepOrderAsc(p.getId()).stream().map(PipelineStepResponse::from)
-          .toList();
-      return PipelineResponse.from(p, steps);
-    }).orElse(null);
+  /** Returns the most recent pipeline for an instance (or null if none exists). */
+  public PipelineResponse getLatestPipeline(String configId) {
+    return pipelineRepo
+        .findTopByDeploymentContainerIdOrderByCreatedAtDesc(configId)
+        .map(
+            p -> {
+              var steps =
+                  stepRepo.findByPipelineIdOrderByStepOrderAsc(p.getId()).stream()
+                      .map(PipelineStepResponse::from)
+                      .toList();
+              return PipelineResponse.from(p, steps);
+            })
+        .orElse(null);
   }
 
   // ── Deploy ─────────────────────────────────────────────────────────────────
 
   @Transactional
   public DeploymentResponse deploy(
-    ConfigTemplateRequest req,
-    DeploymentConfig deploymentConfig,
-    boolean isTemplate) {
-    log.info("[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
+      ConfigTemplateRequest req, DeploymentConfig deploymentConfig, boolean isTemplate) {
+    log.info(
+        "[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
         req.name(),
         req.dbType(),
         req.version(),
@@ -163,9 +169,11 @@ public class DbInstanceService {
     // ── Container row ── (starts as DEPLOYING; pipeline transitions it)
     DeployedContainer container = new DeployedContainer();
     container.setId(UUID.randomUUID().toString());
-    String containerName = "dbdeployer-%s-%s".formatted(
-        deploymentConfig.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
-        UUID.randomUUID().toString().substring(0, 8));
+    String containerName =
+        "dbdeployer-%s-%s"
+            .formatted(
+                deploymentConfig.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"),
+                UUID.randomUUID().toString().substring(0, 8));
     container.setContainerName(containerName);
     container.setConfig(deploymentConfig);
     container.setContainerPort(def.defaultPort());
@@ -177,7 +185,8 @@ public class DbInstanceService {
     orchestrator.createAndLaunch(deploymentConfig, container);
     containerRepo.save(container); // persist latestPipelineId set by orchestrator
 
-    log.info("[deploy] Accepted deployment '{}' (configId={}, containerRecordId={}, pipelineId={})",
+    log.info(
+        "[deploy] Accepted deployment '{}' (configId={}, containerRecordId={}, pipelineId={})",
         deploymentConfig.getName(),
         deploymentConfig.getId(),
         container.getId(),
@@ -189,8 +198,7 @@ public class DbInstanceService {
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @Transactional
-  public DeploymentResponse startInstance(
-    String configId) {
+  public DeploymentResponse startInstance(String configId) {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     requireNotSystem(config, "start");
@@ -210,8 +218,7 @@ public class DbInstanceService {
   }
 
   @Transactional
-  public DeploymentResponse stopInstance(
-    String configId) {
+  public DeploymentResponse stopInstance(String configId) {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     requireNotSystem(config, "stop");
@@ -226,8 +233,7 @@ public class DbInstanceService {
   }
 
   @Transactional
-  public void removeInstance(
-    String configId) {
+  public void removeInstance(String configId) {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     requireNotSystem(config, "remove");
@@ -236,13 +242,17 @@ public class DbInstanceService {
     containerRepo.save(container);
 
     if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
-      log.info("Untracking Homebrew instance '{}' — Homebrew service left intact", config.getName());
+      log.info(
+          "Untracking Homebrew instance '{}' — Homebrew service left intact", config.getName());
     } else {
       try {
         log.info("Removing Docker container for instance '{}'", config.getName());
         docker.remove(container);
       } catch (Exception e) {
-        log.warn("Docker remove failed for '{}' (may already be gone): {}", config.getName(), e.getMessage());
+        log.warn(
+            "Docker remove failed for '{}' (may already be gone): {}",
+            config.getName(),
+            e.getMessage());
       }
       // Clean up volume data directory
       if (container.getDataDirectory() != null) {
@@ -251,7 +261,8 @@ public class DbInstanceService {
           deleteDirectoryRecursive(dataDir);
           log.info("Removed data directory: {}", dataDir);
         } catch (IOException e) {
-          log.warn("Could not remove data directory for '{}': {}", config.getName(), e.getMessage());
+          log.warn(
+              "Could not remove data directory for '{}': {}", config.getName(), e.getMessage());
         }
       }
     }
@@ -263,13 +274,11 @@ public class DbInstanceService {
   }
 
   /**
-   * Untrack an imported instance — marks it UNTRACKED without touching the Docker
-   * container. The instance can be re-tracked at any time via
-   * {@link #reTrackInstance(String)}.
+   * Untrack an imported instance — marks it UNTRACKED without touching the Docker container. The
+   * instance can be re-tracked at any time via {@link #reTrackInstance(String)}.
    */
   @Transactional
-  public void untrackInstance(
-    String configId) {
+  public void untrackInstance(String configId) {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     if (!config.isImported()) {
@@ -281,21 +290,24 @@ public class DbInstanceService {
   }
 
   /**
-   * Re-track a previously untracked imported instance — queries the live
-   * Docker/Brew status and transitions the instance back to its real live status.
+   * Re-track a previously untracked imported instance — queries the live Docker/Brew status and
+   * transitions the instance back to its real live status.
    */
   @Transactional
-  public DeploymentResponse reTrackInstance(
-    String configId) {
+  public DeploymentResponse reTrackInstance(String configId) {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     if (container.getStatus() != InstanceStatus.UNTRACKED) {
-      throw new IllegalArgumentException("Instance '" + config.getName() + "' is not currently untracked");
+      throw new IllegalArgumentException(
+          "Instance '" + config.getName() + "' is not currently untracked");
     }
-    DeployMethod method = config.getDeployMethod() != null ? config.getDeployMethod() : DeployMethod.DOCKER;
-    InstanceStatus liveStatus = method == DeployMethod.HOMEBREW
-        ? brew.getServiceStatusByContainerId(container.getContainerId(), container.getContainerName())
-        : docker.getStatus(container);
+    DeployMethod method =
+        config.getDeployMethod() != null ? config.getDeployMethod() : DeployMethod.DOCKER;
+    InstanceStatus liveStatus =
+        method == DeployMethod.HOMEBREW
+            ? brew.getServiceStatusByContainerId(
+                container.getContainerId(), container.getContainerName())
+            : docker.getStatus(container);
     log.info("Re-tracking instance '{}' — live status: {}", config.getName(), liveStatus);
     container.setStatus(liveStatus);
     containerRepo.save(container);
@@ -305,14 +317,12 @@ public class DbInstanceService {
   // ── Import / Re-import ─────────────────────────────────────────────────────
 
   /**
-   * Re-import an untracked (REMOVED) imported instance by associating it with a
-   * new Docker container. All config (name, credentials, ports) is preserved;
-   * only the container binding changes.
+   * Re-import an untracked (REMOVED) imported instance by associating it with a new Docker
+   * container. All config (name, credentials, ports) is preserved; only the container binding
+   * changes.
    */
   @Transactional
-  public DeploymentResponse reImportInstance(
-    String configId,
-    ReImportRequest req) {
+  public DeploymentResponse reImportInstance(String configId, ReImportRequest req) {
     DeployedContainer existing = getById(configId);
     DeploymentConfig config = existing.getConfig();
 
@@ -320,16 +330,22 @@ public class DbInstanceService {
       throw new IllegalArgumentException("Only imported instances can be re-imported");
     }
     if (existing.getStatus() != InstanceStatus.REMOVED) {
-      throw new IllegalArgumentException("Instance '" + config.getName() + "' is not in REMOVED state");
+      throw new IllegalArgumentException(
+          "Instance '" + config.getName() + "' is not in REMOVED state");
     }
 
     // Check if the container ID is already tracked by a *different* instance
-    containerRepo.findByContainerId(req.containerId()).ifPresent(other -> {
-      if (!other.getId().equals(existing.getId())) {
-        throw new IllegalArgumentException(
-            "Container " + req.containerId().substring(0, 12) + " is already tracked by another instance");
-      }
-    });
+    containerRepo
+        .findByContainerId(req.containerId())
+        .ifPresent(
+            other -> {
+              if (!other.getId().equals(existing.getId())) {
+                throw new IllegalArgumentException(
+                    "Container "
+                        + req.containerId().substring(0, 12)
+                        + " is already tracked by another instance");
+              }
+            });
 
     // Reuse the existing REMOVED row — update it in-place
     DeployMethod importMethod = detectImportMethod(req.containerId());
@@ -338,23 +354,27 @@ public class DbInstanceService {
     existing.setContainerId(req.containerId());
     existing.setContainerName(req.containerName());
     existing.setStatus(getImportedStatus(req.containerId(), req.containerName(), importMethod));
-    existing.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
+    existing.setStartedAt(
+        getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
     existing.setLatestPipelineId(null);
     containerRepo.save(existing);
     configRepo.save(config);
 
-    log.info("Re-imported instance '{}' → container {}", config.getName(), req.containerId().substring(0, 12));
+    log.info(
+        "Re-imported instance '{}' → container {}",
+        config.getName(),
+        req.containerId().substring(0, 12));
     return new DeploymentResponse(config, existing);
   }
 
   @Transactional
-  public DeploymentResponse importContainer(
-    ImportRequest req) {
+  public DeploymentResponse importContainer(ImportRequest req) {
     if (configRepo.existsByName(req.name())) {
       throw new IllegalArgumentException("An instance named '" + req.name() + "' already exists");
     }
     if (containerRepo.existsByContainerId(req.containerId())) {
-      throw new IllegalArgumentException("Container " + req.containerId().substring(0, 12) + " is already tracked");
+      throw new IllegalArgumentException(
+          "Container " + req.containerId().substring(0, 12) + " is already tracked");
     }
 
     DbType dbType;
@@ -371,7 +391,8 @@ public class DbInstanceService {
     config.setId(UUID.randomUUID().toString());
     config.setName(req.name());
     config.setDbType(dbType);
-    config.setVersion(req.version() != null && !req.version().isBlank() ? req.version() : "unknown");
+    config.setVersion(
+        req.version() != null && !req.version().isBlank() ? req.version() : "unknown");
     config.setHostPort(req.hostPort());
     config.setUsername(req.username());
     config.setPassword(req.password());
@@ -389,7 +410,8 @@ public class DbInstanceService {
     container.setHostPort(req.hostPort());
     container.setContainerPort(req.containerPort());
     container.setStatus(getImportedStatus(req.containerId(), req.containerName(), importMethod));
-    container.setStartedAt(getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
+    container.setStartedAt(
+        getImportedStartedAt(req.containerId(), req.containerName(), importMethod));
     containerRepo.save(container);
 
     return new DeploymentResponse(config, container);
@@ -399,46 +421,57 @@ public class DbInstanceService {
 
   @Transactional
   public void syncStatuses() {
-    containerRepo.findByStatusNotIn(List.of(InstanceStatus.REMOVED, InstanceStatus.UNTRACKED)).forEach(container -> {
-      // Skip containers still deploying with no containerId — DeploymentRecovery
-      // handles
-      // those on boot
-      if (container.getContainerId() == null)
-        return;
-      DeployMethod method = container.getConfig() != null
-          ? container.getConfig().getDeployMethod()
-          : DeployMethod.DOCKER;
+    containerRepo
+        .findByStatusNotIn(List.of(InstanceStatus.REMOVED, InstanceStatus.UNTRACKED))
+        .forEach(
+            container -> {
+              // Skip containers still deploying with no containerId — DeploymentRecovery
+              // handles
+              // those on boot
+              if (container.getContainerId() == null) return;
+              DeployMethod method =
+                  container.getConfig() != null
+                      ? container.getConfig().getDeployMethod()
+                      : DeployMethod.DOCKER;
 
-      InstanceStatus current = method == DeployMethod.HOMEBREW
-          ? brew.getServiceStatusByContainerId(container.getContainerId(), container.getContainerName())
-          : docker.getStatus(container);
+              InstanceStatus current =
+                  method == DeployMethod.HOMEBREW
+                      ? brew.getServiceStatusByContainerId(
+                          container.getContainerId(), container.getContainerName())
+                      : docker.getStatus(container);
 
-      boolean changed = current != container.getStatus();
-      if (changed)
-        container.setStatus(current);
-      if (current == InstanceStatus.RUNNING && container.getStartedAt() == null && method != DeployMethod.HOMEBREW) {
-        Instant sa = docker.getStartedAt(container.getContainerId());
-        if (sa != null) {
-          container.setStartedAt(sa);
-          changed = true;
-        }
-      }
-      if (changed)
-        containerRepo.save(container);
-    });
+              boolean changed = current != container.getStatus();
+              if (changed) container.setStatus(current);
+              if (current == InstanceStatus.RUNNING
+                  && container.getStartedAt() == null
+                  && method != DeployMethod.HOMEBREW) {
+                Instant sa = docker.getStartedAt(container.getContainerId());
+                if (sa != null) {
+                  container.setStartedAt(sa);
+                  changed = true;
+                }
+              }
+              if (changed) containerRepo.save(container);
+            });
   }
 
   // ── Discovery ──────────────────────────────────────────────────────────────
 
   public List<DiscoveredContainerDto> discoverContainers() {
     List<DeployedContainer> tracked = containerRepo.findAll();
-    Set<String> trackedIds = tracked.stream().map(DeployedContainer::getContainerId).filter(Objects::nonNull)
-        .collect(Collectors.toSet());
-    Set<String> trackedNames = tracked.stream().map(DeployedContainer::getContainerName).filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+    Set<String> trackedIds =
+        tracked.stream()
+            .map(DeployedContainer::getContainerId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Set<String> trackedNames =
+        tracked.stream()
+            .map(DeployedContainer::getContainerName)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
 
-    List<DiscoveredContainerDto> discovered = new java.util.ArrayList<>(
-        docker.discoverContainers(trackedIds, trackedNames));
+    List<DiscoveredContainerDto> discovered =
+        new java.util.ArrayList<>(docker.discoverContainers(trackedIds, trackedNames));
     discovered.addAll(brew.discoverServices(trackedIds, trackedNames));
     return discovered;
   }
@@ -446,9 +479,7 @@ public class DbInstanceService {
   // ── Misc ───────────────────────────────────────────────────────────────────
 
   @Transactional
-  public DeploymentResponse rename(
-    String configId,
-    String newName) {
+  public DeploymentResponse rename(String configId, String newName) {
     if (newName == null || newName.isBlank())
       throw new IllegalArgumentException("Name cannot be blank");
     String trimmed = newName.trim();
@@ -457,15 +488,14 @@ public class DbInstanceService {
     if (!trimmed.equals(config.getName()) && configRepo.existsByName(trimmed)) {
       throw new IllegalArgumentException("An instance named '" + trimmed + "' already exists");
     }
-    container.setContainerName(trimmed); // keep container name in sync with instance name for easier identification
+    container.setContainerName(
+        trimmed); // keep container name in sync with instance name for easier identification
     docker.renameContainer(container, trimmed);
     containerRepo.save(container);
     return new DeploymentResponse(config, container);
   }
 
-  public String getLogs(
-    String configId,
-    int tail) throws InterruptedException {
+  public String getLogs(String configId, int tail) throws InterruptedException {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
@@ -477,24 +507,22 @@ public class DbInstanceService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  private void requireNotSystem(
-    DeploymentConfig config,
-    String action) {
+  private void requireNotSystem(DeploymentConfig config, String action) {
     if (config.isSystem()) {
       throw new IllegalArgumentException(
-          "The system database cannot be " + action + "ped. It is managed automatically by Port Wrangler.");
+          "The system database cannot be "
+              + action
+              + "ped. It is managed automatically by Port Wrangler.");
     }
   }
 
-  private InstanceStatus getContainerStatus(
-    String containerId) {
+  private InstanceStatus getContainerStatus(String containerId) {
     DeployedContainer tmp = new DeployedContainer();
     tmp.setContainerId(containerId);
     return docker.getStatus(tmp);
   }
 
-  private DeployMethod detectImportMethod(
-    String containerId) {
+  private DeployMethod detectImportMethod(String containerId) {
     if (containerId != null && containerId.startsWith("brew:")) {
       return DeployMethod.HOMEBREW;
     }
@@ -502,36 +530,32 @@ public class DbInstanceService {
   }
 
   private InstanceStatus getImportedStatus(
-    String containerId,
-    String containerName,
-    DeployMethod method) {
+      String containerId, String containerName, DeployMethod method) {
     return method == DeployMethod.HOMEBREW
         ? brew.getServiceStatusByContainerId(containerId, containerName)
         : getContainerStatus(containerId);
   }
 
   private Instant getImportedStartedAt(
-    String containerId,
-    String containerName,
-    DeployMethod method) {
+      String containerId, String containerName, DeployMethod method) {
     if (method == DeployMethod.HOMEBREW) {
       return null;
     }
     return docker.getStartedAt(containerId);
   }
 
-  private void deleteDirectoryRecursive(
-    Path path) throws IOException {
-    if (!Files.exists(path))
-      return;
+  private void deleteDirectoryRecursive(Path path) throws IOException {
+    if (!Files.exists(path)) return;
     try (var walk = Files.walk(path)) {
-      walk.sorted(Comparator.reverseOrder()).forEach(p -> {
-        try {
-          Files.delete(p);
-        } catch (IOException e) {
-          log.warn("Could not delete {}: {}", p, e.getMessage());
-        }
-      });
+      walk.sorted(Comparator.reverseOrder())
+          .forEach(
+              p -> {
+                try {
+                  Files.delete(p);
+                } catch (IOException e) {
+                  log.warn("Could not delete {}: {}", p, e.getMessage());
+                }
+              });
     }
   }
 }

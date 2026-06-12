@@ -17,11 +17,11 @@ import org.springframework.stereotype.Component;
  * Runs immediately after the Spring context starts.
  *
  * <ol>
- * <li>Probes the Docker daemon via a real socket ping.
- * <li>If Docker is unreachable, logs an OS-specific remediation message and
- * exits with code 1 (fail-fast — Port Wrangler requires Docker).
- * <li>If Docker is reachable, attempts to open the UI in the default browser
- * (only when running as a desktop app, i.e.\ a non-headless environment).
+ *   <li>Probes the Docker daemon via a real socket ping.
+ *   <li>If Docker is unreachable, logs an OS-specific remediation message and exits with code 1
+ *       (fail-fast — Port Wrangler requires Docker).
+ *   <li>If Docker is reachable, attempts to open the UI in the default browser (only when running
+ *       as a desktop app, i.e.\ a non-headless environment).
  * </ol>
  */
 @Slf4j
@@ -34,16 +34,13 @@ public class DockerStartupCheck implements ApplicationRunner {
   private final DockerHealthChecker dockerHealthChecker;
   private final OsDetector osDetector;
 
-  public DockerStartupCheck(
-    DockerHealthChecker dockerHealthChecker,
-    OsDetector osDetector) {
+  public DockerStartupCheck(DockerHealthChecker dockerHealthChecker, OsDetector osDetector) {
     this.dockerHealthChecker = dockerHealthChecker;
     this.osDetector = osDetector;
   }
 
   @Override
-  public void run(
-    ApplicationArguments args) {
+  public void run(ApplicationArguments args) {
     DockerStatus status = dockerHealthChecker.check();
 
     if (!status.available()) {
@@ -58,8 +55,7 @@ public class DockerStartupCheck implements ApplicationRunner {
 
   // ── private helpers ───────────────────────────────────────────────────────
 
-  private void printDockerMissingBanner(
-    DockerStatus status) {
+  private void printDockerMissingBanner(DockerStatus status) {
     String fix = remediation();
     System.err.println();
     System.err.println(SEPARATOR);
@@ -83,24 +79,29 @@ public class DockerStartupCheck implements ApplicationRunner {
     System.err.println();
   }
 
-  private void showDockerMissingDialog(
-    DockerStatus status) {
-    if (GraphicsEnvironment.isHeadless())
-      return;
+  private void showDockerMissingDialog(DockerStatus status) {
+    if (GraphicsEnvironment.isHeadless()) return;
 
     try {
       StringBuilder message = new StringBuilder();
-      message.append("Port Wrangler requires Docker to manage database containers.\n\n")
-          .append("Docker daemon not reachable at:\n").append(status.dockerHost()).append("\n\n");
+      message
+          .append("Port Wrangler requires Docker to manage database containers.\n\n")
+          .append("Docker daemon not reachable at:\n")
+          .append(status.dockerHost())
+          .append("\n\n");
 
       if (status.errorMessage() != null && !status.errorMessage().isBlank()) {
         message.append("Error: ").append(status.errorMessage()).append("\n\n");
       }
 
-      message.append("How to fix (").append(osDetector.detectOs().name()).append("):\n").append(remediation());
+      message
+          .append("How to fix (")
+          .append(osDetector.detectOs().name())
+          .append("):\n")
+          .append(remediation());
 
-      JOptionPane.showMessageDialog(null, message.toString(), "Port Wrangler - Docker Required",
-          JOptionPane.ERROR_MESSAGE);
+      JOptionPane.showMessageDialog(
+          null, message.toString(), "Port Wrangler - Docker Required", JOptionPane.ERROR_MESSAGE);
     } catch (RuntimeException e) {
       log.debug("Could not render Docker remediation dialog: {}", e.getMessage());
     }
@@ -116,14 +117,11 @@ public class DockerStartupCheck implements ApplicationRunner {
   }
 
   private void tryOpenBrowser() {
-    if (GraphicsEnvironment.isHeadless())
-      return;
-    if (!Desktop.isDesktopSupported())
-      return;
+    if (GraphicsEnvironment.isHeadless()) return;
+    if (!Desktop.isDesktopSupported()) return;
 
     Desktop desktop = Desktop.getDesktop();
-    if (!desktop.isSupported(Desktop.Action.BROWSE))
-      return;
+    if (!desktop.isSupported(Desktop.Action.BROWSE)) return;
 
     try {
       desktop.browse(URI.create(UI_URL));

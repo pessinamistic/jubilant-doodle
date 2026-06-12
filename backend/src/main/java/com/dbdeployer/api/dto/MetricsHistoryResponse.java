@@ -17,6 +17,5 @@ public record MetricsHistoryResponse(List<MetricSample> samples, int windowSecon
       int poolMax,
       int poolPct,
       double pgDbSizeMb,
-      int pgActiveConns) {
-  }
+      int pgActiveConns) {}
 }

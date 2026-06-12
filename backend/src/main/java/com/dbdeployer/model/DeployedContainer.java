@@ -12,19 +12,13 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
 
 /**
- * Tracks the Docker runtime state for one deployment of a
- * {@link DeploymentConfig}.
+ * Tracks the Docker runtime state for one deployment of a {@link DeploymentConfig}.
  *
- * <p>
- * Lives in the {@code deployed_container} table. When a container is removed
- * the row is kept with {@code status = REMOVED} and {@code removedAt} set —
- * providing a permanent audit trail without losing the parent
- * {@link DeploymentConfig}.
+ * <p>Lives in the {@code deployed_container} table. When a container is removed the row is kept
+ * with {@code status = REMOVED} and {@code removedAt} set — providing a permanent audit trail
+ * without losing the parent {@link DeploymentConfig}.
  */
 @Data
 @Entity
@@ -59,10 +53,7 @@ public class DeployedContainer {
   @Column(name = "status", nullable = false)
   private InstanceStatus status;
 
-  /**
-   * Host-side data directory for volume mounts (e.g.
-   * {@code ~/.db-deployer/data/<id>}).
-   */
+  /** Host-side data directory for volume mounts (e.g. {@code ~/.db-deployer/data/<id>}). */
   @Column(name = "data_directory")
   private String dataDirectory;
 
@@ -75,8 +66,8 @@ public class DeployedContainer {
   private Instant removedAt;
 
   /**
-   * ID of the most recent
-   * {@link com.dbdeployer.pipeline.model.DeploymentPipeline} for this container.
+   * ID of the most recent {@link com.dbdeployer.pipeline.model.DeploymentPipeline} for this
+   * container.
    */
   @Column(name = "latest_pipeline_id")
   private String latestPipelineId;
@@ -89,10 +80,8 @@ public class DeployedContainer {
 
   @PrePersist
   protected void onCreate() {
-    if (createdAt == null)
-      createdAt = Instant.now();
-    if (updatedAt == null)
-      updatedAt = Instant.now();
+    if (createdAt == null) createdAt = Instant.now();
+    if (updatedAt == null) updatedAt = Instant.now();
   }
 
   @PreUpdate

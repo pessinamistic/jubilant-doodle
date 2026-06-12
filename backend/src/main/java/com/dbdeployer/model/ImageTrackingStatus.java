@@ -12,13 +12,15 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.Data;
 
-/**
- * Stores source-aware image availability checks for a catalog tool image tag.
- */
+/** Stores source-aware image availability checks for a catalog tool image tag. */
 @Data
 @Entity
-@Table(name = "image_tracking_status", uniqueConstraints = @UniqueConstraint(name = "uk_image_tracking_target", columnNames = {
-    "db_type", "image_name", "image_tag"}))
+@Table(
+    name = "image_tracking_status",
+    uniqueConstraints =
+        @UniqueConstraint(
+            name = "uk_image_tracking_target",
+            columnNames = {"db_type", "image_name", "image_tag"}))
 public class ImageTrackingStatus {
 
   @Id
@@ -67,15 +69,12 @@ public class ImageTrackingStatus {
 
   @PrePersist
   protected void onCreate() {
-    if (createdAt == null)
-      createdAt = LocalDateTime.now();
-    if (updatedAt == null)
-      updatedAt = LocalDateTime.now();
+    if (createdAt == null) createdAt = LocalDateTime.now();
+    if (updatedAt == null) updatedAt = LocalDateTime.now();
   }
 
   @PreUpdate
   protected void onUpdate() {
     updatedAt = LocalDateTime.now();
   }
-
 }

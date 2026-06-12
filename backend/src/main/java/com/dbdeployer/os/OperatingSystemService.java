@@ -8,8 +8,7 @@ public class OperatingSystemService {
 
   private final OsDetector osDetector;
 
-  public OperatingSystemService(
-    OsDetector osDetector) {
+  public OperatingSystemService(OsDetector osDetector) {
     this.osDetector = osDetector;
   }
 

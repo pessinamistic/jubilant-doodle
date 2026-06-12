@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
- * Resolves deployable image tags from the image's registry so deploy versions
- * are sourced dynamically rather than from static catalog lists only.
+ * Resolves deployable image tags from the image's registry so deploy versions are sourced
+ * dynamically rather than from static catalog lists only.
  */
 @Service
 public class ImageTagVersionService {
@@ -41,18 +41,16 @@ public class ImageTagVersionService {
 
   private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-  public ImageTagVersionService(
-    ImageValidationProperties props,
-    ObjectMapper objectMapper) {
+  public ImageTagVersionService(ImageValidationProperties props, ObjectMapper objectMapper) {
     this.props = props;
     this.objectMapper = objectMapper;
-    this.client = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofMillis(Math.max(props.getDockerHubTimeoutMs(), 1000))).build();
+    this.client =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofMillis(Math.max(props.getDockerHubTimeoutMs(), 1000)))
+            .build();
   }
 
-  public List<String> resolveVersions(
-    DbType dbType,
-    boolean refresh) {
+  public List<String> resolveVersions(DbType dbType, boolean refresh) {
     DatabaseCatalog.DbDefinition def = DatabaseCatalog.get(dbType);
     if (def == null) {
       throw new IllegalArgumentException("Unsupported database type: " + dbType);
@@ -60,9 +58,7 @@ public class ImageTagVersionService {
     return resolveVersions(def, refresh);
   }
 
-  private List<String> resolveVersions(
-    DatabaseCatalog.DbDefinition def,
-    boolean refresh) {
+  private List<String> resolveVersions(DatabaseCatalog.DbDefinition def, boolean refresh) {
     List<String> fallback = sanitize(def.versions());
     if (def.dockerImage() == null || def.dockerImage().isBlank()) {
       return fallback;
@@ -85,8 +81,7 @@ public class ImageTagVersionService {
     return merged;
   }
 
-  private List<String> discoverTags(
-    String image) {
+  private List<String> discoverTags(String image) {
     RegistryRef ref = parseImage(image);
     if (ref == null || ref.repository().isBlank()) {
       return List.of();
@@ -106,8 +101,8 @@ public class ImageTagVersionService {
     }
   }
 
-  private List<String> fetchDockerHubTags(
-    String repository) throws IOException, InterruptedException {
+  private List<String> fetchDockerHubTags(String repository)
+      throws IOException, InterruptedException {
     String namespace;
     String repo;
 
@@ -124,8 +119,15 @@ public class ImageTagVersionService {
     int pageSize = Math.min(100, MAX_TAGS);
 
     for (int page = 1; page <= MAX_PAGES && tags.size() < MAX_TAGS; page++) {
-      String url = "https://hub.docker.com/v2/namespaces/" + urlEncode(namespace) + "/repositories/" + encodePath(repo)
-          + "/tags?page_size=" + pageSize + "&page=" + page;
+      String url =
+          "https://hub.docker.com/v2/namespaces/"
+              + urlEncode(namespace)
+              + "/repositories/"
+              + encodePath(repo)
+              + "/tags?page_size="
+              + pageSize
+              + "&page="
+              + page;
 
       HttpResponse<String> response = send(url);
       if (response.statusCode() != 200) {
@@ -152,14 +154,18 @@ public class ImageTagVersionService {
     return sanitize(tags);
   }
 
-  private List<String> fetchQuayTags(
-    String repository) throws IOException, InterruptedException {
+  private List<String> fetchQuayTags(String repository) throws IOException, InterruptedException {
     List<String> tags = new ArrayList<>();
     int pageSize = Math.min(100, MAX_TAGS);
 
     for (int page = 1; page <= MAX_PAGES && tags.size() < MAX_TAGS; page++) {
-      String url = "https://quay.io/api/v1/repository/" + encodePath(repository) + "/tag/?onlyActiveTags=true&limit="
-          + pageSize + "&page=" + page;
+      String url =
+          "https://quay.io/api/v1/repository/"
+              + encodePath(repository)
+              + "/tag/?onlyActiveTags=true&limit="
+              + pageSize
+              + "&page="
+              + page;
 
       HttpResponse<String> response = send(url);
       if (response.statusCode() != 200) {
@@ -185,9 +191,8 @@ public class ImageTagVersionService {
     return sanitize(tags);
   }
 
-  private List<String> fetchOciTags(
-    String host,
-    String repository) throws IOException, InterruptedException {
+  private List<String> fetchOciTags(String host, String repository)
+      throws IOException, InterruptedException {
     String url = "https://" + host + "/v2/" + encodePath(repository) + "/tags/list?n=" + MAX_TAGS;
     HttpResponse<String> response = send(url);
 
@@ -212,16 +217,18 @@ public class ImageTagVersionService {
     return sanitize(collected);
   }
 
-  private HttpResponse<String> send(
-    String url) throws IOException, InterruptedException {
-    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-        .timeout(Duration.ofMillis(Math.max(props.getDockerHubTimeoutMs(), 1000))).header("Accept", "application/json")
-        .GET().build();
+  private HttpResponse<String> send(String url) throws IOException, InterruptedException {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .timeout(Duration.ofMillis(Math.max(props.getDockerHubTimeoutMs(), 1000)))
+            .header("Accept", "application/json")
+            .GET()
+            .build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  private RegistryRef parseImage(
-    String image) {
+  private RegistryRef parseImage(String image) {
     if (image == null || image.isBlank()) {
       return null;
     }
@@ -246,23 +253,26 @@ public class ImageTagVersionService {
         return null;
       }
       RegistryType type = "quay.io".equals(host) ? RegistryType.QUAY : RegistryType.OCI;
-      if ("docker.io".equals(host) || "index.docker.io".equals(host) || "hub.docker.com".equals(host)) {
+      if ("docker.io".equals(host)
+          || "index.docker.io".equals(host)
+          || "hub.docker.com".equals(host)) {
         type = RegistryType.DOCKER_HUB;
       }
       return new RegistryRef(type, host, repository);
     }
 
-    String repository = parts.length == 1 ? "library/" + stripTag(parts[0]) : stripTag(String.join("/", parts));
+    String repository =
+        parts.length == 1 ? "library/" + stripTag(parts[0]) : stripTag(String.join("/", parts));
     return new RegistryRef(RegistryType.DOCKER_HUB, "docker.io", repository);
   }
 
-  private boolean isRegistryHost(
-    String firstSegment) {
-    return firstSegment.contains(".") || firstSegment.contains(":") || "localhost".equals(firstSegment);
+  private boolean isRegistryHost(String firstSegment) {
+    return firstSegment.contains(".")
+        || firstSegment.contains(":")
+        || "localhost".equals(firstSegment);
   }
 
-  private String stripTag(
-    String repository) {
+  private String stripTag(String repository) {
     String result = repository;
 
     int digest = result.indexOf('@');
@@ -279,9 +289,7 @@ public class ImageTagVersionService {
     return result;
   }
 
-  private List<String> merge(
-    List<String> discovered,
-    List<String> fallback) {
+  private List<String> merge(List<String> discovered, List<String> fallback) {
     LinkedHashSet<String> merged = new LinkedHashSet<>();
     merged.addAll(sanitize(discovered));
     merged.addAll(sanitize(fallback));
@@ -293,8 +301,7 @@ public class ImageTagVersionService {
     return limit(new ArrayList<>(merged));
   }
 
-  private List<String> sanitize(
-    Collection<String> tags) {
+  private List<String> sanitize(Collection<String> tags) {
     LinkedHashSet<String> unique = new LinkedHashSet<>();
     for (String tag : tags) {
       if (tag == null) {
@@ -308,40 +315,35 @@ public class ImageTagVersionService {
     return limit(new ArrayList<>(unique));
   }
 
-  private List<String> limit(
-    List<String> tags) {
+  private List<String> limit(List<String> tags) {
     if (tags.size() <= MAX_TAGS) {
       return List.copyOf(tags);
     }
     return List.copyOf(tags.subList(0, MAX_TAGS));
   }
 
-  private void addTag(
-    List<String> tags,
-    String candidate) {
+  private void addTag(List<String> tags, String candidate) {
     if (candidate == null || candidate.isBlank()) {
       return;
     }
     tags.add(candidate.trim());
   }
 
-  private String encodePath(
-    String value) {
+  private String encodePath(String value) {
     return Arrays.stream(value.split("/")).map(this::urlEncode).collect(Collectors.joining("/"));
   }
 
-  private String urlEncode(
-    String value) {
+  private String urlEncode(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private enum RegistryType {
-    DOCKER_HUB, QUAY, OCI
+    DOCKER_HUB,
+    QUAY,
+    OCI
   }
 
-  private record RegistryRef(RegistryType type, String host, String repository) {
-  }
+  private record RegistryRef(RegistryType type, String host, String repository) {}
 
-  private record CacheEntry(List<String> tags, long expiresAtMs) {
-  }
+  private record CacheEntry(List<String> tags, long expiresAtMs) {}
 }

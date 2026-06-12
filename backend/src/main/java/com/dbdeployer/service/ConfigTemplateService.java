@@ -21,8 +21,7 @@ public class ConfigTemplateService {
   private final DeploymentConfigRepository configRepo;
 
   public ConfigTemplateService(
-    DbInstanceService instanceService,
-    DeploymentConfigRepository configRepo) {
+      DbInstanceService instanceService, DeploymentConfigRepository configRepo) {
     this.instanceService = instanceService;
     this.configRepo = configRepo;
   }
@@ -31,18 +30,17 @@ public class ConfigTemplateService {
     return configRepo.findAllByIsTemplateTrueOrderByCreatedAtDesc();
   }
 
-  public DeploymentConfig getById(
-    String id,
-    boolean isTemplate) {
-    return configRepo.findByIdAndIsTemplate(id, isTemplate)
+  public DeploymentConfig getById(String id, boolean isTemplate) {
+    return configRepo
+        .findByIdAndIsTemplate(id, isTemplate)
         .orElseThrow(() -> new IllegalArgumentException("Configuration template not found: " + id));
   }
 
   @Transactional
-  public DeploymentConfig create(
-    ConfigTemplateRequest req) {
+  public DeploymentConfig create(ConfigTemplateRequest req) {
     if (configRepo.existsByName(req.name())) {
-      throw new IllegalArgumentException("A configuration named '" + req.name() + "' already exists");
+      throw new IllegalArgumentException(
+          "A configuration named '" + req.name() + "' already exists");
     }
     DeploymentConfig deploymentConfig = new DeploymentConfig();
     deploymentConfig.setId(UUID.randomUUID().toString());
@@ -52,9 +50,7 @@ public class ConfigTemplateService {
   }
 
   @Transactional
-  public DeploymentConfig update(
-    String id,
-    ConfigTemplateRequest req) {
+  public DeploymentConfig update(String id, ConfigTemplateRequest req) {
     DeploymentConfig t = getById(id, true);
     if (configRepo.existsByNameAndIsTemplateTrueAndIdNot(req.name(), id)) {
       throw new IllegalArgumentException("A template named '" + req.name() + "' already exists");
@@ -64,39 +60,36 @@ public class ConfigTemplateService {
   }
 
   @Transactional
-  public void delete(
-    String id) {
+  public void delete(String id) {
     DeploymentConfig t = getById(id, true);
     configRepo.delete(t);
   }
 
   /**
-   * Deploy a new instance from a saved template. The caller supplies a unique
-   * instance name and the desired host port (the two per-deployment overrides).
-   * All other fields come from the template. Increments deployCount on the
-   * template after a successful dispatch.
+   * Deploy a new instance from a saved template. The caller supplies a unique instance name and the
+   * desired host port (the two per-deployment overrides). All other fields come from the template.
+   * Increments deployCount on the template after a successful dispatch.
    */
   @Transactional
-  public DeploymentResponse deployFromTemplate(
-    String templateId,
-    DeployFromTemplateRequest req) {
+  public DeploymentResponse deployFromTemplate(String templateId, DeployFromTemplateRequest req) {
     DeploymentConfig deploymentConfig = getById(templateId, true);
 
-    ConfigTemplateRequest deployReq = new ConfigTemplateRequest(req.instanceName(),
-        "",
-        deploymentConfig.getDbType(),
-        deploymentConfig.getVersion(),
-        req.hostPort(),
-        deploymentConfig.getUsername(),
-        deploymentConfig.getPassword(),
-        deploymentConfig.getDatabaseName(),
-        deploymentConfig.getExtraEnvJson());
+    ConfigTemplateRequest deployReq =
+        new ConfigTemplateRequest(
+            req.instanceName(),
+            "",
+            deploymentConfig.getDbType(),
+            deploymentConfig.getVersion(),
+            req.hostPort(),
+            deploymentConfig.getUsername(),
+            deploymentConfig.getPassword(),
+            deploymentConfig.getDatabaseName(),
+            deploymentConfig.getExtraEnvJson());
 
     log.info("Deploying new instance from template {} with request {}", templateId, deployReq);
 
-    DeploymentResponse deploymentResponse = instanceService.deploy(deployReq,
-        deploymentConfig,
-        true);
+    DeploymentResponse deploymentResponse =
+        instanceService.deploy(deployReq, deploymentConfig, true);
 
     deploymentConfig.setDeployCount(deploymentConfig.getDeployCount() + 1);
     DeploymentConfig save = configRepo.save(deploymentConfig);
@@ -106,8 +99,7 @@ public class ConfigTemplateService {
   }
 
   private void applyRequest(
-    DeploymentConfig deploymentConfig,
-    ConfigTemplateRequest configTemplateRequest) {
+      DeploymentConfig deploymentConfig, ConfigTemplateRequest configTemplateRequest) {
     deploymentConfig.setName(configTemplateRequest.name());
     deploymentConfig.setDescription(configTemplateRequest.description());
     deploymentConfig.setDbType(configTemplateRequest.dbType());
@@ -117,10 +109,14 @@ public class ConfigTemplateService {
 
     var def = DatabaseCatalog.get(configTemplateRequest.dbType());
     // Apply catalog defaults for any credentials the user left blank
-    String username = resolveCredential(configTemplateRequest.username(), def, DatabaseCatalog.EnvVarType.TEXT);
-    String password = resolveCredential(configTemplateRequest.password(), def, DatabaseCatalog.EnvVarType.PASSWORD);
-    String databaseName = resolveCredential(configTemplateRequest.databaseName(), def,
-        DatabaseCatalog.EnvVarType.DATABASE);
+    String username =
+        resolveCredential(configTemplateRequest.username(), def, DatabaseCatalog.EnvVarType.TEXT);
+    String password =
+        resolveCredential(
+            configTemplateRequest.password(), def, DatabaseCatalog.EnvVarType.PASSWORD);
+    String databaseName =
+        resolveCredential(
+            configTemplateRequest.databaseName(), def, DatabaseCatalog.EnvVarType.DATABASE);
     deploymentConfig.setUsername(username);
     deploymentConfig.setPassword(password);
     deploymentConfig.setDatabaseName(databaseName);
@@ -128,12 +124,12 @@ public class ConfigTemplateService {
   }
 
   private String resolveCredential(
-    String supplied,
-    DatabaseCatalog.DbDefinition def,
-    DatabaseCatalog.EnvVarType type) {
-    if (supplied != null && !supplied.isBlank())
-      return supplied;
-    return def.credentialEnvVars().stream().filter(ev -> ev.type() == type).map(DatabaseCatalog.EnvVar::placeholder)
-        .findFirst().orElse(null);
+      String supplied, DatabaseCatalog.DbDefinition def, DatabaseCatalog.EnvVarType type) {
+    if (supplied != null && !supplied.isBlank()) return supplied;
+    return def.credentialEnvVars().stream()
+        .filter(ev -> ev.type() == type)
+        .map(DatabaseCatalog.EnvVar::placeholder)
+        .findFirst()
+        .orElse(null);
   }
 }

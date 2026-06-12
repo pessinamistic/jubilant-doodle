@@ -36,12 +36,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ImageValidationService {
 
   public enum RefreshScope {
-    LOCAL, HUB, ALL;
+    LOCAL,
+    HUB,
+    ALL;
 
-    public static RefreshScope from(
-      String raw) {
-      if (raw == null || raw.isBlank())
-        return ALL;
+    public static RefreshScope from(String raw) {
+      if (raw == null || raw.isBlank()) return ALL;
       return switch (raw.trim().toUpperCase(Locale.ROOT)) {
         case "LOCAL" -> LOCAL;
         case "HUB", "DOCKER_HUB", "DOCKERHUB" -> HUB;
@@ -58,11 +58,11 @@ public class ImageValidationService {
   private final Semaphore hubCallSemaphore;
 
   public ImageValidationService(
-    DockerDeployEngine docker,
-    DockerHubTagClient dockerHub,
-    ImageTagVersionService imageTagVersionService,
-    ImageTrackingStatusRepository trackingRepo,
-    ImageValidationProperties props) {
+      DockerDeployEngine docker,
+      DockerHubTagClient dockerHub,
+      ImageTagVersionService imageTagVersionService,
+      ImageTrackingStatusRepository trackingRepo,
+      ImageValidationProperties props) {
     this.docker = docker;
     this.dockerHub = dockerHub;
     this.imageTagVersionService = imageTagVersionService;
@@ -71,36 +71,35 @@ public class ImageValidationService {
   }
 
   @Transactional
-  public ImageCheckResponse checkForDeploy(
-    DbType dbType,
-    String tag) {
-    log.info("[image-check] deploy precheck requested: dbType={}, tag={}", dbType, normalizeTag(tag));
+  public ImageCheckResponse checkForDeploy(DbType dbType, String tag) {
+    log.info(
+        "[image-check] deploy precheck requested: dbType={}, tag={}", dbType, normalizeTag(tag));
     return withTrackingWriteLock(() -> evaluateAndPersist(dbType, tag, true, true));
   }
 
   @Transactional
-  public ImageCheckResponse check(
-    DbType dbType,
-    String tag,
-    boolean refresh) {
-    log.debug("[image-check] check requested: dbType={}, tag={}, refresh={}", dbType, normalizeTag(tag), refresh);
+  public ImageCheckResponse check(DbType dbType, String tag, boolean refresh) {
+    log.debug(
+        "[image-check] check requested: dbType={}, tag={}, refresh={}",
+        dbType,
+        normalizeTag(tag),
+        refresh);
     if (!refresh) {
       DatabaseCatalog.DbDefinition def = DatabaseCatalog.get(dbType);
       if (def != null && def.dockerImage() != null) {
-        Optional<ImageTrackingStatus> existing = trackingRepo.findByDbTypeAndImageNameAndImageTag(dbType,
-            def.dockerImage(), normalizeTag(tag));
-        if (existing.isPresent())
-          return toResponse(existing.get(), def.displayName());
+        Optional<ImageTrackingStatus> existing =
+            trackingRepo.findByDbTypeAndImageNameAndImageTag(
+                dbType, def.dockerImage(), normalizeTag(tag));
+        if (existing.isPresent()) return toResponse(existing.get(), def.displayName());
       }
     }
     return withTrackingWriteLock(() -> evaluateAndPersist(dbType, tag, true, refresh));
   }
 
   @Transactional
-  public ImageCheckResponse refreshLocalOnly(
-    DbType dbType,
-    String tag) {
-    log.debug("[image-check] local-only refresh requested: dbType={}, tag={}", dbType, normalizeTag(tag));
+  public ImageCheckResponse refreshLocalOnly(DbType dbType, String tag) {
+    log.debug(
+        "[image-check] local-only refresh requested: dbType={}, tag={}", dbType, normalizeTag(tag));
     return withTrackingWriteLock(() -> evaluateAndPersist(dbType, tag, false, false));
   }
 
@@ -110,7 +109,8 @@ public class ImageValidationService {
       ensureTrackedTags(def, false);
     }
 
-    List<ImageTrackingStatus> tracked = trackingRepo.findAllByOrderByDbTypeAscImageNameAscImageTagAsc();
+    List<ImageTrackingStatus> tracked =
+        trackingRepo.findAllByOrderByDbTypeAscImageNameAscImageTagAsc();
     if (!tracked.isEmpty()) {
       List<ImageCheckResponse> items = new ArrayList<>(tracked.size());
       for (ImageTrackingStatus row : tracked) {
@@ -126,10 +126,21 @@ public class ImageValidationService {
     for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
       for (String tag : resolveVersions(def, false)) {
         boolean hubManaged = dockerHub.resolveDockerHubRepository(def.dockerImage()) != null;
-        fallback.add(new ImageCheckResponse(def.type(), def.displayName(), def.dockerImage(), tag,
-            def.dockerImage() + ":" + tag, hubManaged, ImageAvailabilityState.UNKNOWN,
-            hubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE,
-            ImageValidationDecision.ALLOW_WITH_WARNING, "No checks recorded yet", null, null, null));
+        fallback.add(
+            new ImageCheckResponse(
+                def.type(),
+                def.displayName(),
+                def.dockerImage(),
+                tag,
+                def.dockerImage() + ":" + tag,
+                hubManaged,
+                ImageAvailabilityState.UNKNOWN,
+                hubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE,
+                ImageValidationDecision.ALLOW_WITH_WARNING,
+                "No checks recorded yet",
+                null,
+                null,
+                null));
       }
     }
     return fallback;
@@ -146,9 +157,7 @@ public class ImageValidationService {
   }
 
   @Transactional
-  public ImageToolDetailResponse getToolDetails(
-    DbType dbType,
-    boolean refresh) {
+  public ImageToolDetailResponse getToolDetails(DbType dbType, boolean refresh) {
     DatabaseCatalog.DbDefinition def = requireDeployableDefinition(dbType);
     if (refresh) {
       refreshToolStatuses(dbType, RefreshScope.ALL);
@@ -160,10 +169,21 @@ public class ImageValidationService {
     if (rows.isEmpty()) {
       for (String tag : resolveVersions(def, false)) {
         boolean hubManaged = dockerHub.resolveDockerHubRepository(def.dockerImage()) != null;
-        tags.add(new ImageCheckResponse(def.type(), def.displayName(), def.dockerImage(), tag,
-            def.dockerImage() + ":" + tag, hubManaged, ImageAvailabilityState.UNKNOWN,
-            hubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE,
-            ImageValidationDecision.ALLOW_WITH_WARNING, "No checks recorded yet", null, null, null));
+        tags.add(
+            new ImageCheckResponse(
+                def.type(),
+                def.displayName(),
+                def.dockerImage(),
+                tag,
+                def.dockerImage() + ":" + tag,
+                hubManaged,
+                ImageAvailabilityState.UNKNOWN,
+                hubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE,
+                ImageValidationDecision.ALLOW_WITH_WARNING,
+                "No checks recorded yet",
+                null,
+                null,
+                null));
       }
       return buildToolDetail(def, tags);
     }
@@ -176,8 +196,7 @@ public class ImageValidationService {
   }
 
   @Transactional
-  public int refresh(
-    RefreshScope scope) {
+  public int refresh(RefreshScope scope) {
     return switch (scope) {
       case LOCAL -> refreshLocalStatuses();
       case HUB -> refreshDockerHubStatuses();
@@ -200,18 +219,17 @@ public class ImageValidationService {
     }
 
     List<ImageRefreshResult> results = runParallel(tasks);
-    withTrackingWriteLock(() -> {
-      persistAll(results);
-      return null;
-    });
+    withTrackingWriteLock(
+        () -> {
+          persistAll(results);
+          return null;
+        });
     log.info("[image-refresh] Completed full parallel refresh: updated {} tags", results.size());
     return results.size();
   }
 
   @Transactional
-  public int refreshToolStatuses(
-    DbType dbType,
-    RefreshScope scope) {
+  public int refreshToolStatuses(DbType dbType, RefreshScope scope) {
     log.info("[image-refresh] Starting parallel tool refresh: dbType={}, scope={}", dbType, scope);
     DatabaseCatalog.DbDefinition def = requireDeployableDefinition(dbType);
 
@@ -228,16 +246,21 @@ public class ImageValidationService {
         // Non-Hub image: just refresh local state, no HTTP call.
         tasks.add(() -> computeRefreshResult(def.type(), tag, false, false, localRefs));
       } else {
-        tasks.add(() -> computeRefreshResult(def.type(), tag, includeHub, forceHubCheck, localRefs));
+        tasks.add(
+            () -> computeRefreshResult(def.type(), tag, includeHub, forceHubCheck, localRefs));
       }
     }
 
     List<ImageRefreshResult> results = runParallel(tasks);
-    withTrackingWriteLock(() -> {
-      persistAll(results);
-      return null;
-    });
-    log.info("[image-refresh] Completed parallel tool refresh: dbType={}, scope={}, updated={} tags", dbType, scope,
+    withTrackingWriteLock(
+        () -> {
+          persistAll(results);
+          return null;
+        });
+    log.info(
+        "[image-refresh] Completed parallel tool refresh: dbType={}, scope={}, updated={} tags",
+        dbType,
+        scope,
         results.size());
     return results.size();
   }
@@ -256,11 +279,13 @@ public class ImageValidationService {
     }
 
     List<ImageRefreshResult> results = runParallel(tasks);
-    withTrackingWriteLock(() -> {
-      persistAll(results);
-      return null;
-    });
-    log.debug("[image-refresh] Completed parallel local-only refresh: updated {} tags", results.size());
+    withTrackingWriteLock(
+        () -> {
+          persistAll(results);
+          return null;
+        });
+    log.debug(
+        "[image-refresh] Completed parallel local-only refresh: updated {} tags", results.size());
     return results.size();
   }
 
@@ -271,38 +296,40 @@ public class ImageValidationService {
 
     List<Callable<ImageRefreshResult>> tasks = new ArrayList<>();
     for (DatabaseCatalog.DbDefinition def : deployableCatalog()) {
-      if (dockerHub.resolveDockerHubRepository(def.dockerImage()) == null)
-        continue;
+      if (dockerHub.resolveDockerHubRepository(def.dockerImage()) == null) continue;
       for (String tag : resolveVersions(def, false)) {
         tasks.add(() -> computeRefreshResult(def.type(), tag, true, true, localRefs));
       }
     }
 
     List<ImageRefreshResult> results = runParallel(tasks);
-    withTrackingWriteLock(() -> {
-      persistAll(results);
-      return null;
-    });
-    log.debug("[image-refresh] Completed parallel Docker Hub refresh: updated {} tags", results.size());
+    withTrackingWriteLock(
+        () -> {
+          persistAll(results);
+          return null;
+        });
+    log.debug(
+        "[image-refresh] Completed parallel Docker Hub refresh: updated {} tags", results.size());
     return results.size();
   }
 
   @Transactional
-  public List<String> discoverAndTrackVersions(
-    DbType dbType,
-    boolean refresh) {
+  public List<String> discoverAndTrackVersions(DbType dbType, boolean refresh) {
     log.info("[image-versions] Discovering versions: dbType={}, refresh={}", dbType, refresh);
-    return withTrackingWriteLock(() -> {
-      DatabaseCatalog.DbDefinition def = requireDeployableDefinition(dbType);
-      List<String> versions = resolveVersions(def, refresh);
-      ensureTrackedTags(def, versions);
-      log.info("[image-versions] Version discovery complete: dbType={}, count={}", dbType, versions.size());
-      return versions;
-    });
+    return withTrackingWriteLock(
+        () -> {
+          DatabaseCatalog.DbDefinition def = requireDeployableDefinition(dbType);
+          List<String> versions = resolveVersions(def, refresh);
+          ensureTrackedTags(def, versions);
+          log.info(
+              "[image-versions] Version discovery complete: dbType={}, count={}",
+              dbType,
+              versions.size());
+          return versions;
+        });
   }
 
-  private <T> T withTrackingWriteLock(
-    java.util.function.Supplier<T> work) {
+  private <T> T withTrackingWriteLock(java.util.function.Supplier<T> work) {
     trackingWriteLock.lock();
     try {
       return work.get();
@@ -312,27 +339,33 @@ public class ImageValidationService {
   }
 
   /**
-   * Holds all computed state for a single (dbType, tag) pair before it is written
-   * to the DB. Produced by {@link #computeRefreshResult} outside the write lock
-   * and consumed by {@link #persistAll} inside the write lock.
+   * Holds all computed state for a single (dbType, tag) pair before it is written to the DB.
+   * Produced by {@link #computeRefreshResult} outside the write lock and consumed by {@link
+   * #persistAll} inside the write lock.
    */
-  private record ImageRefreshResult(DbType dbType, String image, String tag, boolean dockerHubManaged,
-      ImageAvailabilityState localStatus, ImageAvailabilityState dockerHubStatus, LocalDateTime dockerHubCheckedAt,
-      ImageValidationDecision decision, String message, LocalDateTime now) {
-  }
+  private record ImageRefreshResult(
+      DbType dbType,
+      String image,
+      String tag,
+      boolean dockerHubManaged,
+      ImageAvailabilityState localStatus,
+      ImageAvailabilityState dockerHubStatus,
+      LocalDateTime dockerHubCheckedAt,
+      ImageValidationDecision decision,
+      String message,
+      LocalDateTime now) {}
 
   /**
-   * Pure IO path — reads, checks, and decides for one (dbType, tag) but does NOT
-   * write to DB. Safe to run in a virtual thread without holding
-   * {@code trackingWriteLock}. Docker Hub calls are throttled by
-   * {@link #hubCallSemaphore}.
+   * Pure IO path — reads, checks, and decides for one (dbType, tag) but does NOT write to DB. Safe
+   * to run in a virtual thread without holding {@code trackingWriteLock}. Docker Hub calls are
+   * throttled by {@link #hubCallSemaphore}.
    */
   private ImageRefreshResult computeRefreshResult(
-    DbType dbType,
-    String rawTag,
-    boolean includeHub,
-    boolean forceHubCheck,
-    Set<String> localRefs) {
+      DbType dbType,
+      String rawTag,
+      boolean includeHub,
+      boolean forceHubCheck,
+      Set<String> localRefs) {
     String tag = normalizeTag(rawTag);
     DatabaseCatalog.DbDefinition def = DatabaseCatalog.get(dbType);
     if (def == null || def.dockerImage() == null) {
@@ -342,18 +375,25 @@ public class ImageValidationService {
     String image = def.dockerImage();
     LocalDateTime now = LocalDateTime.now();
 
-    Optional<ImageTrackingStatus> existing = trackingRepo.findByDbTypeAndImageNameAndImageTag(dbType, image, tag);
+    Optional<ImageTrackingStatus> existing =
+        trackingRepo.findByDbTypeAndImageNameAndImageTag(dbType, image, tag);
     boolean dockerHubManaged = dockerHub.resolveDockerHubRepository(image) != null;
 
     ImageAvailabilityState localStatus = checkLocalStatus(image, tag, localRefs);
 
-    ImageAvailabilityState dockerHubStatus = !dockerHubManaged
-        ? ImageAvailabilityState.NOT_APPLICABLE
-        : existing.map(ImageTrackingStatus::getDockerHubStatus).orElse(ImageAvailabilityState.UNKNOWN);
+    ImageAvailabilityState dockerHubStatus =
+        !dockerHubManaged
+            ? ImageAvailabilityState.NOT_APPLICABLE
+            : existing
+                .map(ImageTrackingStatus::getDockerHubStatus)
+                .orElse(ImageAvailabilityState.UNKNOWN);
 
-    LocalDateTime dockerHubCheckedAt = existing.map(ImageTrackingStatus::getDockerHubCheckedAt).orElse(null);
+    LocalDateTime dockerHubCheckedAt =
+        existing.map(ImageTrackingStatus::getDockerHubCheckedAt).orElse(null);
 
-    if (includeHub && dockerHubManaged && (forceHubCheck || localStatus != ImageAvailabilityState.AVAILABLE)) {
+    if (includeHub
+        && dockerHubManaged
+        && (forceHubCheck || localStatus != ImageAvailabilityState.AVAILABLE)) {
       hubCallSemaphore.acquireUninterruptibly();
       try {
         DockerHubTagClient.HubTagResult hubResult = dockerHub.checkTag(image, tag);
@@ -364,33 +404,46 @@ public class ImageValidationService {
       }
     }
 
-    DecisionResult decisionResult = decide(localStatus, dockerHubStatus, dockerHubManaged, image, tag);
+    DecisionResult decisionResult =
+        decide(localStatus, dockerHubStatus, dockerHubManaged, image, tag);
 
-    log.debug("[image-check] {}:{} decision={}, local={}, hub={}, includeHub={}, forceHubCheck={}", dbType, tag,
-        decisionResult.decision(), localStatus, dockerHubStatus, includeHub, forceHubCheck);
+    log.debug(
+        "[image-check] {}:{} decision={}, local={}, hub={}, includeHub={}, forceHubCheck={}",
+        dbType,
+        tag,
+        decisionResult.decision(),
+        localStatus,
+        dockerHubStatus,
+        includeHub,
+        forceHubCheck);
 
-    return new ImageRefreshResult(dbType, image, tag, dockerHubManaged, localStatus, dockerHubStatus,
-        dockerHubCheckedAt, decisionResult.decision(), decisionResult.message(), now);
+    return new ImageRefreshResult(
+        dbType,
+        image,
+        tag,
+        dockerHubManaged,
+        localStatus,
+        dockerHubStatus,
+        dockerHubCheckedAt,
+        decisionResult.decision(),
+        decisionResult.message(),
+        now);
   }
 
   /**
-   * Batch DB write — must be called inside {@link #withTrackingWriteLock}. Merges
-   * computed results with any existing rows and calls {@code saveAll} in one
-   * round-trip.
+   * Batch DB write — must be called inside {@link #withTrackingWriteLock}. Merges computed results
+   * with any existing rows and calls {@code saveAll} in one round-trip.
    */
-  private void persistAll(
-    List<ImageRefreshResult> results) {
-    if (results.isEmpty())
-      return;
+  private void persistAll(List<ImageRefreshResult> results) {
+    if (results.isEmpty()) return;
 
     // Collect any existing rows we'll be updating to avoid extra queries per row.
     List<ImageTrackingStatus> toSave = new ArrayList<>(results.size());
     for (ImageRefreshResult r : results) {
-      Optional<ImageTrackingStatus> existing = trackingRepo.findByDbTypeAndImageNameAndImageTag(r.dbType(), r.image(),
-          r.tag());
+      Optional<ImageTrackingStatus> existing =
+          trackingRepo.findByDbTypeAndImageNameAndImageTag(r.dbType(), r.image(), r.tag());
       ImageTrackingStatus row = existing.orElseGet(ImageTrackingStatus::new);
-      if (row.getId() == null)
-        row.setId(UUID.randomUUID().toString());
+      if (row.getId() == null) row.setId(UUID.randomUUID().toString());
       row.setDbType(r.dbType());
       row.setImageName(r.image());
       row.setImageTag(r.tag());
@@ -407,13 +460,11 @@ public class ImageValidationService {
   }
 
   /**
-   * Runs {@code tasks} in parallel using one virtual thread per task (Java 21).
-   * Any task that throws logs a warning and is excluded from the result list.
+   * Runs {@code tasks} in parallel using one virtual thread per task (Java 21). Any task that
+   * throws logs a warning and is excluded from the result list.
    */
-  private <T> List<T> runParallel(
-    List<Callable<T>> tasks) {
-    if (tasks.isEmpty())
-      return List.of();
+  private <T> List<T> runParallel(List<Callable<T>> tasks) {
+    if (tasks.isEmpty()) return List.of();
     List<T> results = new ArrayList<>(tasks.size());
     try (ExecutorService vt = Executors.newVirtualThreadPerTaskExecutor()) {
       List<Future<T>> futures = vt.invokeAll(tasks);
@@ -421,7 +472,10 @@ public class ImageValidationService {
         try {
           results.add(f.get());
         } catch (ExecutionException ex) {
-          log.warn("[image-refresh] Task failed, skipping: {}", ex.getCause().getMessage(), ex.getCause());
+          log.warn(
+              "[image-refresh] Task failed, skipping: {}",
+              ex.getCause().getMessage(),
+              ex.getCause());
         } catch (InterruptedException ex) {
           Thread.currentThread().interrupt();
           log.warn("[image-refresh] Refresh interrupted");
@@ -439,8 +493,7 @@ public class ImageValidationService {
     return DatabaseCatalog.all().stream().filter(def -> def.dockerImage() != null).toList();
   }
 
-  private DatabaseCatalog.DbDefinition requireDeployableDefinition(
-    DbType dbType) {
+  private DatabaseCatalog.DbDefinition requireDeployableDefinition(DbType dbType) {
     DatabaseCatalog.DbDefinition def = DatabaseCatalog.get(dbType);
     if (def == null || def.dockerImage() == null) {
       throw new IllegalArgumentException("Unsupported deployable database type: " + dbType);
@@ -448,9 +501,7 @@ public class ImageValidationService {
     return def;
   }
 
-  private List<String> resolveVersions(
-    DatabaseCatalog.DbDefinition def,
-    boolean refresh) {
+  private List<String> resolveVersions(DatabaseCatalog.DbDefinition def, boolean refresh) {
     try {
       List<String> tags = imageTagVersionService.resolveVersions(def.type(), refresh);
       if (tags != null && !tags.isEmpty()) {
@@ -463,9 +514,9 @@ public class ImageValidationService {
   }
 
   private List<ImageTrackingStatus> ensureTrackedTags(
-    DatabaseCatalog.DbDefinition def,
-    boolean refreshVersions) {
-    List<ImageTrackingStatus> existing = trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
+      DatabaseCatalog.DbDefinition def, boolean refreshVersions) {
+    List<ImageTrackingStatus> existing =
+        trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
     if (!refreshVersions && !existing.isEmpty()) {
       return existing;
     }
@@ -475,16 +526,16 @@ public class ImageValidationService {
   }
 
   private List<ImageTrackingStatus> ensureTrackedTags(
-    DatabaseCatalog.DbDefinition def,
-    List<String> resolvedTags) {
-    List<ImageTrackingStatus> existing = trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
+      DatabaseCatalog.DbDefinition def, List<String> resolvedTags) {
+    List<ImageTrackingStatus> existing =
+        trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
     return ensureTrackedTags(def, resolvedTags, existing);
   }
 
   private List<ImageTrackingStatus> ensureTrackedTags(
-    DatabaseCatalog.DbDefinition def,
-    List<String> resolvedTags,
-    List<ImageTrackingStatus> existing) {
+      DatabaseCatalog.DbDefinition def,
+      List<String> resolvedTags,
+      List<ImageTrackingStatus> existing) {
     Set<String> existingTags = new HashSet<>();
     for (ImageTrackingStatus row : existing) {
       existingTags.add(row.getImageTag());
@@ -504,52 +555,52 @@ public class ImageValidationService {
       row.setImageTag(tag);
       row.setDockerHubManaged(hubManaged);
       row.setLocalStatus(ImageAvailabilityState.UNKNOWN);
-      row.setDockerHubStatus(hubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE);
+      row.setDockerHubStatus(
+          hubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE);
       row.setDecision(ImageValidationDecision.ALLOW_WITH_WARNING);
       row.setMessage("Version discovered from registry; checks pending");
       newRows.add(row);
     }
 
     if (!newRows.isEmpty()) {
-      return withTrackingWriteLock(() -> {
-        List<ImageTrackingStatus> current = trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
-        Set<String> currentTags = new HashSet<>();
-        for (ImageTrackingStatus row : current) {
-          currentTags.add(row.getImageTag());
-        }
+      return withTrackingWriteLock(
+          () -> {
+            List<ImageTrackingStatus> current =
+                trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
+            Set<String> currentTags = new HashSet<>();
+            for (ImageTrackingStatus row : current) {
+              currentTags.add(row.getImageTag());
+            }
 
-        List<ImageTrackingStatus> missing = new ArrayList<>();
-        for (ImageTrackingStatus row : newRows) {
-          if (!currentTags.contains(row.getImageTag())) {
-            missing.add(row);
-          }
-        }
+            List<ImageTrackingStatus> missing = new ArrayList<>();
+            for (ImageTrackingStatus row : newRows) {
+              if (!currentTags.contains(row.getImageTag())) {
+                missing.add(row);
+              }
+            }
 
-        if (!missing.isEmpty()) {
-          trackingRepo.saveAll(missing);
-        }
+            if (!missing.isEmpty()) {
+              trackingRepo.saveAll(missing);
+            }
 
-        return trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
-      });
+            return trackingRepo.findByDbTypeOrderByImageNameAscImageTagAsc(def.type());
+          });
     }
 
     return existing;
   }
 
   private ImageCheckResponse evaluateAndPersist(
-    DbType dbType,
-    String rawTag,
-    boolean includeHub,
-    boolean forceHubCheck) {
+      DbType dbType, String rawTag, boolean includeHub, boolean forceHubCheck) {
     return evaluateAndPersist(dbType, rawTag, includeHub, forceHubCheck, null);
   }
 
   private ImageCheckResponse evaluateAndPersist(
-    DbType dbType,
-    String rawTag,
-    boolean includeHub,
-    boolean forceHubCheck,
-    Set<String> localRefs) {
+      DbType dbType,
+      String rawTag,
+      boolean includeHub,
+      boolean forceHubCheck,
+      Set<String> localRefs) {
     String tag = normalizeTag(rawTag);
     DatabaseCatalog.DbDefinition def = DatabaseCatalog.get(dbType);
     if (def == null || def.dockerImage() == null) {
@@ -559,30 +610,39 @@ public class ImageValidationService {
     String image = def.dockerImage();
     LocalDateTime now = LocalDateTime.now();
 
-    Optional<ImageTrackingStatus> existing = trackingRepo.findByDbTypeAndImageNameAndImageTag(dbType, image, tag);
+    Optional<ImageTrackingStatus> existing =
+        trackingRepo.findByDbTypeAndImageNameAndImageTag(dbType, image, tag);
 
     boolean dockerHubManaged = dockerHub.resolveDockerHubRepository(image) != null;
 
     ImageAvailabilityState localStatus = checkLocalStatus(image, tag, localRefs);
-    ImageAvailabilityState dockerHubStatus = existing.map(ImageTrackingStatus::getDockerHubStatus)
-        .orElse(dockerHubManaged ? ImageAvailabilityState.UNKNOWN : ImageAvailabilityState.NOT_APPLICABLE);
-    LocalDateTime dockerHubCheckedAt = existing.map(ImageTrackingStatus::getDockerHubCheckedAt).orElse(null);
+    ImageAvailabilityState dockerHubStatus =
+        existing
+            .map(ImageTrackingStatus::getDockerHubStatus)
+            .orElse(
+                dockerHubManaged
+                    ? ImageAvailabilityState.UNKNOWN
+                    : ImageAvailabilityState.NOT_APPLICABLE);
+    LocalDateTime dockerHubCheckedAt =
+        existing.map(ImageTrackingStatus::getDockerHubCheckedAt).orElse(null);
 
     if (!dockerHubManaged) {
       dockerHubStatus = ImageAvailabilityState.NOT_APPLICABLE;
     }
 
-    if (includeHub && dockerHubManaged && (forceHubCheck || localStatus != ImageAvailabilityState.AVAILABLE)) {
+    if (includeHub
+        && dockerHubManaged
+        && (forceHubCheck || localStatus != ImageAvailabilityState.AVAILABLE)) {
       DockerHubTagClient.HubTagResult hubResult = dockerHub.checkTag(image, tag);
       dockerHubStatus = hubResult.status();
       dockerHubCheckedAt = now;
     }
 
-    DecisionResult decisionResult = decide(localStatus, dockerHubStatus, dockerHubManaged, image, tag);
+    DecisionResult decisionResult =
+        decide(localStatus, dockerHubStatus, dockerHubManaged, image, tag);
 
     ImageTrackingStatus row = existing.orElseGet(ImageTrackingStatus::new);
-    if (row.getId() == null)
-      row.setId(UUID.randomUUID().toString());
+    if (row.getId() == null) row.setId(UUID.randomUUID().toString());
     row.setDbType(dbType);
     row.setImageName(image);
     row.setImageTag(tag);
@@ -595,20 +655,25 @@ public class ImageValidationService {
     row.setDockerHubCheckedAt(dockerHubCheckedAt);
     trackingRepo.save(row);
 
-    log.debug("[image-check] {}:{} decision={}, local={}, hub={}, includeHub={}, forceHubCheck={}", dbType, tag,
-        decisionResult.decision(), localStatus, dockerHubStatus, includeHub, forceHubCheck);
+    log.debug(
+        "[image-check] {}:{} decision={}, local={}, hub={}, includeHub={}, forceHubCheck={}",
+        dbType,
+        tag,
+        decisionResult.decision(),
+        localStatus,
+        dockerHubStatus,
+        includeHub,
+        forceHubCheck);
 
     return toResponse(row, def.displayName());
   }
 
-  private ImageAvailabilityState checkLocalStatus(
-    String image,
-    String tag,
-    Set<String> localRefs) {
+  private ImageAvailabilityState checkLocalStatus(String image, String tag, Set<String> localRefs) {
     try {
-      boolean available = localRefs != null
-          ? docker.hasLocalImage(image, tag, localRefs)
-          : docker.isImageAvailableLocally(image, tag);
+      boolean available =
+          localRefs != null
+              ? docker.hasLocalImage(image, tag, localRefs)
+              : docker.isImageAvailableLocally(image, tag);
       return available ? ImageAvailabilityState.AVAILABLE : ImageAvailabilityState.MISSING;
     } catch (Exception e) {
       log.warn("Local image check failed for {}:{}: {}", image, tag, e.getMessage());
@@ -616,15 +681,14 @@ public class ImageValidationService {
     }
   }
 
-  private record DecisionResult(ImageValidationDecision decision, String message) {
-  }
+  private record DecisionResult(ImageValidationDecision decision, String message) {}
 
   private DecisionResult decide(
-    ImageAvailabilityState local,
-    ImageAvailabilityState hub,
-    boolean dockerHubManaged,
-    String image,
-    String tag) {
+      ImageAvailabilityState local,
+      ImageAvailabilityState hub,
+      boolean dockerHubManaged,
+      String image,
+      String tag) {
     String imageRef = image + ":" + tag;
 
     if (local == ImageAvailabilityState.AVAILABLE) {
@@ -632,38 +696,62 @@ public class ImageValidationService {
     }
 
     if (!dockerHubManaged) {
-      return new DecisionResult(ImageValidationDecision.ALLOW_WITH_WARNING,
+      return new DecisionResult(
+          ImageValidationDecision.ALLOW_WITH_WARNING,
           "Remote validation skipped for non-Docker Hub image " + imageRef);
     }
 
     return switch (hub) {
       case AVAILABLE ->
-        new DecisionResult(ImageValidationDecision.ALLOW, "Image tag exists on Docker Hub and will be pulled");
+          new DecisionResult(
+              ImageValidationDecision.ALLOW, "Image tag exists on Docker Hub and will be pulled");
       case MISSING ->
-        new DecisionResult(ImageValidationDecision.BLOCK, "Image tag does not exist on Docker Hub: " + imageRef);
-      case UNKNOWN -> new DecisionResult(ImageValidationDecision.ALLOW_WITH_WARNING,
-          "Could not validate image on Docker Hub; deployment may fail if tag is invalid");
-      case NOT_APPLICABLE -> new DecisionResult(ImageValidationDecision.ALLOW_WITH_WARNING,
-          "Docker Hub check not applicable for " + imageRef);
+          new DecisionResult(
+              ImageValidationDecision.BLOCK, "Image tag does not exist on Docker Hub: " + imageRef);
+      case UNKNOWN ->
+          new DecisionResult(
+              ImageValidationDecision.ALLOW_WITH_WARNING,
+              "Could not validate image on Docker Hub; deployment may fail if tag is invalid");
+      case NOT_APPLICABLE ->
+          new DecisionResult(
+              ImageValidationDecision.ALLOW_WITH_WARNING,
+              "Docker Hub check not applicable for " + imageRef);
     };
   }
 
-  private ImageCheckResponse toResponse(
-    ImageTrackingStatus row,
-    String displayName) {
-    return new ImageCheckResponse(row.getDbType(), displayName, row.getImageName(), row.getImageTag(),
-        row.getImageName() + ":" + row.getImageTag(), row.isDockerHubManaged(), row.getLocalStatus(),
-        row.getDockerHubStatus(), row.getDecision(), row.getMessage(), row.getLocalCheckedAt(),
-        row.getDockerHubCheckedAt(), row.getUpdatedAt());
+  private ImageCheckResponse toResponse(ImageTrackingStatus row, String displayName) {
+    return new ImageCheckResponse(
+        row.getDbType(),
+        displayName,
+        row.getImageName(),
+        row.getImageTag(),
+        row.getImageName() + ":" + row.getImageTag(),
+        row.isDockerHubManaged(),
+        row.getLocalStatus(),
+        row.getDockerHubStatus(),
+        row.getDecision(),
+        row.getMessage(),
+        row.getLocalCheckedAt(),
+        row.getDockerHubCheckedAt(),
+        row.getUpdatedAt());
   }
 
   private ImageToolSummaryResponse toToolSummary(
-    DatabaseCatalog.DbDefinition def,
-    List<ImageTrackingStatus> rows) {
+      DatabaseCatalog.DbDefinition def, List<ImageTrackingStatus> rows) {
     if (rows.isEmpty()) {
       int totalTags = resolveVersions(def, false).size();
-      return new ImageToolSummaryResponse(def.type(), def.displayName(), def.icon(), def.dockerImage(), totalTags, 0,
-          totalTags, 0, 0, 0, null);
+      return new ImageToolSummaryResponse(
+          def.type(),
+          def.displayName(),
+          def.icon(),
+          def.dockerImage(),
+          totalTags,
+          0,
+          totalTags,
+          0,
+          0,
+          0,
+          null);
     }
 
     int allow = 0;
@@ -679,23 +767,29 @@ public class ImageValidationService {
         case ALLOW_WITH_WARNING -> warning++;
         case BLOCK -> blocked++;
       }
-      if (row.getLocalStatus() == ImageAvailabilityState.AVAILABLE)
-        localAvailable++;
-      if (row.getDockerHubStatus() == ImageAvailabilityState.AVAILABLE)
-        hubAvailable++;
+      if (row.getLocalStatus() == ImageAvailabilityState.AVAILABLE) localAvailable++;
+      if (row.getDockerHubStatus() == ImageAvailabilityState.AVAILABLE) hubAvailable++;
 
       LocalDateTime updated = row.getUpdatedAt();
-      if (updated != null && (latest == null || updated.isAfter(latest)))
-        latest = updated;
+      if (updated != null && (latest == null || updated.isAfter(latest))) latest = updated;
     }
 
-    return new ImageToolSummaryResponse(def.type(), def.displayName(), def.icon(), def.dockerImage(), rows.size(),
-        allow, warning, blocked, localAvailable, hubAvailable, latest);
+    return new ImageToolSummaryResponse(
+        def.type(),
+        def.displayName(),
+        def.icon(),
+        def.dockerImage(),
+        rows.size(),
+        allow,
+        warning,
+        blocked,
+        localAvailable,
+        hubAvailable,
+        latest);
   }
 
   private ImageToolDetailResponse buildToolDetail(
-    DatabaseCatalog.DbDefinition def,
-    List<ImageCheckResponse> tags) {
+      DatabaseCatalog.DbDefinition def, List<ImageCheckResponse> tags) {
     int allow = 0;
     int warning = 0;
     int blocked = 0;
@@ -710,24 +804,30 @@ public class ImageValidationService {
         case BLOCK -> blocked++;
       }
 
-      if (row.localStatus() == ImageAvailabilityState.AVAILABLE)
-        localAvailable++;
-      if (row.dockerHubStatus() == ImageAvailabilityState.AVAILABLE)
-        hubAvailable++;
+      if (row.localStatus() == ImageAvailabilityState.AVAILABLE) localAvailable++;
+      if (row.dockerHubStatus() == ImageAvailabilityState.AVAILABLE) hubAvailable++;
 
       LocalDateTime updated = row.updatedAt();
-      if (updated != null && (latest == null || updated.isAfter(latest)))
-        latest = updated;
+      if (updated != null && (latest == null || updated.isAfter(latest))) latest = updated;
     }
 
-    return new ImageToolDetailResponse(def.type(), def.displayName(), def.icon(), def.dockerImage(), tags.size(), allow,
-        warning, blocked, localAvailable, hubAvailable, latest, tags);
+    return new ImageToolDetailResponse(
+        def.type(),
+        def.displayName(),
+        def.icon(),
+        def.dockerImage(),
+        tags.size(),
+        allow,
+        warning,
+        blocked,
+        localAvailable,
+        hubAvailable,
+        latest,
+        tags);
   }
 
-  private String normalizeTag(
-    String tag) {
-    if (tag == null || tag.isBlank())
-      return "latest";
+  private String normalizeTag(String tag) {
+    if (tag == null || tag.isBlank()) return "latest";
     return tag.trim();
   }
 }

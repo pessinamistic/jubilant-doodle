@@ -10,9 +10,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
- * Runs the Docker deploy pipeline on a Spring-managed async thread pool. Kept
- * in a separate bean so that @Async proxy interception works correctly —
- * self-invocation within the same bean bypasses the proxy.
+ * Runs the Docker deploy pipeline on a Spring-managed async thread pool. Kept in a separate bean so
+ * that @Async proxy interception works correctly — self-invocation within the same bean bypasses
+ * the proxy.
  */
 @Slf4j
 @Service
@@ -22,29 +22,33 @@ public class AsyncDeployer {
   private final DeployedContainerRepository deployedContainerRepository;
 
   public AsyncDeployer(
-    DockerDeployEngine dockerDeployEngine,
-    DeployedContainerRepository containerRepo) {
+      DockerDeployEngine dockerDeployEngine, DeployedContainerRepository containerRepo) {
     this.dockerDeployEngine = dockerDeployEngine;
     this.deployedContainerRepository = containerRepo;
   }
 
   /**
-   * Pull image → create → start container. Both objects are passed directly (not
-   * re-fetched) to avoid a transaction timing race where the async thread queries
-   * the DB before the caller's transaction has committed.
+   * Pull image → create → start container. Both objects are passed directly (not re-fetched) to
+   * avoid a transaction timing race where the async thread queries the DB before the caller's
+   * transaction has committed.
    */
   @Async
-  public void deploy(
-    DeploymentConfig config,
-    DeployedContainer container) {
+  public void deploy(DeploymentConfig config, DeployedContainer container) {
     try {
       log.info("Async deploy starting for '{}' ({})", config.getName(), config.getId());
       dockerDeployEngine.deploy(config, container); // mutates container in-place
       // status + containerId + startedAt are set by DockerDeployEngine.deploy()
-      log.info("Async deploy complete for '{}' — container {}", config.getName(),
+      log.info(
+          "Async deploy complete for '{}' — container {}",
+          config.getName(),
           container.getContainerId() != null ? container.getContainerId().substring(0, 12) : "?");
     } catch (Exception e) {
-      log.error("Async deploy failed for '{}' ({}): {}", config.getName(), config.getId(), e.getMessage(), e);
+      log.error(
+          "Async deploy failed for '{}' ({}): {}",
+          config.getName(),
+          config.getId(),
+          e.getMessage(),
+          e);
       container.setStatus(InstanceStatus.ERROR);
     }
     deployedContainerRepository.save(container);
