@@ -8,29 +8,29 @@ import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.store.DeploymentConfigRepository;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class ConfigTemplateService {
 
-  private final DeploymentConfigRepository configRepo;
   private final DbInstanceService instanceService;
+  private final DeploymentConfigRepository configRepo;
 
-  public ConfigTemplateService(
-    DeploymentConfigRepository configRepo,
-    DbInstanceService instanceService) {
-    this.configRepo = configRepo;
+  public ConfigTemplateService(DbInstanceService instanceService,
+                               DeploymentConfigRepository configRepo) {
     this.instanceService = instanceService;
+    this.configRepo = configRepo;
   }
 
   public List<DeploymentConfig> listAll() {
     return configRepo.findAllByIsTemplateTrueOrderByCreatedAtDesc();
   }
 
-  public DeploymentConfig getById(
-    String id) {
-    return configRepo.findByIdAndIsTemplateTrue(id)
+  public DeploymentConfig getById(String id, boolean isTemplate) {
+    return configRepo.findByIdAndIsTemplate(id, isTemplate)
         .orElseThrow(() -> new IllegalArgumentException("Configuration template not found: " + id));
   }
 
@@ -40,18 +40,18 @@ public class ConfigTemplateService {
     if (configRepo.existsByName(req.name())) {
       throw new IllegalArgumentException("A configuration named '" + req.name() + "' already exists");
     }
-    DeploymentConfig t = new DeploymentConfig();
-    t.setId(UUID.randomUUID().toString());
-    t.setTemplate(true);
-    applyRequest(t, req);
-    return configRepo.save(t);
+    DeploymentConfig deploymentConfig = new DeploymentConfig();
+    deploymentConfig.setId(UUID.randomUUID().toString());
+    deploymentConfig.setTemplate(true);
+    applyRequest(deploymentConfig, req);
+    return configRepo.save(deploymentConfig);
   }
 
   @Transactional
   public DeploymentConfig update(
     String id,
     ConfigTemplateRequest req) {
-    DeploymentConfig t = getById(id);
+    DeploymentConfig t = getById(id, true);
     if (configRepo.existsByNameAndIsTemplateTrueAndIdNot(req.name(), id)) {
       throw new IllegalArgumentException("A template named '" + req.name() + "' already exists");
     }
@@ -62,7 +62,7 @@ public class ConfigTemplateService {
   @Transactional
   public void delete(
     String id) {
-    DeploymentConfig t = getById(id);
+    DeploymentConfig t = getById(id,  true);
     configRepo.delete(t);
   }
 
@@ -76,7 +76,7 @@ public class ConfigTemplateService {
   public DeploymentResponse deployFromTemplate(
     String templateId,
     DeployFromTemplateRequest req) {
-    DeploymentConfig deploymentConfig = getById(templateId);
+    DeploymentConfig deploymentConfig = getById(templateId, true);
 
     DeployRequest deployReq = new DeployRequest(req.instanceName(),
         deploymentConfig.getDbType(),
@@ -86,6 +86,8 @@ public class ConfigTemplateService {
         deploymentConfig.getPassword(),
         deploymentConfig.getDatabaseName(),
         deploymentConfig.getExtraEnvJson());
+
+    log.info("Deploying new instance from template {} with request {}", templateId, deployReq);
 
     DeploymentResponse deploymentResponse = instanceService.deploy(deployReq, templateId, true);
 
@@ -97,16 +99,16 @@ public class ConfigTemplateService {
   }
 
   private void applyRequest(
-    DeploymentConfig t,
+    DeploymentConfig deploymentConfig,
     ConfigTemplateRequest req) {
-    t.setName(req.name());
-    t.setDescription(req.description());
-    t.setDbType(req.dbType());
-    t.setVersion(req.version());
-    t.setHostPort(req.hostPort());
-    t.setUsername(req.username());
-    t.setPassword(req.password());
-    t.setDatabaseName(req.databaseName());
-    t.setExtraEnvJson(req.extraEnvJson());
+    deploymentConfig.setName(req.name());
+    deploymentConfig.setDescription(req.description());
+    deploymentConfig.setDbType(req.dbType());
+    deploymentConfig.setVersion(req.version());
+    deploymentConfig.setHostPort(req.hostPort());
+    deploymentConfig.setUsername(req.username());
+    deploymentConfig.setPassword(req.password());
+    deploymentConfig.setDatabaseName(req.databaseName());
+    deploymentConfig.setExtraEnvJson(req.extraEnvJson());
   }
 }

@@ -70,7 +70,6 @@ public class SystemDbRegistrar implements ApplicationRunner {
         config.setDbType(DbType.POSTGRESQL);
         config.setVersion(resolvePostgresVersion());
         config.setHostPort(systemDbHostPort);
-        config.setContainerPort(5432);
         config.setUsername("dbdeployer");
         config.setPassword(null); // not exposed in the UI
         config.setDatabaseName("dbdeployer");

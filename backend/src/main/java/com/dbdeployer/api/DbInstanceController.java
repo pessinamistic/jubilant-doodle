@@ -38,22 +38,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class DbInstanceController {
 
   private final DbInstanceService service;
-  private final SystemDbStatsService statsService;
   private final ConnectionStringBuilder connBuilder;
-  private final ConfigTemplateService configTemplateService;
   private final InstanceResponseAssembler responseAssembler;
+  private final ConfigTemplateService configTemplateService;
 
-  public DbInstanceController(
-    DbInstanceService service,
-    SystemDbStatsService statsService,
-    ConnectionStringBuilder connBuilder,
-    ConfigTemplateService configTemplateService,
-    InstanceResponseAssembler responseAssembler) {
+  public DbInstanceController(DbInstanceService service,
+                              ConnectionStringBuilder connBuilder,
+                              InstanceResponseAssembler responseAssembler,
+                              ConfigTemplateService configTemplateService) {
     this.service = service;
-    this.statsService = statsService;
     this.connBuilder = connBuilder;
-    this.configTemplateService = configTemplateService;
     this.responseAssembler = responseAssembler;
+    this.configTemplateService = configTemplateService;
   }
 
   /** List all deployed instances */
@@ -171,8 +167,9 @@ public class DbInstanceController {
   @GetMapping("/instances/{id}/connection-string")
   public Map<String, String> connectionString(
     @PathVariable String id) {
-    DeploymentConfig config = configTemplateService.getById(id);
-    return Map.of("connectionString", connBuilder.build(config), "masked", connBuilder.buildMasked(config));
+    DeploymentConfig config = configTemplateService.getById(id, true);
+    return Map.of("connectionString", connBuilder.build(config),
+        "masked", connBuilder.buildMasked(config));
   }
 
   /**
@@ -203,15 +200,6 @@ public class DbInstanceController {
     @PathVariable String id,
     @Valid @RequestBody ReImportRequest req) {
     return ResponseEntity.ok(responseAssembler.fromConfig(service.reImportInstance(id, req)));
-  }
-
-  /**
-   * Live stats for the system database (schema row counts, pool, JVM heap,
-   * uptime)
-   */
-  @GetMapping("/system/stats")
-  public SystemDbStatsResponse systemStats() {
-    return statsService.getStats();
   }
 
   /** Sync container statuses from Docker */

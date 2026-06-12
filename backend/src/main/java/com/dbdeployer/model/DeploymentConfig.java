@@ -52,9 +52,6 @@ public class DeploymentConfig {
   @Column(name = "host_port", nullable = false)
   private int hostPort;
 
-  @Column(name = "container_port", nullable = false)
-  private int containerPort;
-
   @Column(name = "username")
   private String username;
 

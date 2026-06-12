@@ -44,7 +44,7 @@ public class ConfigTemplateController {
   @GetMapping("/{id}")
   public ConfigTemplateResponse get(
     @PathVariable String id) {
-    return ConfigTemplateResponse.from(templateService.getById(id));
+    return ConfigTemplateResponse.from(templateService.getById(id, true));
   }
 
   /** Save a new configuration template (no Docker action). */

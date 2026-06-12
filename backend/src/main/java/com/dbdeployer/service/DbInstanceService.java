@@ -1,5 +1,6 @@
 package com.dbdeployer.service;
 
+import com.dbdeployer.api.dto.ConfigTemplateRequest;
 import com.dbdeployer.api.dto.ContainerMetricsResponse;
 import com.dbdeployer.api.dto.DeployRequest;
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
@@ -44,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DbInstanceService {
 
+
   private final BrewDeployEngine brew;
   private final DockerDeployEngine docker;
   private final ToolMetricsProbe toolMetrics;
@@ -53,19 +55,21 @@ public class DbInstanceService {
   private final DeploymentConfigRepository configRepo;
   private final DeployedContainerRepository containerRepo;
   private final DeploymentPipelineRepository pipelineRepo;
+ // private final ConfigTemplateService configTemplateService;
   private final DeploymentValidations deploymentValidations;
 
   public DbInstanceService(
-    BrewDeployEngine brew,
-    DockerDeployEngine docker,
-    ToolMetricsProbe toolMetrics,
-    PipelineStepRepository stepRepo,
-    PipelineOrchestrator orchestrator,
-    ConnectionStringBuilder connBuilder,
-    DeploymentConfigRepository configRepo,
-    DeployedContainerRepository containerRepo,
-    DeploymentPipelineRepository pipelineRepo,
-    DeploymentValidations deploymentValidations) {
+      BrewDeployEngine brew,
+      DockerDeployEngine docker,
+      ToolMetricsProbe toolMetrics,
+      PipelineStepRepository stepRepo,
+      PipelineOrchestrator orchestrator,
+      ConnectionStringBuilder connBuilder,
+      DeploymentConfigRepository configRepo,
+      DeployedContainerRepository containerRepo,
+      DeploymentPipelineRepository pipelineRepo,
+    //  ConfigTemplateService configTemplateService,
+      DeploymentValidations deploymentValidations) {
     this.brew = brew;
     this.docker = docker;
     this.toolMetrics = toolMetrics;
@@ -75,6 +79,7 @@ public class DbInstanceService {
     this.configRepo = configRepo;
     this.containerRepo = containerRepo;
     this.pipelineRepo = pipelineRepo;
+  //  this.configTemplateService = configTemplateService;
     this.deploymentValidations = deploymentValidations;
   }
 
@@ -149,8 +154,11 @@ public class DbInstanceService {
     DeployRequest req,
     String configId,
     boolean isTemplate) {
-    log.info("[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}", req.name(), req.dbType(),
-        req.version(), req.hostPort());
+    log.info("[deploy] Request received: name='{}', dbType={}, version={}, hostPort={}",
+        req.name(),
+        req.dbType(),
+        req.version(),
+        req.hostPort());
 
     deploymentValidations.validate(req, isTemplate);
 
@@ -160,16 +168,30 @@ public class DbInstanceService {
     String password = resolveCredential(req.password(), def, DatabaseCatalog.EnvVarType.PASSWORD);
     String databaseName = resolveCredential(req.databaseName(), def, DatabaseCatalog.EnvVarType.DATABASE);
 
+    DeploymentConfig config;
+//    if (isTemplate) {
+//      config = configTemplateService.getById(configId, true); // just validate existence of the template; no need to fetch the whole object
+//    } else {
+//      config = configTemplateService.create(new ConfigTemplateRequest(req.name(),
+//          "",
+//          req.dbType(),
+//          req.version(),
+//          req.hostPort(),
+//          username,
+//          password,
+//          databaseName,
+//          req.extraEnvJson()));
+//    }
+
     // ── Config row ──
 
-    DeploymentConfig config = new DeploymentConfig();
-    if (configId == null && !isTemplate) {
+    config = new DeploymentConfig();
+    if (configId == null) {
       config.setId(UUID.randomUUID().toString());
       config.setName(req.name());
       config.setDbType(req.dbType());
       config.setVersion(req.version());
       config.setHostPort(req.hostPort());
-      config.setContainerPort(def.defaultPort());
       config.setUsername(username);
       config.setPassword(password);
       config.setDatabaseName(databaseName);
@@ -393,7 +415,6 @@ public class DbInstanceService {
     config.setDbType(dbType);
     config.setVersion(req.version() != null && !req.version().isBlank() ? req.version() : "unknown");
     config.setHostPort(req.hostPort());
-    config.setContainerPort(req.containerPort());
     config.setUsername(req.username());
     config.setPassword(req.password());
     config.setDatabaseName(req.databaseName());

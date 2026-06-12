@@ -163,8 +163,8 @@ public class DockerDeployEngine {
     log.info("[docker] Creating container '{}' from image {} on hostPort={} containerPort={}",
         containerName,
         image,
-        config.getHostPort(),
-        config.getContainerPort());
+        container.getHostPort(),
+        container.getContainerPort());
 
     container.setContainerName(containerName);
 
@@ -307,7 +307,7 @@ public class DockerDeployEngine {
     List<String> envVars = buildEnvVars(config, def);
 
     // Port binding
-    ExposedPort exposed = ExposedPort.tcp(config.getContainerPort());
+    ExposedPort exposed = ExposedPort.tcp(container.getContainerPort());
     Ports portBindings = new Ports();
     portBindings.bind(exposed, Ports.Binding.bindPort(config.getHostPort()));
 
