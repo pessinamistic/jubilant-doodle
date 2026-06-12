@@ -3,6 +3,10 @@ server:
   servlet:
     context-path: /api
 
+application:
+  title: Port Wrangler
+  version: dev
+
 # ── System database ───────────────────────────────────────────────────────────
 # Standalone / local dev:
 #   SystemDbProvisioner auto-launches a postgres:16 container on host port 5499

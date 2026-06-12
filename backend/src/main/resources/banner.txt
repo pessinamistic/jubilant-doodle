@@ -1,0 +1,81 @@
+${AnsiColor.BRIGHT_CYAN}
+                         ____             _     __        __                       _
+                        |  _ \ ___  _ __ | |_   \ \      / / __ __ _ _ __   __ _ | | ___ _ __
+                        | |_) / _ \| '__|| __|   \ \ /\ / / '__/ _` | '_ \ / _` || |/ _ \ '__|
+                        |  __/ (_) | |   | |_     \ V  V /| | | (_| | | | | (_| || |  __/ |
+                        |_|   \___/|_|    \__|     \_/\_/ |_|  \__,_|_| |_|\__, ||_|\___|_|
+                                                                            |___/
+${AnsiColor.DEFAULT}
+${AnsiStyle.BOLD}${AnsiColor.BRIGHT_YELLOW}Local Dev Infrastructure Control Plane${AnsiStyle.NORMAL}${AnsiColor.DEFAULT}
+
+${AnsiColor.BRIGHT_BLACK}----------------------------------------------------------------------------------------------------------------------------------------------------${AnsiColor.DEFAULT}
+
+${AnsiColor.BRIGHT_GREEN}Wrangle containers. Provision services. Generate configs. Ship faster.${AnsiColor.DEFAULT}
+${AnsiColor.BRIGHT_GREEN}Docker-powered service orchestration for backend developers.${AnsiColor.DEFAULT}
+${AnsiColor.BRIGHT_YELLOW}Purpose${AnsiColor.DEFAULT}
+  One cockpit for local databases, queues, Kafka, containers, ports,
+  connection strings, logs, health checks, and AI runtime integration.
+
+${AnsiColor.BRIGHT_BLUE}CORE PLATFORM${AnsiColor.DEFAULT}
+
+  +------------+     +------------+     +------------+     +------------+
+  |  DOCKER    |     |  SPRING    |     |   REACT    |     |  METADATA  |
+  |  ______    |     |   .----.   |     |   < UI >   |     |  POSTGRES  |
+  | |_____|    |     |  / JAVA \  |     |  /_____\   |     |   [ DB ]   |
+  | |_____|    |     |  \______/  |     |    JSX     |     |  catalog   |
+  +------------+     +------------+     +------------+     +------------+
+
+${AnsiColor.BRIGHT_BLUE}DATABASES & STORES${AnsiColor.DEFAULT}
+
+  +------------+     +------------+     +------------+     +------------+
+  | POSTGRESQL |     |   MYSQL    |     |  MONGODB   |     |   REDIS    |
+  |   __       |     |   _____    |     |    ()      |     |  _______   |
+  |  /  \__    |     |  | SQL |   |     |   (  )     |     | |_____| |  |
+  |  \__/  \   |     |  |_____|   |     |    ||      |     | |_____| |  |
+  +------------+     +------------+     +------------+     +------------+
+
+  +------------+     +------------+     +------------+     +------------+
+  | ELASTIC    |     |   NEO4J    |     | DYNAMODB   |     | PGVECTOR   |
+  |  SEARCH    |     |  o--o--o   |     |   AWS DB   |     |  [1.23]    |
+  |  <====>    |     |   \ | /    |     |  key-val   |     |  <vec>     |
+  |   index    |     |    o-o     |     |  local     |     |  search    |
+  +------------+     +------------+     +------------+     +------------+
+
+${AnsiColor.BRIGHT_BLUE}MESSAGING${AnsiColor.DEFAULT}
+
+  +------------+     +------------+
+  |   KAFKA    |     | RABBITMQ   |
+  |  o--o--o   |     |  (\_/)     |
+  |  |  |  |   |     |  (o.o)     |
+  |  stream    |     |  queue     |
+  +------------+     +------------+
+
+${AnsiColor.BRIGHT_BLUE}LOCAL AI STACK${AnsiColor.DEFAULT}
+
+  +------------+     +------------+     +------------+     +------------+
+  |   OLLAMA   |     | SPRING AI  |     |  VECTOR    |     | MEM PALACE |
+  |   llama    |     |   .----.   |     |   STORE    |     |  memory    |
+  |  /|_|\     |     |  / AI  \   |     |  [....]    |     |  drawers   |
+  |  local LLM |     |  \____/    |     |  embed     |     |  recall    |
+  +------------+     +------------+     +------------+     +------------+
+
+${AnsiColor.BRIGHT_BLUE}OPERATIONS${AnsiColor.DEFAULT}
+
+  +------------+     +------------+     +------------+     +------------+
+  |  HEALTH    |     |   LOGS     |     |   PORTS    |     |  CONFIGS   |
+  |    OK      |     |  tail -f   |     |  :5432     |     |  .yml      |
+  |   /check   |     |  stdout    |     |  :9092     |     |  JDBC URL  |
+  |  status    |     |  stderr    |     |  :11434    |     |  Spring AI |
+  +------------+     +------------+     +------------+     +------------+
+
+${AnsiColor.BRIGHT_YELLOW}Developer Outputs${AnsiColor.DEFAULT}
+  JDBC URLs, credentials, Docker metadata, Spring Boot properties, Spring AI configuration, logs, metrics, and service health.
+
+${AnsiColor.BRIGHT_BLACK}----------------------------------------------------------------------------------------------------------------------------------------------------${AnsiColor.DEFAULT}
+${AnsiColor.BRIGHT_BLACK}Application:${AnsiColor.DEFAULT} ${application.title}
+${AnsiColor.BRIGHT_BLACK}Version:${AnsiColor.DEFAULT}     ${application.version}
+${AnsiColor.BRIGHT_BLACK}Spring Boot:${AnsiColor.DEFAULT} ${spring-boot.version}
+${AnsiColor.BRIGHT_BLACK}Profile:${AnsiColor.DEFAULT}     ${spring.profiles.active:default}
+
+${AnsiColor.BRIGHT_MAGENTA}Dashboard:${AnsiColor.DEFAULT}  http://localhost:5173
+${AnsiColor.BRIGHT_BLACK}----------------------------------------------------------------------------------------------------------------------------------------------------${AnsiColor.DEFAULT}
