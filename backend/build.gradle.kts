@@ -7,6 +7,7 @@ plugins {
     id("org.springframework.boot") version "3.4.2"
     id("com.diffplug.spotless") version "8.0.0"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.liquibase.gradle") version "2.2.0"
 }
 
 group = "com.dbdeployer"
@@ -52,10 +53,43 @@ dependencies {
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
+
+    // Liquibase Gradle plugin runtime — used by ./gradlew liquibaseChangelogSync and friends.
+    // Versions pinned explicitly because this config is outside the Spring Boot BOM.
+    liquibaseRuntime("org.liquibase:liquibase-core:4.29.2")
+    liquibaseRuntime("org.postgresql:postgresql:42.7.4")
+    liquibaseRuntime("info.picocli:picocli:4.7.6")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Liquibase Gradle plugin — used for one-off admin commands against the running system DB.
+// Usage (existing installs only, run ONCE before enabling Liquibase for the first time):
+//   ./gradlew liquibaseChangelogSync
+// Env vars override the defaults so CI and Docker Compose deployments work without editing.
+liquibase {
+    activities {
+        register("main") {
+            arguments =
+                mapOf(
+                    "changelogFile" to
+                        "src/main/resources/db/changelog/db.changelog-master.yaml",
+                    "url" to
+                        (System.getenv("SPRING_DATASOURCE_URL")
+                            ?: "jdbc:postgresql://localhost:5499/dbdeployer"),
+                    "username" to
+                        (System.getenv("SPRING_DATASOURCE_USERNAME") ?: "dbdeployer"),
+                    "password" to
+                        (System.getenv("SPRING_DATASOURCE_PASSWORD") ?: "dbdeployer_internal"),
+                    "driver" to "org.postgresql.Driver",
+                )
+        }
+    }
+    runList = "main"
 }
 
 val osName = System.getProperty("os.name", "").lowercase()

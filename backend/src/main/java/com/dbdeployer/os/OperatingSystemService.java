@@ -4,11 +4,12 @@ import com.dbdeployer.deploy.OsDetector;
 import org.springframework.stereotype.Component;
 
 /**
- * Spring component that provides operating system information by delegating to an {@link OsDetector}.
+ * Spring component that provides operating system information by delegating to an {@link
+ * OsDetector}.
  *
- * <p>This service is a thin wrapper around {@link OsDetector} exposing only the
- * {@link #getSystemInfo()} method to callers. It exists to enable injection of the
- * {@code OsDetector} implementation and to centralize OS-related operations.
+ * <p>This service is a thin wrapper around {@link OsDetector} exposing only the {@link
+ * #getSystemInfo()} method to callers. It exists to enable injection of the {@code OsDetector}
+ * implementation and to centralize OS-related operations.
  */
 @Component
 public class OperatingSystemService {
@@ -19,7 +20,8 @@ public class OperatingSystemService {
   /**
    * Create a new OperatingSystemService.
    *
-   * @param osDetector the {@link OsDetector} used to obtain system information; must not be {@code null}
+   * @param osDetector the {@link OsDetector} used to obtain system information; must not be {@code
+   *     null}
    */
   public OperatingSystemService(OsDetector osDetector) {
     this.osDetector = osDetector;
