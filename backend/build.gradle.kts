@@ -38,6 +38,8 @@ dependencies {
     implementation("org.springframework.ai:spring-ai-starter-model-ollama")
     // JDBC-backed chat memory window (verbatim turns) → SPRING_AI_CHAT_MEMORY table.
     implementation("org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc")
+    // pgvector vector store (extension on the existing Postgres 16) — Phase 4 RAG.
+    implementation("org.springframework.ai:spring-ai-starter-vector-store-pgvector")
 
     // PostgreSQL driver — used by the auto-provisioned system DB container (SystemDbProvisioner)
     runtimeOnly("org.postgresql:postgresql")
