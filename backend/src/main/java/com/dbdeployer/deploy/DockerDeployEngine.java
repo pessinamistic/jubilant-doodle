@@ -612,6 +612,24 @@ public class DockerDeployEngine {
     return env;
   }
 
+  /**
+   * Resolves the concrete environment variables ({@code "KEY=VALUE"}) that would be injected into a
+   * container for this config. This is the single source of truth shared between {@link
+   * #createContainer} and the Docker Compose export, so an exported service reproduces the same
+   * environment the deployed container runs with. Returns an empty list if the type is unknown or
+   * the extra-env JSON cannot be parsed (never throws).
+   */
+  public List<String> resolveEnv(DeploymentConfig config) {
+    var def = DatabaseCatalog.get(config.getDbType());
+    if (def == null) return List.of();
+    try {
+      return buildEnvVars(config, def);
+    } catch (IOException e) {
+      log.warn("[compose] failed to resolve env for '{}': {}", config.getName(), e.getMessage());
+      return List.of();
+    }
+  }
+
   // ── Container metrics ──────────────────────────────────────────────────────
 
   /**
