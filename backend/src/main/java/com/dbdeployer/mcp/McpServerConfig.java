@@ -1,8 +1,8 @@
 package com.dbdeployer.mcp;
 
+import com.dbdeployer.ai.tools.AgentSafety;
 import com.dbdeployer.ai.tools.InfrastructureTools;
 import java.util.Arrays;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -23,9 +23,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class McpServerConfig {
 
-  /** Tools withheld from MCP clients unless writes are explicitly enabled. */
-  static final Set<String> DESTRUCTIVE = Set.of("stopInstance", "removeInstance");
-
   @Bean
   public ToolCallbackProvider portWranglerMcpTools(
       InfrastructureTools tools,
@@ -45,7 +42,7 @@ public class McpServerConfig {
   /** Pure: drop destructive tools by name. Unit-testable. */
   static ToolCallback[] filterReadOnly(ToolCallback[] all) {
     return Arrays.stream(all)
-        .filter(cb -> !DESTRUCTIVE.contains(cb.getToolDefinition().name()))
+        .filter(cb -> !AgentSafety.DESTRUCTIVE.contains(cb.getToolDefinition().name()))
         .toArray(ToolCallback[]::new);
   }
 }
