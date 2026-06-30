@@ -63,6 +63,14 @@ spring:
           jdbc:
             # Liquibase owns SPRING_AI_CHAT_MEMORY (V7); do not auto-create it.
             initialize-schema: never
+    vectorstore:
+      pgvector:
+        # Liquibase owns vector_store (V8) — do not auto-create. Fixed 768 dims
+        # (nomic-embed-text), HNSW + cosine. Explicit dims avoid an Ollama call at boot.
+        initialize-schema: false
+        dimensions: 768
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
 
   jackson:
     serialization:
