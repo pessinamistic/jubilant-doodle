@@ -105,6 +105,10 @@ export const exportDockerCompose  = ()   => api.get('/export/docker-compose', { 
 export const syncStatuses        = ()             => api.post('/instances/sync')
 export const getCatalog          = ()             => api.get('/catalog').then(r => r.data)
 export const getCatalogVersions  = (dbType, refresh=false) => api.get(`/catalog/${dbType}/versions`, { params: { refresh } }).then(r => r.data)
+
+// ── Model Cookbook ─────────────────────────────────────────────────────────
+export const getSystemProfile    = ()             => api.get('/models/profile').then(r => r.data)
+export const getModelSuggestions = (type, compat) => api.get('/models/suggestions', { params: { type: type || undefined, compat: compat || undefined } }).then(r => r.data)
 export const getSystemInfo       = ()             => api.get('/system').then(r => r.data)
 export const discoverContainers  = ()             => api.get('/instances/discover').then(r => r.data)
 export const importContainer     = (data)         => api.post('/instances/import', data).then(r => r.data)
