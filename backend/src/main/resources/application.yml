@@ -71,6 +71,10 @@ spring:
         dimensions: 768
         index-type: HNSW
         distance-type: COSINE_DISTANCE
+    mcp:
+      server:
+        name: port-wrangler
+        version: 1.0.0
 
   jackson:
     serialization:
@@ -103,6 +107,15 @@ dbdeployer:
   logging:
     api:
       verbose: ${DBDEPLOYER_API_LOG_VERBOSE:false}
+
+# ── AI agent + MCP safety flags (Phase 5) ─────────────────────────────────────
+portwrangler:
+  agent:
+    # When true, the in-app agent is built with read-only tools only.
+    read-only: ${PORTWRANGLER_AGENT_READ_ONLY:false}
+  mcp:
+    # When false (default), destructive tools are stripped from the MCP server surface.
+    write-enabled: ${PORTWRANGLER_MCP_WRITE_ENABLED:false}
 
 logging:
   level:
