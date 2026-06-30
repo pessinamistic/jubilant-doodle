@@ -3,6 +3,7 @@ package com.dbdeployer.ai;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -30,5 +31,16 @@ public class ChatClientConfig {
         .chatMemoryRepository(chatMemoryRepository)
         .maxMessages(8)
         .build();
+  }
+
+  /**
+   * Drives manual tool execution for the agentic chat loop. With {@code
+   * internalToolExecutionEnabled(false)} on the request options, the model returns tool calls
+   * without running them; this manager executes the approved ones and appends their results to the
+   * conversation history so the loop can continue (roadmap §5).
+   */
+  @Bean
+  ToolCallingManager toolCallingManager() {
+    return ToolCallingManager.builder().build();
   }
 }

@@ -3,6 +3,7 @@ package com.dbdeployer.ai;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaOptions;
@@ -32,17 +33,7 @@ public class ModelRouter {
 
   /** A client bound to a specific runtime base URL + model, with conversation memory enabled. */
   public ChatClient clientFor(String baseUrl, String modelId) {
-    String url = (baseUrl == null || baseUrl.isBlank()) ? defaultBaseUrl : baseUrl;
-    String model = (modelId == null || modelId.isBlank()) ? defaultModel : modelId;
-
-    OllamaApi api = OllamaApi.builder().baseUrl(url).build();
-    OllamaChatModel chatModel =
-        OllamaChatModel.builder()
-            .ollamaApi(api)
-            .defaultOptions(OllamaOptions.builder().model(model).build())
-            .build();
-
-    return ChatClient.builder(chatModel)
+    return ChatClient.builder(chatModelFor(baseUrl, modelId))
         .defaultSystem(ChatClientConfig.SYSTEM_PROMPT)
         .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
         .build();
@@ -50,16 +41,25 @@ public class ModelRouter {
 
   /** A client bound to a plain model (no memory advisor) — used for stateless comparisons. */
   public ChatClient statelessClientFor(String baseUrl, String modelId) {
+    return ChatClient.builder(chatModelFor(baseUrl, modelId))
+        .defaultSystem(ChatClientConfig.SYSTEM_PROMPT)
+        .build();
+  }
+
+  /**
+   * The raw {@link ChatModel} bound to a chosen runtime + model (an {@link OllamaChatModel} under
+   * the hood). The agentic tool loop drives this directly (manual {@code call(Prompt)} + {@code
+   * ToolCallingManager}) rather than through a {@link ChatClient}, so it can gate confirmation
+   * between rounds (roadmap §5).
+   */
+  public ChatModel chatModelFor(String baseUrl, String modelId) {
     String url = (baseUrl == null || baseUrl.isBlank()) ? defaultBaseUrl : baseUrl;
     String model = (modelId == null || modelId.isBlank()) ? defaultModel : modelId;
 
     OllamaApi api = OllamaApi.builder().baseUrl(url).build();
-    OllamaChatModel chatModel =
-        OllamaChatModel.builder()
-            .ollamaApi(api)
-            .defaultOptions(OllamaOptions.builder().model(model).build())
-            .build();
-
-    return ChatClient.builder(chatModel).defaultSystem(ChatClientConfig.SYSTEM_PROMPT).build();
+    return OllamaChatModel.builder()
+        .ollamaApi(api)
+        .defaultOptions(OllamaOptions.builder().model(model).build())
+        .build();
   }
 }
