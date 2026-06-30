@@ -20,10 +20,15 @@ class McpServerConfigTest {
 
   @Mock private DbInstanceService service;
   @Mock private ConnectionStringBuilder connBuilder;
+  @Mock private com.dbdeployer.service.ConfigTemplateService configTemplate;
+  @Mock private com.dbdeployer.deploy.DockerDeployEngine docker;
+  @Mock private com.dbdeployer.runtime.OllamaModelPuller modelPuller;
 
   private ToolCallback[] allToolCallbacks() {
     lenient().when(service.listAll()).thenReturn(List.of());
-    var tools = new InfrastructureTools(service, connBuilder);
+    var tools =
+        new InfrastructureTools(
+            service, connBuilder, configTemplate, docker, modelPuller, "http://localhost:11434");
     return MethodToolCallbackProvider.builder().toolObjects(tools).build().getToolCallbacks();
   }
 
@@ -38,11 +43,24 @@ class McpServerConfigTest {
   }
 
   @Test
+  void all_tools_include_write_tools() {
+    assertThat(names(allToolCallbacks()))
+        .contains("deployDatabase", "createKafkaTopic", "pullModel");
+  }
+
+  @Test
   void filterReadOnly_strips_destructive_tools() {
     ToolCallback[] readOnly = McpServerConfig.filterReadOnly(allToolCallbacks());
 
     assertThat(names(readOnly))
         .contains("listInstances", "readLogs", "connectionConfig", "stackSummary")
         .doesNotContain("stopInstance", "removeInstance");
+  }
+
+  @Test
+  void filterReadOnly_strips_write_tools() {
+    ToolCallback[] readOnly = McpServerConfig.filterReadOnly(allToolCallbacks());
+
+    assertThat(names(readOnly)).doesNotContain("deployDatabase", "createKafkaTopic", "pullModel");
   }
 }

@@ -42,6 +42,9 @@ class AgentChatServiceTest {
   @Mock private ModelRouter modelRouter;
   @Mock private com.dbdeployer.service.DbInstanceService dbInstanceService;
   @Mock private ConnectionStringBuilder connBuilder;
+  @Mock private com.dbdeployer.service.ConfigTemplateService configTemplate;
+  @Mock private com.dbdeployer.deploy.DockerDeployEngine docker;
+  @Mock private com.dbdeployer.runtime.OllamaModelPuller modelPuller;
 
   private InfrastructureTools tools;
   private final AgentSafety safety = new AgentSafety();
@@ -50,7 +53,14 @@ class AgentChatServiceTest {
 
   @BeforeEach
   void setUp() {
-    tools = new InfrastructureTools(dbInstanceService, connBuilder);
+    tools =
+        new InfrastructureTools(
+            dbInstanceService,
+            connBuilder,
+            configTemplate,
+            docker,
+            modelPuller,
+            "http://localhost:11434");
   }
 
   private AgentChatService service(boolean readOnly) {
