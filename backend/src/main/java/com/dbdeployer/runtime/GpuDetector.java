@@ -52,7 +52,7 @@ public class GpuDetector {
    * Pure classification — fully unit-testable against captured signal fixtures (no Docker, no
    * filesystem, no real GPU required).
    */
-  static SystemProfile classify(
+  public static SystemProfile classify(
       Set<String> dockerRuntimes,
       boolean kfdExists,
       boolean driExists,

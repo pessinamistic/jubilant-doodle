@@ -39,6 +39,7 @@ public class DockerDeployEngine {
   private final DockerClient docker;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final Map<String, ReentrantLock> imagePullLocks = new ConcurrentHashMap<>();
+  private final GpuHostConfigurer gpuHostConfigurer;
 
   // Container image name → DbType mapping (order matters: more specific first)
   private static final Map<String, DbType> IMAGE_DB_TYPE_MAP = new LinkedHashMap<>();
@@ -91,7 +92,7 @@ public class DockerDeployEngine {
     IMAGE_DB_TYPE_MAP.put("pgadmin", DbType.PGADMIN);
   }
 
-  public DockerDeployEngine() {
+  public DockerDeployEngine(GpuHostConfigurer gpuHostConfigurer) {
     String socketUri = DockerSocketResolver.resolve();
     var config =
         DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost(socketUri).build();
@@ -101,6 +102,7 @@ public class DockerDeployEngine {
             .sslConfig(config.getSSLConfig())
             .build();
     this.docker = DockerClientImpl.getInstance(config, httpClient);
+    this.gpuHostConfigurer = gpuHostConfigurer;
   }
 
   // ── Granular step methods (used by pipeline step impls) ───────────────────
@@ -211,15 +213,55 @@ public class DockerDeployEngine {
             .withName(containerName)
             .withEnv(envVars)
             .withExposedPorts(exposedPorts)
-            .withHostConfig(
-                HostConfig.newHostConfig()
-                    .withPortBindings(portBindings)
-                    .withBinds(binds)
-                    .withRestartPolicy(RestartPolicy.unlessStoppedRestart()))
+            .withHostConfig(buildHostConfig(image, portBindings, binds))
             .exec();
 
     container.setContainerId(created.getId());
     log.info("[docker] Container created: {} ({})", containerName, created.getId());
+  }
+
+  /**
+   * Builds the {@link HostConfig} for a container. For LLM-runtime images (Ollama / Docker Model
+   * Runner) it additionally applies GPU access via {@link GpuHostConfigurer} based on the detected
+   * host GPU vendor. On Apple Silicon a warning is surfaced — a containerised runtime cannot use
+   * the Metal GPU (Docker Desktop's Linux VM has no passthrough), so it runs CPU-only.
+   */
+  private HostConfig buildHostConfig(String image, Ports portBindings, List<Bind> binds) {
+    HostConfig hostConfig =
+        HostConfig.newHostConfig()
+            .withPortBindings(portBindings)
+            .withBinds(binds)
+            .withRestartPolicy(RestartPolicy.unlessStoppedRestart());
+
+    if (isLlmRuntimeImage(image)) {
+      com.dbdeployer.runtime.GpuVendor vendor = detectGpuVendor();
+      gpuHostConfigurer.applyGpu(hostConfig, vendor);
+      if (vendor == com.dbdeployer.runtime.GpuVendor.APPLE) {
+        log.warn(
+            "[gpu] Dockerised Ollama on macOS runs CPU-only (no Metal passthrough); "
+                + "for GPU acceleration use native Ollama.");
+      }
+    }
+    return hostConfig;
+  }
+
+  private static boolean isLlmRuntimeImage(String image) {
+    String i = image == null ? "" : image.toLowerCase(Locale.ROOT);
+    return i.contains("ollama") || i.contains("model-runner");
+  }
+
+  /** Detect the host GPU vendor reusing the pure {@code GpuDetector.classify} rules (no cycle). */
+  private com.dbdeployer.runtime.GpuVendor detectGpuVendor() {
+    return com.dbdeployer.runtime.GpuDetector.classify(
+            dockerRuntimeNames(),
+            Files.exists(Path.of("/dev/kfd")),
+            Files.exists(Path.of("/dev/dri")),
+            System.getProperty("os.arch", ""),
+            System.getProperty("os.name", ""),
+            0,
+            0,
+            0)
+        .gpuVendor();
   }
 
   /**
