@@ -101,7 +101,7 @@ public class AgentChatService {
       if (++rounds > AgentSafety.MAX_TOOL_ROUNDS) {
         events.add(
             sse(
-                "error",
+                "agent_error",
                 AgentEvent.text(
                     "Tool-call limit ("
                         + AgentSafety.MAX_TOOL_ROUNDS
@@ -133,7 +133,7 @@ public class AgentChatService {
         response = chatModel.call(prompt);
       } catch (RuntimeException e) {
         log.warn("[agent] tool execution failed: {}", e.getMessage());
-        events.add(sse("error", AgentEvent.text("Tool execution failed: " + e.getMessage())));
+        events.add(sse("agent_error", AgentEvent.text("Tool execution failed: " + e.getMessage())));
         return done(events);
       }
     }

@@ -185,11 +185,11 @@ class AgentChatServiceTest {
 
     assertThat(events).isNotNull();
     // Last event is done; an error event reports the cap; no infinite hang.
-    assertThat(eventNames(events)).contains("error", "done");
+    assertThat(eventNames(events)).contains("agent_error", "done");
     assertThat(events.get(events.size() - 1).event()).isEqualTo("done");
     AgentEvent error =
         events.stream()
-            .filter(e -> "error".equals(e.event()))
+            .filter(e -> "agent_error".equals(e.event()))
             .map(ServerSentEvent::data)
             .findFirst()
             .orElseThrow();
