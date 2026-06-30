@@ -1,45 +1,99 @@
 # Port Wrangler AI — Agent Handover
 
 > **Purpose:** resume the Port Wrangler AI build exactly where the previous agent left off.
-> **Read order:** this doc → `CONTEXT.md` → `docs/port-wrangler-roadmap-grounded.md` (source of truth).
-> **Last updated:** session ending on branch `phase/4-advisors`.
+> **Read order:** this doc → `CONTEXT.md` → `docs/port-wrangler-roadmap-grounded.md` (deep technical source)
+> → `docs/port-wrangler-future-roadmap.md` (what to build next, code-grounded).
+> **Last updated:** session ending on branch `feature/port-wrangler-ai` @ `c6ff692`.
 
 ---
 
 ## 1. TL;DR — where we are
 
-The 6-phase roadmap to turn Port Wrangler into an AI-agent infra cockpit is **mostly done**.
+The 6-phase roadmap to turn Port Wrangler into an AI-agent infra cockpit is **functionally complete
+through Phase 5**. The agent can be driven end-to-end from the UI with a confirmation-gated tool loop.
 
-| Phase | Status | Branch |
+| Phase | Status | Notes |
 |---|---|---|
-| 0 — Hardening | ✅ done (was already on `master`) | `master` |
-| 1 — Quick wins (Compose export, Spring config) | ✅ merged | `phase/1-quick-wins` |
-| 2 — LLM Runtime + Model Cookbook | ✅ merged | `phase/2-llm-runtime` |
-| 3 — Spring AI foundation + Model Comparison | ✅ merged | `phase/3-spring-ai` |
-| 4 — RAG foundation | ✅ core merged; advisor wiring in progress | `phase/4-rag` (merged), `phase/4-advisors` (current) |
-| 5 — Agentic tools + MCP server | ✅ core merged; confirmation loop + FE pending | `phase/5-agent` |
+| 0 — Hardening | ✅ (on `master`) | Liquibase present; `ddl-auto` cutover still pending (see §6) |
+| 1 — Quick wins (Compose export, Spring config) | ✅ merged | |
+| 2 — LLM Runtime + Model Cookbook | ✅ merged | |
+| 3 — Spring AI foundation + Model Comparison | ✅ merged | |
+| 4 — RAG foundation + **chat wiring** | ✅ merged | RAG context now injected into the live chat path |
+| 5 — Agentic tools + MCP + **confirmation loop + frontend** | ✅ merged | the agent UI is live at `/agent` |
 
-**Integration branch:** `feature/port-wrangler-ai` (everything merges here; single PR into `master` at the very end). `master` is `7563946`, **untouched** — never rewrite it.
+**Integration branch:** `feature/port-wrangler-ai` (tip `c6ff692`). Everything merges here; a **single PR
+into `master` happens at the very end**. `master` is `7563946`, **untouched** — never rewrite it.
 
-**Current working branch:** `phase/4-advisors` (one commit ahead of `feature`: `SmartContextBuilder`).
+**Current working branch:** `feature/port-wrangler-ai` (all phase tails merged in, clean).
 
-Everything on `feature/port-wrangler-ai` passes `./gradlew clean spotlessCheck test` (24 test classes) and both `npm run build` (frontend) runs clean.
-
----
-
-## 2. Conventions (follow exactly)
-
-- **Commits:** one per logical unit, message prefix `feat(phaseN): …`. **DO NOT add a `Co-authored-by` trailer** (the user explicitly disabled it; earlier commits were rewritten to remove it).
-- **Branching:** create each phase tail branch from the tip of `feature/port-wrangler-ai`; merge back with `git merge --no-ff`. Never branch from another phase branch. Never merge into `master`.
-- **Only stage your own files.** There are pre-existing unrelated dirty files in the tree — **do not commit them**: `.gitignore`, `backend/.../ImageTrackingStatus.java`, `backend/.../ImageValidationService.java`, and untracked `CONTEXT.md`, `backend/AGENTS.md`, `backend/CLAUDE.md`, `opencode.json`, `graphify-out/`, `docs/prompt`, `frontend/jsconfig.json`.
-- **Schema:** Liquibase only, `db/changelog/changes/V<N>__<snake>.sql`, `--changeset portWrangler:<N> labels:phase<N>`. Registered via `includeAll` (just drop the file in). Never Flyway, never `ddl-auto`.
-- **Java package stays `com.dbdeployer`.** Frontend is plain JSX (no TS), tabs in some files — match the file you're editing.
-- **Verify-before-build:** any new dependency, confirm it resolves (`./gradlew dependencies --configuration runtimeClasspath | grep <artifact>`) before writing code against it.
-- **Test pattern:** controllers → `MockMvcBuilders.standaloneSetup(controller)` (no Spring context); services → Mockito mocks; Spring AI → stub `ChatModel` (see `RagChatServiceTest`). Pure algorithm cores are extracted specifically so they're unit-testable without live infra.
+The whole backend passes `./gradlew clean spotlessCheck test` (**27 test classes**). Frontend `npm run
+build` + `eslint` are clean.
 
 ---
 
-## 3. Hard constraints (non-negotiable)
+## 2. What landed THIS session (since the previous handover @ `070ea56`)
+
+Three logical units, each on its own phase-tail branch, each merged `--no-ff` into `feature`:
+
+1. **`feat(phase4): wire RAG context into chat path`** (`4a34da1`, merged `941d84b`)
+   - `RagChatService` now injects `MemoryRetriever` + `SmartContextBuilder`. Per turn it best-effort
+     retrieves top-4 memories (try/catch — degrades to plain chat on pgvector failure) and prepends a
+     smart-context block as `ChatClientConfig.SYSTEM_PROMPT + context` (never clobbers the base prompt).
+   - Used **Option B** from the old handover (no `spring-ai-advisors-vector-store` dependency).
+   - `rollingSummary` is passed as **`null`** for now (no `chat_session` persistence yet).
+   - Tests: empty-context unchanged behaviour, memory-injection-into-system-prompt, graceful-degrade-on-throw.
+
+2. **`feat(phase5): confirmation-gated agentic tool execution loop`** (`4378d7d`, merged `1c78ba3`)
+   - **`AgentChatService`** — the manual tool loop: `chatModel.call(prompt)` → while `hasToolCalls()` →
+     emit `tool_call` events → gate → `ToolCallingManager.executeToolCalls(...)` → rebuild prompt from
+     `conversationHistory()` → repeat. `internalToolExecutionEnabled(false)` so the model proposes but
+     we decide. Read-only tools auto-run; write/destructive halt with `confirmation_request` until the
+     caller re-requests `approve=true`; `MAX_TOOL_ROUNDS=6` cap; `executeToolCalls` wrapped in try/catch.
+   - **`AgentEvent`** record (SSE payload) + **`AgentChatController`** `GET /chat/agent/stream?message&model&baseUrl&approve`.
+   - **`ModelRouter.chatModelFor(...)`** added (returns the `ChatModel` interface so the loop is
+     unit-testable) and the two existing client builders were de-duplicated through it.
+   - **`ChatClientConfig`** gained a `ToolCallingManager` bean.
+   - Tests: destructive-not-executed-without-approval, executes-once-approved, read-only-never-executes-write,
+     read-only-auto-runs, **loop-cap fires** (verified `listAll()` called exactly `MAX_TOOL_ROUNDS` times),
+     plus a MockMvc async-dispatch slice for the controller.
+
+3. **`feat(phase5): agent frontend with tool-call trace + confirmation flow`** (`2972daf`, merged `6cc4fb0`)
+   - **`AgentPage.jsx`** at `/agent` (route in `App.jsx`, nav in `AppShell.jsx` desktop+mobile, `Wrench` icon).
+     Renders the tool-call trace (expandable rows + status badges + JSON args), a confirm/cancel modal
+     (reuses `ConfirmModal`; red for destructive, amber for write), a **client-side read-only toggle**
+     (blocks approvals), and approve-resume. `EventSource` always closed on `done`/`onerror`.
+   - **Backend contract hardening:** renamed the agent SSE error event `error` → **`agent_error`** so it no
+     longer collides with EventSource's reserved `error` (connection) event. Updated 2 test assertions.
+
+Plus **`docs: add Port Wrangler forward roadmap`** (`c6ff692`) — `docs/port-wrangler-future-roadmap.md`.
+
+---
+
+## 3. Conventions (follow exactly)
+
+- **Commits:** one per logical unit, prefix `feat(phaseN): …` / `docs: …`. **DO NOT add a `Co-authored-by`
+  trailer** (the user disabled it; earlier commits were rewritten to remove it). This project rule
+  overrides any global default.
+- **Branching:** create each tail branch from the tip of `feature/port-wrangler-ai`; merge back with
+  `git merge --no-ff`. Never branch from another phase branch. **Never merge into `master`.**
+- **Only stage your own files.** Pre-existing dirty/untracked files live in the tree — **do not commit them**:
+  `.gitignore`, `backend/.../model/ImageTrackingStatus.java`, `backend/.../service/ImageValidationService.java`,
+  and untracked `CONTEXT.md`, `backend/AGENTS.md`, `backend/CLAUDE.md`, `opencode.json`, `graphify-out/`,
+  `docs/prompt`, `frontend/jsconfig.json`. Stage files by explicit path, never `git add -A`.
+- **Schema:** Liquibase only, `db/changelog/changes/V<N>__<snake>.sql`, `--changeset portWrangler:<N>
+  labels:phase<N>`, registered via `includeAll`. Never Flyway, never `ddl-auto`.
+- **Java package stays `com.dbdeployer`.** Frontend is plain JSX (no TS) — match the file you edit.
+- **Verify-before-build:** confirm any new dependency resolves (`./gradlew dependencies --configuration
+  runtimeClasspath | grep <artifact>`) *and* inspect the actual jar API with `javap` before writing code
+  against it. (This session relied on `javap` to nail the Spring AI tool-calling API.)
+- **Test pattern:** controllers → `MockMvcBuilders.standaloneSetup(controller)`; SSE controllers →
+  add async-dispatch (`asyncDispatch`) since the body is a `Flux`; services → Mockito mocks; Spring AI →
+  stub `ChatModel` (see `RagChatServiceTest`, `AgentChatServiceTest`). Algorithm cores are extracted so
+  they're unit-testable without live infra.
+
+---
+
+## 4. Hard constraints (non-negotiable)
 
 | Constraint | Correct |
 |---|---|
@@ -48,105 +102,111 @@ Everything on `feature/port-wrangler-ai` passes `./gradlew clean spotlessCheck t
 | Web stack | servlet (`spring-boot-starter-web`) — **no WebFlux/R2DBC**. SSE returns `Flux<ServerSentEvent>` from MVC. |
 | LLM runtime | Ollama default |
 | Schema | Liquibase changeset |
-| GPU detect | Docker SDK + `/dev` probes — **never** shell `nvidia-smi` |
+| GPU detect | Docker SDK + `/dev` probes — **never** shell `nvidia-smi`; `GpuDetector.classify` is **public** |
 | pgvector index | HNSW (not IVFFlat), cosine, 768 dims (fixed) |
 
 ---
 
-## 4. What exists now (inventory)
+## 5. Inventory (current)
 
 ### Backend `com.dbdeployer`
-- **`ai/`** — `ChatClientConfig` (ChatMemory window=8), `ModelRouter` (per-request Ollama `ChatClient`, `clientFor` w/ memory advisor + `statelessClientFor`), `RagChatService` (SSE token stream), `ModelComparisonService` (Flux.merge), `ModelSelection`/`ChatToken`/`ComparisonChunk` records.
-- **`ai/` RAG** — `RecencyFrequencyScorer` (0.35·sem+0.35·rec+0.30·freq), `TokenBudget` (chars/4), `LogChunker` (severity-tagged record grouping), `IngestionService` (deployment+log docs → `VectorStore`), `MemoryRetriever` (over-fetch + composite rerank), `RollingSummaryService` (hybrid trigger + rewrite prompt), `ScoredChunk`, **`SmartContextBuilder`** (layered context block — newest).
-- **`ai/tools/`** — `InfrastructureTools` (`@Tool` methods wrapping `DbInstanceService`: read-only `listInstances/readLogs/connectionConfig/stackSummary`, destructive `stopInstance/removeInstance`), `AgentSafety` (`MAX_TOOL_ROUNDS=6`, DESTRUCTIVE/WRITE sets, `requiresConfirmation`), `InstanceSummary`/`StackSummary`.
-- **`mcp/`** — `McpServerConfig` (`ToolCallbackProvider` from `MethodToolCallbackProvider`; `filterReadOnly` strips destructive unless `portwrangler.mcp.write-enabled=true`, shares `AgentSafety.DESTRUCTIVE`).
-- **`runtime/`** — `ModelRuntime`, `ModelCatalog` (~25 models), `GpuDetector` (pure `classify`, **public**), `ModelSuggestionService`, `SystemProfile`, `GpuVendor`/`ModelType`/`Quantization`/`CompatibilityLevel`, `ModelDefinition`/`ModelSuggestion`, `OllamaModelPuller`.
-- **`deploy/`** — `GpuHostConfigurer` (NVIDIA DeviceRequest / AMD devices), `DockerDeployEngine` now has `resolveEnv()`, `dockerRuntimeNames()`, `buildHostConfig()` (GPU for ollama/model-runner images), single ctor `DockerDeployEngine(GpuHostConfigurer)`. `ConnectionStringBuilder.springBootProperties()`.
+- **`ai/`** — `ChatClientConfig` (ChatMemory window=8, **`ToolCallingManager` bean**), `ModelRouter`
+  (`clientFor`/`statelessClientFor`/**`chatModelFor`**), `RagChatService` (**RAG-grounded** SSE stream),
+  `ModelComparisonService`, `AgentChatService` (**confirmation-gated tool loop**), `AgentEvent`,
+  `ModelSelection`/`ChatToken`/`ComparisonChunk`.
+- **`ai/` RAG** — `RecencyFrequencyScorer`, `TokenBudget`, `LogChunker`, `IngestionService`,
+  `MemoryRetriever`, `RollingSummaryService`, `ScoredChunk`, `SmartContextBuilder`.
+- **`ai/tools/`** — `InfrastructureTools` (read-only: `listInstances/readLogs/connectionConfig/stackSummary`;
+  destructive: `stopInstance/removeInstance`), `AgentSafety` (`MAX_TOOL_ROUNDS=6`, `DESTRUCTIVE`,
+  **`WRITE = {deployDatabase, createKafkaTopic, pullModel}` ← classified but NOT yet implemented**),
+  `InstanceSummary`/`StackSummary`.
+- **`mcp/`** — `McpServerConfig` (read-only by default; `portwrangler.mcp.write-enabled=true` exposes writes).
+- **`runtime/`** — `ModelRuntime`, `ModelCatalog`, `GpuDetector`, `ModelSuggestionService`, `SystemProfile`, etc.
+- **`deploy/`** — `DockerDeployEngine`, `GpuHostConfigurer`, `ConnectionStringBuilder` (`springBootProperties`).
 - **`pipeline/step/`** — `ModelPullStep` (`StepType.PULL_MODEL`).
-- **`api/`** — `ComposeExportController` (`/export/docker-compose`), `ModelCookbookController` (`/models/profile`, `/models/suggestions`), `ChatController` (`/chat/stream` SSE), `ModelComparisonController` (`/models/compare` SSE), plus `DbInstanceController.springConfig` (`/instances/{id}/spring-config`).
+- **`api/`** — `ComposeExportController`, `ModelCookbookController`, `ChatController` (`/chat/stream`),
+  `AgentChatController` (`/chat/agent/stream`), `ModelComparisonController`, `DbInstanceController.springConfig`.
 
 ### Migrations
-`V5__baseline` (drift) · `V6__add_model_runtime` · `V7__add_chat_memory` (SPRING_AI_CHAT_MEMORY + chat_session + chat_message) · `V8__enable_pgvector` (vector_store, HNSW, GIN).
+`V5__baseline` · `V6__add_model_runtime` · `V7__add_chat_memory` · `V8__enable_pgvector`. (V6/V7 have **no
+JPA entities yet** — tables exist, entities to be written when needed.)
 
 ### Frontend `frontend/src`
-- Pages: `ModelCookbookPage` (`/models`), `ChatPage` (`/chat`, EventSource), `ComparePage` (`/compare`, EventSource).
-- `api/client.js`: `exportDockerCompose`, `getSpringConfig`, `getSystemProfile`, `getModelSuggestions`.
-- `App.jsx` routes + `AppShell.jsx` nav (desktop + mobile) updated for Models/Assistant.
-- Phase-1 buttons on `InstancesPage` (Export Compose) and `InstanceDetailPage` (Copy Spring config).
+- Pages: `ModelCookbookPage` (`/models`), `ChatPage` (`/chat`), **`AgentPage` (`/agent`)**, `ComparePage` (`/compare`).
+- `App.jsx` routes + `AppShell.jsx` nav updated (Assistant + Agent).
+- The agent SSE event contract: `tool_call`, `confirmation_request`, `token`, `agent_error`, `done`.
 
-### Config / files
-- `build.gradle.kts`: Spring AI BOM 1.0.3 + starters `model-ollama`, `model-chat-memory-repository-jdbc`, `vector-store-pgvector`, `mcp-server`.
-- `application.yml`: `spring.ai.ollama` (lazy init), `chat.memory…initialize-schema: never`, `vectorstore.pgvector` (initialize-schema false, 768/HNSW/cosine), `mcp.server` name/version; `portwrangler.agent.read-only` + `portwrangler.mcp.write-enabled` flags.
-- `.mcp/port-wrangler.json` (Cursor/Claude Desktop client config).
-
----
-
-## 5. ⚠️ Immediate next step (you are mid-task here)
-
-**Goal of `phase/4-advisors`:** wire RAG retrieval + the smart-context block into the live chat path.
-
-**Blocker just hit:** `QuestionAnswerAdvisor` is **NOT on the classpath**. The pgvector starter pulls `spring-ai-pgvector-store` but **not** the `spring-ai-advisors-vector-store` module. A first attempt at `InfraRagAdvisorConfig` failed to compile and **was deleted** (do not look for it).
-
-**Available advisor classes** (verified in jars): `BaseAdvisor`, `BaseChatMemoryAdvisor`, `MessageChatMemoryAdvisor`, `PromptChatMemoryAdvisor`, `SafeGuardAdvisor`, `SimpleLoggerAdvisor`. **No** `QuestionAnswerAdvisor`/`RetrievalAugmentationAdvisor`.
-
-**Two ways forward — prefer Option B:**
-
-- **Option A:** add `implementation("org.springframework.ai:spring-ai-advisors-vector-store")` to `build.gradle.kts`, confirm it resolves, then build `QuestionAnswerAdvisor.builder(vectorStore).searchRequest(SearchRequest.builder().topK(4).build()).build()` and attach via `.advisors(...)`.
-- **Option B (recommended — no new dep, uses our tested code):** do RAG grounding through the pieces we already built. In `RagChatService.stream(...)`:
-  1. `var mems = memoryRetriever.retrieve(userMessage, /*type*/ null, 4);` (KB grounding) — wrap in try/catch, best-effort.
-  2. `String context = smartContextBuilder.build(rollingSummary, mems);` (rollingSummary can be `null` until `chat_session` persistence exists).
-  3. Inject as the system message **without clobbering the base prompt**:
-     `String system = ChatClientConfig.SYSTEM_PROMPT + (context.isBlank() ? "" : "\n\n" + context);`
-     then `client.prompt().system(system).user(userMessage)…`.
-     (⚠️ `.system(text)` **overrides** the default system from `ModelRouter`, so always concatenate `SYSTEM_PROMPT + context` yourself.)
-  4. Keep `.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))` for the memory window.
-
-**When wiring `RagChatService`,** its constructor will gain `MemoryRetriever` + `SmartContextBuilder`. Update `RagChatServiceTest` to pass a **mocked `MemoryRetriever`** (`retrieve(...)` → `List.of()`) and a real `SmartContextBuilder`; the existing token+done assertions still hold (empty context ⇒ unchanged behaviour).
-
-Then: `./gradlew spotlessApply spotlessCheck test`, commit `feat(phase4): wire RAG context into chat path`, and **merge `phase/4-advisors` into `feature/port-wrangler-ai`** (`--no-ff`).
-
-> The roadmap's `ContextAssemblyAdvisor`/`InfraRagAdvisor` as formal `BaseAdvisor`s (order 100/200) are optional niceties; Option B achieves the same layered prompt (roadmap §3.1) with less API risk. If you want the formal advisor later, `BaseAdvisor` is available — implement `before(ChatClientRequest, AdvisorChain)`/`after(...)`; expect to iterate the immutable `ChatClientRequest.mutate()` API.
+### Config
+- `build.gradle.kts`: Spring AI BOM 1.0.3 + starters `model-ollama`, `model-chat-memory-repository-jdbc`,
+  `vector-store-pgvector`, `mcp-server`.
+- `application.yml`: `spring.ai.ollama` (lazy), chat-memory `initialize-schema: never`, pgvector
+  (768/HNSW/cosine, `initialize-schema` false), mcp server name/version; flags
+  `portwrangler.agent.read-only` + `portwrangler.mcp.write-enabled`.
 
 ---
 
-## 6. Remaining work after that (priority order)
+## 6. Remaining work (priority order — from `docs/port-wrangler-future-roadmap.md`)
 
-### 6a. CI verification — **HIGH, do early**
-The Spring AI + MCP autoconfig is now on the classpath, so the existing `@SpringBootTest` (`DeployPipelineIT`, `disabledWithoutDocker`) now boots Ollama + chat-memory + pgvector + MCP autoconfig. **It was never run this session (no Docker in sandbox).** Run it with Docker/CI and confirm context startup is green. Mitigations already in `application.yml` (lazy Ollama, `initialize-schema` off, explicit pgvector dims). If it fails, nudge `spring.ai.*` properties or add `@MockBean`/exclusions in the test.
+### 6a. CI Docker boot test — **HIGH, do early**
+`DeployPipelineIT` (`@SpringBootTest`, `disabledWithoutDocker`) now boots Ollama + chat-memory + pgvector
++ MCP + tool-calling autoconfig. **It has never been run in-sandbox (no Docker socket).** Run it under
+Docker/CI and confirm context startup is green. Mitigations already in `application.yml`.
 
-### 6b. Phase 5 — confirmation-gated tool execution (MEDIUM)
-Implement the agent chat that actually calls tools with the manual confirmation loop (roadmap §5):
-- New `ai/AgentChatService` using `ToolCallingChatOptions.builder().toolCallbacks(ToolCallbacks.from(infrastructureTools)).internalToolExecutionEnabled(false).build()`, a `ToolCallingManager` bean (add to `ChatClientConfig`), and a `while (resp.hasToolCalls())` loop capped at `AgentSafety.MAX_TOOL_ROUNDS`.
-- Read-only tools auto-run; `AgentSafety.requiresConfirmation(name)` → emit a `confirmation_request` SSE event and await approval before `toolCallingManager.executeToolCalls(...)`.
-- `portwrangler.agent.read-only=true` ⇒ build the tool list with destructive/write tools stripped (reuse `AgentSafety`).
-- Stream each tool call as a `tool_call` SSE event.
-- Endpoint e.g. `GET /chat/agent/stream`. Testable: stub `ChatModel` that returns a `ChatResponse` with tool calls; assert `removeInstance` does **not** execute without approval and the loop cap fires.
+### 6b. The north-star feature — implement the WRITE tools — **HIGH**
+`AgentSafety.WRITE` lists `deployDatabase`, `createKafkaTopic`, `pullModel` but `InfrastructureTools`
+doesn't implement them. Add them as thin `@Tool` wrappers (`DbInstanceService.deploy`, exec via
+`DockerDeployEngine`, `ModelPullStep`). They inherit the confirmation gate + MCP surface + UI trace for
+free. Pairs with deploying **Ollama as a managed runtime** (roadmap §2.1) for `pullModel`.
 
-### 6c. Phase 5 — agent frontend (LOW)
-Extend `ChatPage.jsx` (or a new `/chat` agent mode): handle `tool_call` + `confirmation_request` SSE events, render an expandable tool-call trace per turn, a confirm/cancel modal that blocks input for write/destructive tools, a read-only toggle, and "Copy as .env / Spring config" when a `stackSummary` result is present.
+### 6c. Liquibase cutover — **HIGH**
+Flip `ddl-auto: update` → `validate`, enable `spring.liquibase`. Write a baseline reconcile changeset if drift.
 
-### 6d. Phase 4 — RAG integration test (MEDIUM)
-Testcontainers IT: spin Postgres with pgvector, run `IngestionService` on a known log blob, assert an `ERROR` chunk is retrieved above an `INFO` one for a generic query. Also wire `IngestionService` to re-index on deploy/remove + a schedule, and `RollingSummaryService.summariseIfNeeded` `@Async` after replies (needs `chat_session`/`chat_message` JPA entities + repos — not yet created; `V7` tables exist).
+### 6d. Agent statefulness — **MEDIUM**
+- **Stateful confirmation resume:** today approval re-runs the whole turn (read-only tools execute twice).
+  Add a `PendingConfirmation` registry keyed by `confirmationId` + a `POST /chat/agent/confirm/{id}` that
+  resumes from saved conversation history.
+- **Multi-turn agent memory:** give `AgentChatService` the `sessionId`/`MessageChatMemoryAdvisor` window.
 
-### 6e. Phase 5 — Pull button → real pipeline (LOW)
-Today the Model Cookbook "Pull" button copies `ollama pull <tag>`. To make it fire `ModelPullStep` for real, first add a path to **deploy Ollama as a managed runtime** (e.g. an `OLLAMA` catalog entry or a `ModelRuntime` deploy flow using the existing pipeline), persist to `model_runtime`/`pulled_model` (V6 tables exist, no entities yet), then trigger `ModelPullStep` against that runtime's port.
+### 6e. RAG persistence + IT — **MEDIUM**
+`chat_session`/`chat_message` JPA entities + repos (V7 tables exist) → wire `RollingSummaryService`
+`@Async` after replies and pass a real `rollingSummary` into `RagChatService` (currently `null`).
+`IngestionService` re-index on deploy/remove + a schedule. Testcontainers IT: pgvector asserts an `ERROR`
+chunk outranks an `INFO` chunk.
 
-### 6f. Phase 6 — launch polish (LATER)
-README overhaul, demo GIF, native installer verification (roadmap §8). Then open the **single PR `feature/port-wrangler-ai` → `master`**.
+### 6f. Compose import + recipes — **MEDIUM**
+Symmetric to `ComposeExportService`: parse a `docker-compose.yml` → `DeploymentConfig`s → pipeline. Then
+stack bundles (Postgres+Redis+Kafka in one click). Both are great agent tools too.
+
+### 6g. Launch polish — **LATER**
+README overhaul, demo GIF, jpackage DMG/EXE verification, then the **single PR `feature/port-wrangler-ai`
+→ `master`**.
+
+> Full feature catalogue with effort/value/integration-points is in `docs/port-wrangler-future-roadmap.md`.
 
 ---
 
-## 7. Gotchas learned this session (save yourself the pain)
+## 7. Gotchas learned (save yourself the pain)
 
 1. **`.system(text)` overrides** the default system prompt — always concatenate `ChatClientConfig.SYSTEM_PROMPT + context`.
-2. **Record boolean components named `isX`** confuse Jackson — name it `containerGpu`, not `isContainerGpu` (see `SystemProfile`).
-3. **`GpuDetector.classify` is `public`** (the engine in another package calls it). Don't revert to package-private.
+2. **EventSource reserves the `error` event** for connection failures — never name a server SSE event `error`
+   (we use `agent_error`). Always `es.close()` on `done`/`onerror` or the prompt re-fires (auto-reconnect).
+3. **`ToolCallbacks.from(...)` does NOT exist** in the resolved 1.0.3 jars. Get callbacks via
+   `MethodToolCallbackProvider.builder().toolObjects(tools).build().getToolCallbacks()` (as `McpServerConfig` does).
 4. **`QuestionAnswerAdvisor` needs `spring-ai-advisors-vector-store`** — not pulled by the pgvector starter.
-5. **One Spring constructor** on `DockerDeployEngine` (`GpuHostConfigurer`) — two constructors break injection.
-6. **Frontend EventSource auto-reconnects** — always `es.close()` on the `done` event and in `onerror`, or the prompt re-fires.
-7. **`git filter-branch -- --all` rewrites `master`/tags/remotes** (message normalization changes SHAs even with no textual change). Scope rewrites to `master..<branch>` only. Backups live in `refs/original/` — restore from there if you over-scope.
-8. **MockMvc standalone** for controllers avoids loading interceptors/`AppConfig`/Docker — use it.
-9. Spotless (`googleJavaFormat`) is enforced by CI — run `./gradlew spotlessApply` before committing.
+   We do RAG grounding manually instead (Option B in `RagChatService`).
+5. **Manual tool loop API (verified via `javap`):** `ToolCallingChatOptions.builder().toolCallbacks(list)
+   .internalToolExecutionEnabled(false).build()`; `ToolCallingManager.builder().build()`;
+   `manager.executeToolCalls(prompt, response)` → `result.conversationHistory()` → `new Prompt(history, options)`.
+   Tool calls: `response.getResult().getOutput().getToolCalls()` (`AssistantMessage.ToolCall` record: `.name()`, `.arguments()`).
+6. **Return a `ChatModel` interface, not `OllamaChatModel`,** from `ModelRouter.chatModelFor` — the concrete
+   class can't be stubbed in unit tests.
+7. **`GpuDetector.classify` is `public`**; **one Spring constructor** on `DockerDeployEngine`; **record boolean
+   components named `isX`** confuse Jackson (use `containerGpu`, not `isContainerGpu`).
+8. **MockMvc + SSE:** a `Flux<ServerSentEvent>` controller needs `request().asyncStarted()` then
+   `mockMvc.perform(asyncDispatch(result))` to read the body.
+9. **`graphify update .` is blocked in the sandbox** (venv `PermissionError`) — run it in a normal shell after
+   code changes to refresh `graphify-out/`. Don't work around the sandbox.
+10. **`git filter-branch -- --all` rewrites `master`/tags** — scope any rewrite to `master..<branch>` only.
 
 ---
 
@@ -155,26 +215,31 @@ README overhaul, demo GIF, native installer verification (roadmap §8). Then ope
 ```bash
 # backend (from backend/)
 ./gradlew spotlessApply spotlessCheck compileJava compileTestJava
-./gradlew test --tests "com.dbdeployer.ai.*"      # AI/RAG unit tests
+./gradlew test --tests "com.dbdeployer.ai.*"      # AI/RAG/agent unit tests
 ./gradlew clean spotlessCheck test                # full gate (DeployPipelineIT skips w/o Docker)
 
 # frontend (from frontend/)
 npx eslint src/pages/<file>.jsx                    # new files must be lint-clean
 npm run build                                      # must succeed
 
-# dependency resolution check before using a new artifact
-./gradlew dependencies --configuration runtimeClasspath | grep <artifact>
+# inspect a Spring AI jar API before coding against it
+javap -cp <jar> org.springframework.ai.model.tool.ToolCallingManager
 ```
 
-`DeployPipelineIT` needs a real Docker socket; it skips gracefully without one. The 6c/6b agent loop only truly exercises against a running Ollama (`PORTWRANGLER_OLLAMA_BASE_URL`, default `http://localhost:11434`).
+`DeployPipelineIT` needs a real Docker socket; it skips gracefully without one. The agent loop only truly
+exercises against a running Ollama (`PORTWRANGLER_OLLAMA_BASE_URL`, default `http://localhost:11434`).
+
+Manual smoke once Ollama is up: open the UI → `/agent` → "list my running instances" (auto-runs) →
+"stop the X instance" (should surface the confirm modal; cancel = no-op, approve = executes).
 
 ---
 
 ## 9. Definition of Done (per phase tail, before merging to `feature`)
 
-1. `./gradlew build spotlessCheck` passes.
+1. `./gradlew clean spotlessCheck test` passes.
 2. Every new Java class has ≥1 unit test.
-3. New REST endpoints have a slice/`@SpringBootTest` test.
+3. New REST endpoints have a slice test (SSE → MockMvc async-dispatch).
 4. New Liquibase changesets apply on a fresh DB.
-5. Frontend renders without console errors, matches Tailwind tokens.
+5. Frontend renders without console errors, `eslint` clean, `npm run build` succeeds, matches Tailwind tokens.
 6. `git log --oneline` shows one commit per logical unit, `feat(phaseN):` prefix, **no co-author trailer**.
+7. Merge the tail into `feature/port-wrangler-ai` with `--no-ff`. `master` stays untouched.
