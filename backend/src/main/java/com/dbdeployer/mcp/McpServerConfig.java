@@ -15,9 +15,10 @@ import org.springframework.context.annotation.Configuration;
  * Exposes {@link InfrastructureTools} as an MCP server so external IDE assistants (Cursor, Claude
  * Desktop, Continue.dev) can drive Port Wrangler's infrastructure tools directly (roadmap §5).
  *
- * <p><b>Safe by default:</b> destructive tools ({@code stopInstance}, {@code removeInstance}) are
- * stripped from the MCP surface unless {@code portwrangler.mcp.write-enabled=true}. The tool
- * definitions are identical to the in-app agent's — same validation, same pipeline, no duplication.
+ * <p><b>Safe by default:</b> write tools ({@code deployDatabase}, {@code createKafkaTopic}, {@code
+ * pullModel}) and destructive tools ({@code stopInstance}, {@code removeInstance}) are stripped
+ * from the MCP surface unless {@code portwrangler.mcp.write-enabled=true}. The tool definitions are
+ * identical to the in-app agent's — same validation, same pipeline, no duplication.
  */
 @Slf4j
 @Configuration
@@ -39,10 +40,16 @@ public class McpServerConfig {
     return ToolCallbackProvider.from(exposed);
   }
 
-  /** Pure: drop destructive tools by name. Unit-testable. */
+  /**
+   * Pure: drop write and destructive tools by name, leaving only read-only tools. Unit-testable.
+   */
   static ToolCallback[] filterReadOnly(ToolCallback[] all) {
     return Arrays.stream(all)
-        .filter(cb -> !AgentSafety.DESTRUCTIVE.contains(cb.getToolDefinition().name()))
+        .filter(
+            cb -> {
+              String name = cb.getToolDefinition().name();
+              return !AgentSafety.DESTRUCTIVE.contains(name) && !AgentSafety.WRITE.contains(name);
+            })
         .toArray(ToolCallback[]::new);
   }
 }
