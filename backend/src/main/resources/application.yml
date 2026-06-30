@@ -43,6 +43,27 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  # ── Spring AI (Phase 3+) ───────────────────────────────────────────────────
+  # Ollama is the default local LLM runtime. base-url points at a deployed Ollama
+  # container's published port (override per request via ModelRouter). Model beans
+  # are created lazily, so app boot does NOT require Ollama to be running.
+  ai:
+    ollama:
+      base-url: ${PORTWRANGLER_OLLAMA_BASE_URL:http://localhost:11434}
+      init:
+        # Never auto-pull models at startup — pulls go through ModelPullStep.
+        pull-model-strategy: never
+        chat:
+          include: false
+        embedding:
+          include: false
+    chat:
+      memory:
+        repository:
+          jdbc:
+            # Liquibase owns SPRING_AI_CHAT_MEMORY (V7); do not auto-create it.
+            initialize-schema: never
+
   jackson:
     serialization:
       write-dates-as-timestamps: false

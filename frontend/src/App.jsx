@@ -11,6 +11,8 @@ import { ImageManagementPage } from './pages/ImageManagementPage'
 import { ImageToolPage } from './pages/ImageToolPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ModelCookbookPage } from './pages/ModelCookbookPage'
+import { ChatPage } from './pages/ChatPage'
+import { ComparePage } from './pages/ComparePage'
 import { SplashScreen } from './components/SplashScreen'
 import { WelcomeWizard } from './components/WelcomeWizard'
 import { useUserProfile } from './hooks/useUserProfile'
@@ -52,6 +54,8 @@ export default function App() {
         <Route path="/images"                  element={<ImageManagementPage />} />
         <Route path="/images/:dbType" element={<ImageToolPage />} />
         <Route path="/models"                  element={<ModelCookbookPage />} />
+        <Route path="/chat"                    element={<ChatPage />} />
+        <Route path="/compare"                 element={<ComparePage />} />
         <Route path="/dashboard"              element={<DashboardPage />} />
       </Routes>
       {!profile && <WelcomeWizard onComplete={save} />}
