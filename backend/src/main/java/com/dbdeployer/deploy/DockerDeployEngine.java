@@ -630,6 +630,23 @@ public class DockerDeployEngine {
     }
   }
 
+  /**
+   * Returns the names of the container runtimes Docker knows about (e.g. {@code runc}, {@code
+   * nvidia}). Used by {@link com.dbdeployer.runtime.GpuDetector} to detect the NVIDIA container
+   * toolkit without shelling out to {@code nvidia-smi}. Best-effort: returns an empty set if Docker
+   * is unreachable.
+   */
+  public Set<String> dockerRuntimeNames() {
+    try {
+      var info = docker.infoCmd().exec();
+      var runtimes = info.getRuntimes();
+      return runtimes != null ? new HashSet<>(runtimes.keySet()) : Set.of();
+    } catch (Exception e) {
+      log.warn("[gpu] could not read docker runtimes: {}", e.getMessage());
+      return Set.of();
+    }
+  }
+
   // ── Container metrics ──────────────────────────────────────────────────────
 
   /**
