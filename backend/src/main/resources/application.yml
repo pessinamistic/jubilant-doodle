@@ -97,7 +97,7 @@ dbdeployer:
   system-db:
     auto-provision: ${DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION:true}
     container-name: ${DBDEPLOYER_SYSTEM_DB_CONTAINER_NAME:dbdeployer-system-db}
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     host-port: ${DBDEPLOYER_SYSTEM_DB_PORT:5499}
     username: ${DBDEPLOYER_SYSTEM_DB_USERNAME:dbdeployer}
     password: ${DBDEPLOYER_SYSTEM_DB_PASSWORD:dbdeployer_internal}

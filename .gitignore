@@ -57,3 +57,5 @@ logs/
 local-data/
 
 bin/
+
+graphify-out/cache

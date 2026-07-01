@@ -12,10 +12,12 @@ import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import java.io.IOException;
-import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -88,7 +90,7 @@ public class SystemDbProvisioner
     System.setProperty(RUNTIME_CONTAINER_NAME_PROPERTY, containerName);
     System.setProperty(RUNTIME_HOST_PORT_PROPERTY, String.valueOf(hostPort));
 
-    waitForPostgres(hostPort, 60);
+    waitForPostgres(hostPort, username, password, database, 60);
 
     log.info("System Postgres is ready at localhost:{}", hostPort);
   }
@@ -182,12 +184,14 @@ public class SystemDbProvisioner
 
   // ── Readiness probe ───────────────────────────────────────────────────────
 
-  private void waitForPostgres(int port, int maxSeconds) {
+  private void waitForPostgres(
+      int port, String username, String password, String database, int maxSeconds) {
     log.info("Waiting for system Postgres to accept connections on port {}...", port);
     int safeMaxSeconds = Math.max(1, maxSeconds);
+    String jdbcUrl = "jdbc:postgresql://localhost:" + port + "/" + database;
 
     for (int elapsedSeconds = 0; elapsedSeconds < safeMaxSeconds; elapsedSeconds++) {
-      if (isPortOpen("localhost", port)) {
+      if (canConnect(jdbcUrl, username, password)) {
         log.info(
             "Postgres startup progress {}",
             formatProgressBar(elapsedSeconds, safeMaxSeconds, true));
@@ -236,10 +240,10 @@ public class SystemDbProvisioner
         + ")";
   }
 
-  private boolean isPortOpen(String host, int port) {
-    try (Socket ignored = new Socket(host, port)) {
+  private boolean canConnect(String jdbcUrl, String username, String password) {
+    try (Connection ignored = DriverManager.getConnection(jdbcUrl, username, password)) {
       return true;
-    } catch (Exception e) {
+    } catch (SQLException e) {
       return false;
     }
   }
