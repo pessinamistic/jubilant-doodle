@@ -43,6 +43,39 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  # ── Spring AI (Phase 3+) ───────────────────────────────────────────────────
+  # Ollama is the default local LLM runtime. base-url points at a deployed Ollama
+  # container's published port (override per request via ModelRouter). Model beans
+  # are created lazily, so app boot does NOT require Ollama to be running.
+  ai:
+    ollama:
+      base-url: ${PORTWRANGLER_OLLAMA_BASE_URL:http://localhost:11434}
+      init:
+        # Never auto-pull models at startup — pulls go through ModelPullStep.
+        pull-model-strategy: never
+        chat:
+          include: false
+        embedding:
+          include: false
+    chat:
+      memory:
+        repository:
+          jdbc:
+            # Liquibase owns SPRING_AI_CHAT_MEMORY (V7); do not auto-create it.
+            initialize-schema: never
+    vectorstore:
+      pgvector:
+        # Liquibase owns vector_store (V8) — do not auto-create. Fixed 768 dims
+        # (nomic-embed-text), HNSW + cosine. Explicit dims avoid an Ollama call at boot.
+        initialize-schema: false
+        dimensions: 768
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+    mcp:
+      server:
+        name: port-wrangler
+        version: 1.0.0
+
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -64,7 +97,7 @@ dbdeployer:
   system-db:
     auto-provision: ${DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION:true}
     container-name: ${DBDEPLOYER_SYSTEM_DB_CONTAINER_NAME:dbdeployer-system-db}
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     host-port: ${DBDEPLOYER_SYSTEM_DB_PORT:5499}
     username: ${DBDEPLOYER_SYSTEM_DB_USERNAME:dbdeployer}
     password: ${DBDEPLOYER_SYSTEM_DB_PASSWORD:dbdeployer_internal}
@@ -74,6 +107,15 @@ dbdeployer:
   logging:
     api:
       verbose: ${DBDEPLOYER_API_LOG_VERBOSE:false}
+
+# ── AI agent + MCP safety flags (Phase 5) ─────────────────────────────────────
+portwrangler:
+  agent:
+    # When true, the in-app agent is built with read-only tools only.
+    read-only: ${PORTWRANGLER_AGENT_READ_ONLY:false}
+  mcp:
+    # When false (default), destructive tools are stripped from the MCP server surface.
+    write-enabled: ${PORTWRANGLER_MCP_WRITE_ENABLED:false}
 
 logging:
   level:

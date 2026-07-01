@@ -9,11 +9,14 @@ import {
   House,
   Laptop,
   Menu,
+  MessageSquare,
   Moon,
   Plus,
   RefreshCw,
   SlidersHorizontal,
+  Sparkles,
   Sun,
+  Wrench,
   X,
 } from 'lucide-react'
 import { syncStatuses, getSystemInfo } from '../api/client'
@@ -165,6 +168,21 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
               label="Images" collapsed={collapsed}
               className="animate-fade-up delay-300"
             />
+            <SideNavItem
+              to="/models" icon={<Sparkles className="w-4 h-4" />}
+              label="Models" collapsed={collapsed}
+              className="animate-fade-up delay-300"
+            />
+            <SideNavItem
+              to="/chat" icon={<MessageSquare className="w-4 h-4" />}
+              label="Assistant" collapsed={collapsed}
+              className="animate-fade-up delay-300"
+            />
+            <SideNavItem
+              to="/agent" icon={<Wrench className="w-4 h-4" />}
+              label="Agent" collapsed={collapsed}
+              className="animate-fade-up delay-300"
+            />
           </nav>
 
           {/* Collapse toggle */}
@@ -217,6 +235,9 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
                 <SideNavItem to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />} label="Configurations" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-175" />
                 <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
                 <SideNavItem to="/images" icon={<HardDrive className="w-4 h-4" />} label="Images" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
+                <SideNavItem to="/models" icon={<Sparkles className="w-4 h-4" />} label="Models" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
+                <SideNavItem to="/chat" icon={<MessageSquare className="w-4 h-4" />} label="Assistant" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
+                <SideNavItem to="/agent" icon={<Wrench className="w-4 h-4" />} label="Agent" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
               </nav>
             </div>
           </aside>

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "port-wrangler": {
+      "url": "http://localhost:8080/api/sse",
+      "description": "Port Wrangler local infrastructure tools (read-only by default). Start Port Wrangler, then add this server in Cursor / Claude Desktop. To enable write tools (stop/remove), launch with PORTWRANGLER_MCP_WRITE_ENABLED=true."
+    }
+  }
+}

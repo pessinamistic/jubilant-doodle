@@ -31,6 +31,18 @@ dependencies {
     implementation("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
+    // ── Spring AI 1.0.3 GA (Phase 3+) ────────────────────────────────────────
+    // BOM pins all Spring AI artifacts to the 1.0.x GA line ("GA only" constraint).
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.3"))
+    // Ollama: chat + embeddings in one starter.
+    implementation("org.springframework.ai:spring-ai-starter-model-ollama")
+    // JDBC-backed chat memory window (verbatim turns) → SPRING_AI_CHAT_MEMORY table.
+    implementation("org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc")
+    // pgvector vector store (extension on the existing Postgres 16) — Phase 4 RAG.
+    implementation("org.springframework.ai:spring-ai-starter-vector-store-pgvector")
+    // Phase 5: expose InfrastructureTools as an MCP server (Cursor / Claude Desktop).
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server")
+
     // PostgreSQL driver — used by the auto-provisioned system DB container (SystemDbProvisioner)
     runtimeOnly("org.postgresql:postgresql")
 
