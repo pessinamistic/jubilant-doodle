@@ -1,5 +1,6 @@
 package com.dbdeployer.ai;
 
+import com.dbdeployer.runtime.ModelRuntimeService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -14,20 +15,23 @@ import org.springframework.stereotype.Service;
  * Builds a {@link ChatClient} bound to a chosen Ollama runtime + model per request, enabling
  * dynamic model switching across the several Ollama containers a user may deploy (roadmap §4.2).
  * Each client is configured with the conversation-memory advisor so the verbatim window is applied.
+ *
+ * <p>When the caller passes no base URL, the {@link ModelRuntimeService} registry resolves it — a
+ * RUNNING managed Ollama instance wins over the static {@code spring.ai.ollama.base-url} default.
  */
 @Service
 public class ModelRouter {
 
   private final ChatMemory chatMemory;
-  private final String defaultBaseUrl;
+  private final ModelRuntimeService modelRuntimes;
   private final String defaultModel;
 
   public ModelRouter(
       ChatMemory chatMemory,
-      @Value("${spring.ai.ollama.base-url:http://localhost:11434}") String defaultBaseUrl,
+      ModelRuntimeService modelRuntimes,
       @Value("${portwrangler.ai.default-model:llama3.1:8b}") String defaultModel) {
     this.chatMemory = chatMemory;
-    this.defaultBaseUrl = defaultBaseUrl;
+    this.modelRuntimes = modelRuntimes;
     this.defaultModel = defaultModel;
   }
 
@@ -53,7 +57,8 @@ public class ModelRouter {
    * between rounds (roadmap §5).
    */
   public ChatModel chatModelFor(String baseUrl, String modelId) {
-    String url = (baseUrl == null || baseUrl.isBlank()) ? defaultBaseUrl : baseUrl;
+    String url =
+        (baseUrl == null || baseUrl.isBlank()) ? modelRuntimes.resolveOllamaBaseUrl() : baseUrl;
     String model = (modelId == null || modelId.isBlank()) ? defaultModel : modelId;
 
     OllamaApi api = OllamaApi.builder().baseUrl(url).build();

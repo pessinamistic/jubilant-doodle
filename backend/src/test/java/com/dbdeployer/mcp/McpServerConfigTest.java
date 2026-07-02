@@ -23,12 +23,13 @@ class McpServerConfigTest {
   @Mock private com.dbdeployer.service.ConfigTemplateService configTemplate;
   @Mock private com.dbdeployer.deploy.DockerDeployEngine docker;
   @Mock private com.dbdeployer.runtime.OllamaModelPuller modelPuller;
+  @Mock private com.dbdeployer.runtime.ModelRuntimeService modelRuntimes;
 
   private ToolCallback[] allToolCallbacks() {
     lenient().when(service.listAll()).thenReturn(List.of());
     var tools =
         new InfrastructureTools(
-            service, connBuilder, configTemplate, docker, modelPuller, "http://localhost:11434");
+            service, connBuilder, configTemplate, docker, modelPuller, modelRuntimes);
     return MethodToolCallbackProvider.builder().toolObjects(tools).build().getToolCallbacks();
   }
 

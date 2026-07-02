@@ -49,5 +49,8 @@ public enum DbType {
 
   // ── DB admin UIs ─────────────────────────────────────────────────────────
   ADMINER,
-  PGADMIN
+  PGADMIN,
+
+  // ── LLM runtimes ──────────────────────────────────────────────────────────
+  OLLAMA
 }

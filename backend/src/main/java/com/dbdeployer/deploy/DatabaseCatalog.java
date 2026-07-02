@@ -638,6 +638,32 @@ public class DatabaseCatalog {
             false,
             false));
 
+    // ── LLM runtimes ──────────────────────────────────────────────────────
+    // Deployed through the exact same pipeline as any database. Image/port/volume
+    // metadata is owned by ModelRuntime so the catalog and the runtime layer agree.
+    CATALOG.put(
+        DbType.OLLAMA,
+        new DbDefinition(
+            DbType.OLLAMA,
+            com.dbdeployer.runtime.ModelRuntime.OLLAMA.displayName(),
+            "Local LLM runtime — pull and serve Llama, Qwen, Gemma, Mistral and 100+ models."
+                + " GPU-accelerated when the host supports it (CPU-only inside Docker on macOS).",
+            "🦙",
+            com.dbdeployer.runtime.ModelRuntime.OLLAMA.dockerImage(),
+            com.dbdeployer.runtime.ModelRuntime.OLLAMA.defaultPort(),
+            List.of("latest", "0.6.8", "0.5.13"),
+            List.of(
+                new EnvVar("OLLAMA_KEEP_ALIVE", "Model Keep-Alive", "5m", false, EnvVarType.TEXT),
+                new EnvVar(
+                    "OLLAMA_MAX_LOADED_MODELS", "Max Loaded Models", "1", false, EnvVarType.TEXT),
+                new EnvVar(
+                    "OLLAMA_NUM_PARALLEL", "Parallel Requests", "1", false, EnvVarType.TEXT)),
+            "http://localhost:{port}",
+            com.dbdeployer.runtime.ModelRuntime.OLLAMA.dataVolumePath(),
+            false,
+            false,
+            false));
+
     CATALOG.put(
         DbType.PGADMIN,
         new DbDefinition(
