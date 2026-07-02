@@ -1,14 +1,21 @@
 package com.dbdeployer.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
+import com.dbdeployer.service.DbInstanceService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 
 class IngestionServiceTest {
 
@@ -61,6 +68,29 @@ class IngestionServiceTest {
         new IngestionServiceHelper().documentsFor(container(), "2026-01-01T10:00:00Z INFO ok");
     assertThat(docs).hasSizeGreaterThanOrEqualTo(2);
     assertThat(docs.get(0).getMetadata()).containsEntry("type", "deployment");
+  }
+
+  @Test
+  void reindex_deletes_existing_documents_before_adding_fresh_ones() {
+    VectorStore vectorStore = mock(VectorStore.class);
+    DbInstanceService instanceService = mock(DbInstanceService.class);
+    var service = new IngestionService(vectorStore, instanceService);
+
+    service.reindexInstance(container(), "2026-01-01T10:00:00Z INFO ok");
+
+    var order = inOrder(vectorStore);
+    order.verify(vectorStore).delete(any(Filter.Expression.class));
+    order.verify(vectorStore).add(anyList());
+  }
+
+  @Test
+  void deleteForInstance_issues_a_filtered_delete() {
+    VectorStore vectorStore = mock(VectorStore.class);
+    var service = new IngestionService(vectorStore, mock(DbInstanceService.class));
+
+    service.deleteForInstance("inst-1");
+
+    org.mockito.Mockito.verify(vectorStore).delete(any(Filter.Expression.class));
   }
 
   /** Tiny helper to exercise the instance method without a VectorStore/DbInstanceService. */

@@ -11,6 +11,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -46,8 +47,22 @@ public class IngestionService {
       } catch (Exception e) {
         log.debug("[rag] logs unavailable for {}: {}", container.getId(), e.getMessage());
       }
-      ingestInstance(container, logs);
+      reindexInstance(container, logs);
     }
+  }
+
+  /**
+   * Idempotent re-index: drops the instance's existing documents before writing fresh ones, so
+   * repeated ingestion (lifecycle events + the schedule) never accumulates duplicates.
+   */
+  public void reindexInstance(DeployedContainer container, String logs) {
+    deleteForInstance(container.getId());
+    ingestInstance(container, logs);
+  }
+
+  /** Remove every document belonging to an instance (used on removal and before re-index). */
+  public void deleteForInstance(String instanceId) {
+    vectorStore.delete(new FilterExpressionBuilder().eq("instance_id", instanceId).build());
   }
 
   /** Write the deployment doc + log-chunk docs for one instance to the vector store. */

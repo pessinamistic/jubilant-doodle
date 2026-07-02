@@ -1,12 +1,14 @@
 package com.dbdeployer.pipeline.step;
 
 import com.dbdeployer.deploy.DockerDeployEngine;
+import com.dbdeployer.event.InstanceDeployedEvent;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.model.StepType;
 import com.dbdeployer.runtime.ModelRuntimeService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,10 +22,15 @@ public class FinaliseStep implements DeployStep {
 
   private final DockerDeployEngine docker;
   private final ModelRuntimeService modelRuntimeService;
+  private final ApplicationEventPublisher events;
 
-  public FinaliseStep(DockerDeployEngine docker, ModelRuntimeService modelRuntimeService) {
+  public FinaliseStep(
+      DockerDeployEngine docker,
+      ModelRuntimeService modelRuntimeService,
+      ApplicationEventPublisher events) {
     this.docker = docker;
     this.modelRuntimeService = modelRuntimeService;
+    this.events = events;
   }
 
   @Override
@@ -72,6 +79,9 @@ public class FinaliseStep implements DeployStep {
     } catch (Exception e) {
       log.warn("[pipeline] model-runtime registration failed: {}", e.getMessage());
     }
+
+    // Fan out to interested listeners (RAG ingestion) without coupling the pipeline to them.
+    events.publishEvent(new InstanceDeployedEvent(container.getId()));
 
     return "Container is RUNNING";
   }

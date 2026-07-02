@@ -11,13 +11,14 @@ import reactor.core.publisher.Flux;
 /**
  * Streams an assistant reply token-by-token over SSE, keyed by session so the verbatim chat-memory
  * window is applied. On each turn it also assembles a "smart context" block (roadmap §3.1): the
- * top-k retrieved memories from pgvector (plus a rolling session summary once persistence exists),
- * injected ahead of the verbatim window as a system message.
+ * rolling session summary plus the top-k retrieved memories from pgvector, injected ahead of the
+ * verbatim window as a system message. After the stream completes, the turn is persisted to {@code
+ * chat_session}/{@code chat_message} and rolling-summary compression is triggered asynchronously.
  *
  * <p>This is the Option-B grounding path: rather than a {@code QuestionAnswerAdvisor} (which is not
  * on the classpath without the {@code spring-ai-advisors-vector-store} module), retrieval and
  * context assembly are done with our own tested {@link MemoryRetriever} and {@link
- * SmartContextBuilder}. Retrieval is best-effort — a vector-store failure degrades to a plain
+ * SmartContextBuilder}. Retrieval and persistence are best-effort — a failure degrades to a plain
  * memory-aware chat rather than breaking the stream.
  */
 @Slf4j
@@ -30,23 +31,30 @@ public class RagChatService {
   private final ModelRouter modelRouter;
   private final MemoryRetriever memoryRetriever;
   private final SmartContextBuilder smartContextBuilder;
+  private final ChatSessionService chatSessions;
+  private final RollingSummaryWorker summaryWorker;
 
   public RagChatService(
       ModelRouter modelRouter,
       MemoryRetriever memoryRetriever,
-      SmartContextBuilder smartContextBuilder) {
+      SmartContextBuilder smartContextBuilder,
+      ChatSessionService chatSessions,
+      RollingSummaryWorker summaryWorker) {
     this.modelRouter = modelRouter;
     this.memoryRetriever = memoryRetriever;
     this.smartContextBuilder = smartContextBuilder;
+    this.chatSessions = chatSessions;
+    this.summaryWorker = summaryWorker;
   }
 
   public Flux<ServerSentEvent<ChatToken>> stream(
       String sessionId, String userMessage, ModelSelection selection) {
     ChatClient client = modelRouter.clientFor(selection.baseUrl(), selection.modelId());
 
-    // Rolling summary persistence (chat_session) does not exist yet; pass null for now.
-    String system = ChatClientConfig.SYSTEM_PROMPT + retrievalContext(userMessage, null);
+    String rollingSummary = chatSessions.rollingSummaryFor(sessionId).orElse(null);
+    String system = ChatClientConfig.SYSTEM_PROMPT + retrievalContext(userMessage, rollingSummary);
 
+    StringBuilder reply = new StringBuilder();
     Flux<ServerSentEvent<ChatToken>> tokens =
         client
             .prompt()
@@ -55,12 +63,28 @@ public class RagChatService {
             .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
             .stream()
             .content()
-            .map(chunk -> ServerSentEvent.builder(new ChatToken(chunk)).event("token").build());
+            .map(
+                chunk -> {
+                  reply.append(chunk);
+                  return ServerSentEvent.builder(new ChatToken(chunk)).event("token").build();
+                })
+            .doOnComplete(() -> persistTurn(sessionId, userMessage, reply.toString(), selection));
 
     ServerSentEvent<ChatToken> done =
         ServerSentEvent.<ChatToken>builder().event("done").data(new ChatToken("")).build();
 
     return tokens.concatWith(Flux.just(done));
+  }
+
+  /** Best-effort persistence + async summary compression — never breaks the finished stream. */
+  private void persistTurn(
+      String sessionId, String userMessage, String assistantReply, ModelSelection selection) {
+    try {
+      var session = chatSessions.recordTurn(sessionId, userMessage, assistantReply, selection);
+      summaryWorker.summariseIfNeeded(session);
+    } catch (Exception e) {
+      log.debug("Turn persistence skipped (best-effort): {}", e.getMessage());
+    }
   }
 
   /**
