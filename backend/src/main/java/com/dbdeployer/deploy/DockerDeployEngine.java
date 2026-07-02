@@ -90,6 +90,9 @@ public class DockerDeployEngine {
     IMAGE_DB_TYPE_MAP.put("adminer", DbType.ADMINER);
     IMAGE_DB_TYPE_MAP.put("pgadmin4", DbType.PGADMIN);
     IMAGE_DB_TYPE_MAP.put("pgadmin", DbType.PGADMIN);
+    // ── LLM runtimes ──────────────────────────────────────────────────────
+    IMAGE_DB_TYPE_MAP.put("ollama/ollama", DbType.OLLAMA);
+    IMAGE_DB_TYPE_MAP.put("ollama", DbType.OLLAMA);
   }
 
   public DockerDeployEngine(GpuHostConfigurer gpuHostConfigurer) {
@@ -250,8 +253,11 @@ public class DockerDeployEngine {
     return i.contains("ollama") || i.contains("model-runner");
   }
 
-  /** Detect the host GPU vendor reusing the pure {@code GpuDetector.classify} rules (no cycle). */
-  private com.dbdeployer.runtime.GpuVendor detectGpuVendor() {
+  /**
+   * Detect the host GPU vendor reusing the pure {@code GpuDetector.classify} rules (no cycle).
+   * Public so the model-runtime registry can record the vendor a runtime was deployed with.
+   */
+  public com.dbdeployer.runtime.GpuVendor detectGpuVendor() {
     return com.dbdeployer.runtime.GpuDetector.classify(
             dockerRuntimeNames(),
             Files.exists(Path.of("/dev/kfd")),

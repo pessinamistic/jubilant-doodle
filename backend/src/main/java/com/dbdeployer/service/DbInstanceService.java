@@ -21,6 +21,7 @@ import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.PipelineOrchestrator;
 import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
+import com.dbdeployer.runtime.ModelRuntimeService;
 import com.dbdeployer.store.DeployedContainerRepository;
 import com.dbdeployer.store.DeploymentConfigRepository;
 import com.dbdeployer.validations.DeploymentValidations;
@@ -52,6 +53,7 @@ public class DbInstanceService {
   private final DeployedContainerRepository containerRepo;
   private final DeploymentPipelineRepository pipelineRepo;
   private final DeploymentValidations deploymentValidations;
+  private final ModelRuntimeService modelRuntimeService;
 
   public DbInstanceService(
       BrewDeployEngine brew,
@@ -62,7 +64,8 @@ public class DbInstanceService {
       DeploymentConfigRepository configRepo,
       DeployedContainerRepository containerRepo,
       DeploymentPipelineRepository pipelineRepo,
-      DeploymentValidations deploymentValidations) {
+      DeploymentValidations deploymentValidations,
+      ModelRuntimeService modelRuntimeService) {
     this.brew = brew;
     this.docker = docker;
     this.toolMetrics = toolMetrics;
@@ -72,6 +75,7 @@ public class DbInstanceService {
     this.containerRepo = containerRepo;
     this.pipelineRepo = pipelineRepo;
     this.deploymentValidations = deploymentValidations;
+    this.modelRuntimeService = modelRuntimeService;
   }
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -271,6 +275,9 @@ public class DbInstanceService {
     container.setStatus(InstanceStatus.REMOVED);
     container.setRemovedAt(Instant.now());
     containerRepo.save(container);
+
+    // If this instance backed a registered LLM runtime, deregister it.
+    modelRuntimeService.removeForConfig(config.getId());
   }
 
   /**

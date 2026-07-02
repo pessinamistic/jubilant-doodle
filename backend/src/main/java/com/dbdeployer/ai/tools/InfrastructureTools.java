@@ -9,6 +9,7 @@ import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.model.InstanceStatus;
+import com.dbdeployer.runtime.ModelRuntimeService;
 import com.dbdeployer.runtime.OllamaModelPuller;
 import com.dbdeployer.service.ConfigTemplateService;
 import com.dbdeployer.service.DbInstanceService;
@@ -17,7 +18,6 @@ import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -56,7 +56,7 @@ public class InfrastructureTools {
   private final ConfigTemplateService configTemplate;
   private final DockerDeployEngine docker;
   private final OllamaModelPuller modelPuller;
-  private final String ollamaBaseUrl;
+  private final ModelRuntimeService modelRuntimes;
 
   public InfrastructureTools(
       DbInstanceService service,
@@ -64,13 +64,13 @@ public class InfrastructureTools {
       ConfigTemplateService configTemplate,
       DockerDeployEngine docker,
       OllamaModelPuller modelPuller,
-      @Value("${spring.ai.ollama.base-url:http://localhost:11434}") String ollamaBaseUrl) {
+      ModelRuntimeService modelRuntimes) {
     this.service = service;
     this.connBuilder = connBuilder;
     this.configTemplate = configTemplate;
     this.docker = docker;
     this.modelPuller = modelPuller;
-    this.ollamaBaseUrl = ollamaBaseUrl;
+    this.modelRuntimes = modelRuntimes;
   }
 
   // ── Read-only ───────────────────────────────────────────────────────────────
@@ -233,14 +233,17 @@ public class InfrastructureTools {
   @Tool(
       description =
           "Pull an LLM model (e.g. 'llama3.1:8b' or 'qwen2.5:7b') into the local Ollama runtime so"
-              + " it can be used for chat and model comparison. Blocks until the pull completes.")
+              + " it can be used for chat and model comparison. Targets the first RUNNING managed"
+              + " OLLAMA instance (deploy one with deployDatabase type=OLLAMA if none exists)."
+              + " Blocks until the pull completes.")
   public String pullModel(
       @ToolParam(description = "the Ollama model tag, e.g. 'llama3.1:8b'") String modelTag) {
     if (modelTag == null || modelTag.isBlank()) {
       throw new IllegalArgumentException("Model tag is required");
     }
-    OllamaModelPuller.PullResult result = modelPuller.pull(ollamaBaseUrl, modelTag.trim());
-    log.info("[agent] pull '{}' into {} -> success={}", modelTag, ollamaBaseUrl, result.success());
+    String baseUrl = modelRuntimes.resolveOllamaBaseUrl();
+    OllamaModelPuller.PullResult result = modelPuller.pull(baseUrl, modelTag.trim());
+    log.info("[agent] pull '{}' into {} -> success={}", modelTag, baseUrl, result.success());
     if (!result.success()) {
       throw new IllegalStateException(result.message());
     }

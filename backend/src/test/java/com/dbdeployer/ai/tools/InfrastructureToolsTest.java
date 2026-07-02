@@ -15,6 +15,7 @@ import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DeploymentResponse;
 import com.dbdeployer.model.InstanceStatus;
+import com.dbdeployer.runtime.ModelRuntimeService;
 import com.dbdeployer.runtime.OllamaModelPuller;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -33,10 +34,11 @@ class InfrastructureToolsTest {
   @Mock private com.dbdeployer.service.ConfigTemplateService configTemplate;
   @Mock private DockerDeployEngine docker;
   @Mock private OllamaModelPuller modelPuller;
+  @Mock private ModelRuntimeService modelRuntimes;
 
   private InfrastructureTools tools() {
     return new InfrastructureTools(
-        service, connBuilder, configTemplate, docker, modelPuller, OLLAMA_URL);
+        service, connBuilder, configTemplate, docker, modelPuller, modelRuntimes);
   }
 
   private static DeployedContainer container(String name, InstanceStatus status) {
@@ -209,17 +211,20 @@ class InfrastructureToolsTest {
   // ── pullModel ────────────────────────────────────────────────────────────────
 
   @Test
-  void pullModel_delegates_to_puller_with_configured_base_url() {
+  void pullModel_targets_the_resolved_runtime_base_url() {
+    when(modelRuntimes.resolveOllamaBaseUrl()).thenReturn(OLLAMA_URL);
     when(modelPuller.pull(OLLAMA_URL, "llama3.1:8b"))
         .thenReturn(new OllamaModelPuller.PullResult(true, "Pulled model: llama3.1:8b"));
 
     String msg = tools().pullModel("llama3.1:8b");
 
     assertThat(msg).isEqualTo("Pulled model: llama3.1:8b");
+    verify(modelPuller).pull(OLLAMA_URL, "llama3.1:8b");
   }
 
   @Test
   void pullModel_throws_on_failure() {
+    when(modelRuntimes.resolveOllamaBaseUrl()).thenReturn(OLLAMA_URL);
     when(modelPuller.pull(OLLAMA_URL, "bad:model"))
         .thenReturn(new OllamaModelPuller.PullResult(false, "Pull failed for bad:model"));
 

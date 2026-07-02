@@ -135,6 +135,13 @@ public class ConnectionStringBuilder {
           # Requires: org.springframework.boot:spring-boot-starter-kafka
           spring.kafka.bootstrap-servers=localhost:%d"""
               .formatted(port);
+      case OLLAMA ->
+          """
+          # Requires: org.springframework.ai:spring-ai-starter-model-ollama
+          spring.ai.ollama.base-url=http://localhost:%d
+          spring.ai.ollama.chat.options.model=llama3.1:8b
+          spring.ai.ollama.embedding.options.model=nomic-embed-text"""
+              .formatted(port);
       default ->
           "# %s exposes no first-class Spring Boot datasource. Base URL:%n# %s"
               .formatted(def.displayName(), build(config));
