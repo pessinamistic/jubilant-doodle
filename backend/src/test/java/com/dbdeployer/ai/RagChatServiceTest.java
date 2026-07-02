@@ -3,10 +3,14 @@ package com.dbdeployer.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,8 @@ class RagChatServiceTest {
 
   @Mock private ModelRouter modelRouter;
   @Mock private MemoryRetriever memoryRetriever;
+  @Mock private ChatSessionService chatSessions;
+  @Mock private RollingSummaryWorker summaryWorker;
 
   private final SmartContextBuilder smartContextBuilder = new SmartContextBuilder();
 
@@ -69,7 +75,9 @@ class RagChatServiceTest {
   }
 
   private RagChatService service() {
-    return new RagChatService(modelRouter, memoryRetriever, smartContextBuilder);
+    lenient().when(chatSessions.rollingSummaryFor(any())).thenReturn(Optional.empty());
+    return new RagChatService(
+        modelRouter, memoryRetriever, smartContextBuilder, chatSessions, summaryWorker);
   }
 
   @Test
@@ -113,6 +121,42 @@ class RagChatServiceTest {
 
     assertThat(system).contains("Port Wrangler"); // base prompt preserved
     assertThat(system).contains("redis container was OOM killed"); // memory injected
+  }
+
+  @Test
+  void persists_the_turn_and_triggers_summarisation_on_completion() {
+    when(modelRouter.clientFor(any(), any()))
+        .thenReturn(ChatClient.builder(stubModel("Hel", "lo")).build());
+    when(memoryRetriever.retrieve(any(), any(), anyInt())).thenReturn(List.of());
+    var session = new com.dbdeployer.model.ChatSession();
+    session.setId("s1");
+    when(chatSessions.recordTurn(eq("s1"), eq("hi"), eq("Hello"), any())).thenReturn(session);
+
+    service().stream("s1", "hi", new ModelSelection(null, null)).collectList().block();
+
+    verify(chatSessions).recordTurn(eq("s1"), eq("hi"), eq("Hello"), any());
+    verify(summaryWorker).summariseIfNeeded(session);
+  }
+
+  @Test
+  void injects_the_rolling_summary_into_the_system_prompt() {
+    AtomicReference<Prompt> captured = new AtomicReference<>();
+    when(modelRouter.clientFor(any(), any()))
+        .thenReturn(ChatClient.builder(capturingModel(captured)).build());
+    when(memoryRetriever.retrieve(any(), any(), anyInt())).thenReturn(List.of());
+    when(chatSessions.rollingSummaryFor("s1"))
+        .thenReturn(Optional.of("user deployed postgres 'orders' on 5544"));
+
+    new RagChatService(
+            modelRouter, memoryRetriever, smartContextBuilder, chatSessions, summaryWorker)
+        .stream("s1", "what did I deploy?", new ModelSelection(null, null)).collectList().block();
+
+    String system =
+        captured.get().getInstructions().stream()
+            .filter(m -> m instanceof SystemMessage)
+            .map(Message::getText)
+            .collect(Collectors.joining());
+    assertThat(system).contains("user deployed postgres 'orders' on 5544");
   }
 
   @Test
