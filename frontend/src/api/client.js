@@ -109,6 +109,14 @@ export const getCatalogVersions  = (dbType, refresh=false) => api.get(`/catalog/
 // ── Model Cookbook ─────────────────────────────────────────────────────────
 export const getSystemProfile    = ()             => api.get('/models/profile').then(r => r.data)
 export const getModelSuggestions = (type, compat) => api.get('/models/suggestions', { params: { type: type || undefined, compat: compat || undefined } }).then(r => r.data)
+
+// ── Model runtime dashboard ────────────────────────────────────────────────
+export const getRuntimeDashboard  = ()      => api.get('/models/runtime').then(r => r.data)
+export const loadRuntimeModel     = (model) => api.post('/models/runtime/load', { model }).then(r => r.data)
+export const unloadRuntimeModel   = (model) => api.post('/models/runtime/unload', { model }).then(r => r.data)
+export const deleteRuntimeModel   = (model) => api.post('/models/runtime/delete', { model }).then(r => r.data)
+export const pullRuntimeModel     = (model) => api.post('/models/runtime/pull', { model })
+export const saveRuntimeModelSettings = (model, settings) => api.post('/models/runtime/settings', { model, ...settings })
 export const getSystemInfo       = ()             => api.get('/system').then(r => r.data)
 export const discoverContainers  = ()             => api.get('/instances/discover').then(r => r.data)
 export const importContainer     = (data)         => api.post('/instances/import', data).then(r => r.data)

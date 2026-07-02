@@ -83,6 +83,26 @@ public class ModelRuntimeService {
     runtimeRepo.deleteByConfigId(configId);
   }
 
+  /**
+   * The runtime row for a base URL, creating one on demand for runtimes Port Wrangler did not
+   * deploy (a native/external Ollama reachable at the configured default URL). {@code configId}
+   * stays null for those — there is no managed container behind them.
+   */
+  @Transactional
+  public ModelRuntimeEntity ensureRuntimeRow(String baseUrl) {
+    return runtimeRepo
+        .findFirstByBaseUrl(baseUrl)
+        .orElseGet(
+            () -> {
+              ModelRuntimeEntity row = new ModelRuntimeEntity();
+              row.setId(UUID.randomUUID().toString());
+              row.setRuntimeType(ModelRuntime.OLLAMA);
+              row.setBaseUrl(baseUrl);
+              row.setGpuVendor(docker.detectGpuVendor());
+              return runtimeRepo.save(row);
+            });
+  }
+
   /** All registered runtime rows (for the dashboard). */
   public List<ModelRuntimeEntity> listRuntimes() {
     return runtimeRepo.findAll();

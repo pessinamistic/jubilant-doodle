@@ -12,6 +12,8 @@ public interface ModelRuntimeRepository extends JpaRepository<ModelRuntimeEntity
 
   Optional<ModelRuntimeEntity> findByConfigId(String configId);
 
+  Optional<ModelRuntimeEntity> findFirstByBaseUrl(String baseUrl);
+
   List<ModelRuntimeEntity> findByRuntimeType(ModelRuntime runtimeType);
 
   void deleteByConfigId(String configId);

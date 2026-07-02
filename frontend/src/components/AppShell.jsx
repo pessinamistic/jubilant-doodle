@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  Gauge,
   HardDrive,
   House,
   Laptop,
@@ -174,6 +175,11 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
               className="animate-fade-up delay-300"
             />
             <SideNavItem
+              to="/runtime" icon={<Gauge className="w-4 h-4" />}
+              label="Runtime" collapsed={collapsed}
+              className="animate-fade-up delay-300"
+            />
+            <SideNavItem
               to="/chat" icon={<MessageSquare className="w-4 h-4" />}
               label="Assistant" collapsed={collapsed}
               className="animate-fade-up delay-300"
@@ -236,6 +242,7 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
                 <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
                 <SideNavItem to="/images" icon={<HardDrive className="w-4 h-4" />} label="Images" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
                 <SideNavItem to="/models" icon={<Sparkles className="w-4 h-4" />} label="Models" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
+                <SideNavItem to="/runtime" icon={<Gauge className="w-4 h-4" />} label="Runtime" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
                 <SideNavItem to="/chat" icon={<MessageSquare className="w-4 h-4" />} label="Assistant" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
                 <SideNavItem to="/agent" icon={<Wrench className="w-4 h-4" />} label="Agent" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
               </nav>

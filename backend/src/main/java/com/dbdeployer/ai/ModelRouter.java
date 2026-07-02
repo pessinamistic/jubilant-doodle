@@ -1,5 +1,6 @@
 package com.dbdeployer.ai;
 
+import com.dbdeployer.runtime.ModelDashboardService;
 import com.dbdeployer.runtime.ModelRuntimeService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -24,14 +25,17 @@ public class ModelRouter {
 
   private final ChatMemory chatMemory;
   private final ModelRuntimeService modelRuntimes;
+  private final ModelDashboardService modelDashboard;
   private final String defaultModel;
 
   public ModelRouter(
       ChatMemory chatMemory,
       ModelRuntimeService modelRuntimes,
+      ModelDashboardService modelDashboard,
       @Value("${portwrangler.ai.default-model:llama3.1:8b}") String defaultModel) {
     this.chatMemory = chatMemory;
     this.modelRuntimes = modelRuntimes;
+    this.modelDashboard = modelDashboard;
     this.defaultModel = defaultModel;
   }
 
@@ -62,9 +66,25 @@ public class ModelRouter {
     String model = (modelId == null || modelId.isBlank()) ? defaultModel : modelId;
 
     OllamaApi api = OllamaApi.builder().baseUrl(url).build();
-    return OllamaChatModel.builder()
-        .ollamaApi(api)
-        .defaultOptions(OllamaOptions.builder().model(model).build())
-        .build();
+    return OllamaChatModel.builder().ollamaApi(api).defaultOptions(optionsFor(model)).build();
+  }
+
+  /**
+   * Options for a model, honouring the per-model settings saved in the runtime dashboard
+   * (temperature / context window / keep-alive). Unset fields keep the runtime defaults.
+   */
+  private OllamaOptions optionsFor(String model) {
+    OllamaOptions.Builder options = OllamaOptions.builder().model(model);
+    modelDashboard
+        .settingsFor(model)
+        .ifPresent(
+            s -> {
+              if (s.temperature() != null) options.temperature(s.temperature());
+              if (s.numCtx() != null) options.numCtx(s.numCtx());
+              if (s.keepAlive() != null && !s.keepAlive().isBlank()) {
+                options.keepAlive(s.keepAlive());
+              }
+            });
+    return options.build();
   }
 }
