@@ -25,6 +25,8 @@ const DEFAULT_PORTS = {
   NGINX: 8080,
   // DB admin UIs
   ADMINER: 8080, PGADMIN: 5050,
+  // LLM runtimes
+  OLLAMA: 11434,
 }
 
 const CATALOG_GROUPS = [
@@ -39,6 +41,7 @@ const CATALOG_GROUPS = [
   { label: 'Identity & Secrets',     types: ['KEYCLOAK','VAULT'] },
   { label: 'Web & Proxy',            types: ['NGINX'] },
   { label: 'DB Admin UIs',           types: ['ADMINER','PGADMIN'] },
+  { label: 'LLM Runtimes',           types: ['OLLAMA'] },
 ]
 
 /**

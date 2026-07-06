@@ -8,7 +8,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
-import org.springframework.ai.ollama.api.OllamaOptions;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -73,8 +73,8 @@ public class ModelRouter {
    * Options for a model, honouring the per-model settings saved in the runtime dashboard
    * (temperature / context window / keep-alive). Unset fields keep the runtime defaults.
    */
-  private OllamaOptions optionsFor(String model) {
-    OllamaOptions.Builder options = OllamaOptions.builder().model(model);
+  private OllamaChatOptions optionsFor(String model) {
+    OllamaChatOptions.Builder options = OllamaChatOptions.builder().model(model);
     modelDashboard
         .settingsFor(model)
         .ifPresent(

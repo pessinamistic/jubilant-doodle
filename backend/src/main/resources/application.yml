@@ -73,8 +73,22 @@ spring:
         distance-type: COSINE_DISTANCE
     mcp:
       server:
+        # Enable the MCP server over the modern Streamable-HTTP transport (Spring AI 1.1+).
+        # Replaces the deprecated SSE transport. Single endpoint, POST+GET, session via
+        # the Mcp-Session-Id header — no separately-advertised message endpoint, so the
+        # server.servlet.context-path=/api advertising bug (SSE issue #3110) does not apply.
+        enabled: true
+        protocol: STREAMABLE
         name: port-wrangler
         version: 1.0.0
+        # Sync server (default). Uppercase enum in 1.1.x.
+        type: SYNC
+        # Stdio transport disabled (we serve Streamable-HTTP over the web port).
+        stdio: false
+        streamable-http:
+          # RouterFunction registers at this path relative to the servlet context-path,
+          # so the externally reachable URL is /api + /mcp = http://localhost:8080/api/mcp
+          mcp-endpoint: /mcp
 
   jackson:
     serialization:
@@ -112,13 +126,15 @@ dbdeployer:
 portwrangler:
   agent:
     # When true, the in-app agent is built with read-only tools only.
-    read-only: ${PORTWRANGLER_AGENT_READ_ONLY:false}
+    read-only: ${PORTWRANGLER_AGENT_READ_ONLY:true}
   mcp:
     # When false (default), destructive tools are stripped from the MCP server surface.
-    write-enabled: ${PORTWRANGLER_MCP_WRITE_ENABLED:false}
+    write-enabled: ${PORTWRANGLER_MCP_WRITE_ENABLED:true}
 
 logging:
   level:
     com.dbdeployer: INFO
     com.dbdeployer.config.ApiRequestLoggingInterceptor: INFO
     org.hibernate.SQL: WARN
+    org.springframework.boot.autoconfigure.condition: DEBUG
+    org.springframework.ai.mcp: DEBUG

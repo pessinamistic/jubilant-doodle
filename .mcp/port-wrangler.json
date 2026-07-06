@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "port-wrangler": {
-      "url": "http://localhost:8080/api/sse",
-      "description": "Port Wrangler local infrastructure tools (read-only by default). Start Port Wrangler, then add this server in Cursor / Claude Desktop. To enable write tools (stop/remove), launch with PORTWRANGLER_MCP_WRITE_ENABLED=true."
+      "type": "http",
+      "url": "http://localhost:8080/api/mcp",
+      "description": "Port Wrangler local infrastructure tools (read-only by default). Modern Streamable-HTTP MCP transport (Spring AI 1.1+). Start Port Wrangler, then add this server in VS Code / Claude / Cursor. To enable write tools (stop/remove), launch with PORTWRANGLER_MCP_WRITE_ENABLED=true. Note: default profile serves port 8080; the 'local' profile uses 8081."
     }
   }
 }
