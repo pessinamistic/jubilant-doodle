@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import {
   ArrowRight,
+  BookOpen,
+  Bot,
   Check,
   Container,
   Database,
+  Gauge,
+  GitCompare,
   Layers,
+  MessageSquare,
   Sparkles,
   UserCircle2,
   Wrench,
@@ -16,9 +21,15 @@ const ROLES = [
   'Full-stack Engineer',
   'Data Engineer',
   'DevOps / SRE',
-  'QA / Tester',
+  'ML / AI Engineer',
   'Student / Hobbyist',
   'Other',
+]
+
+const FOCUS_OPTIONS = [
+  { id: 'db',   label: 'Databases',      desc: 'Spin up Postgres, Redis, Kafka & friends',      icon: <Database className="w-4 h-4" /> },
+  { id: 'llm',  label: 'Local LLMs',     desc: 'Run, chat with and compare models on-device',   icon: <Sparkles className="w-4 h-4" /> },
+  { id: 'both', label: 'Both',           desc: 'The full workbench — data + models',            icon: <Layers className="w-4 h-4" /> },
 ]
 
 const TOOL_OPTIONS = [
@@ -36,26 +47,33 @@ const TOOL_OPTIONS = [
   { id: 'KEYCLOAK',      label: 'Keycloak' },
 ]
 
-const PURPOSES = [
-  { id: 'work',    label: 'Day job',          icon: <Wrench className="w-4 h-4" /> },
-  { id: 'side',    label: 'Side project',     icon: <Sparkles className="w-4 h-4" /> },
-  { id: 'learn',   label: 'Learning',         icon: <Layers className="w-4 h-4" /> },
-  { id: 'demo',    label: 'Demo / prototype', icon: <Database className="w-4 h-4" /> },
+// Keep ids in sync with LLM_FEATURES on the home page.
+const LLM_OPTIONS = [
+  { id: 'CHAT',     label: 'Assistant',   icon: <MessageSquare className="w-4 h-4" /> },
+  { id: 'AGENT',    label: 'Agent',       icon: <Bot className="w-4 h-4" /> },
+  { id: 'COMPARE',  label: 'Compare',     icon: <GitCompare className="w-4 h-4" /> },
+  { id: 'COOKBOOK', label: 'Cookbook',    icon: <BookOpen className="w-4 h-4" /> },
+  { id: 'RUNTIME',  label: 'Runtime',     icon: <Gauge className="w-4 h-4" /> },
 ]
 
 /**
  * First-run welcome wizard. Captures a local-only profile that personalises
  * the home page and the deploy flow. Never sent to the backend.
+ * Steps adapt to the chosen focus: db-only users skip the AI step,
+ * llm-only users skip the database favourites step.
  */
 export function WelcomeWizard({ onComplete }) {
-  const [step, setStep]       = useState(0)
-  const [name, setName]       = useState('')
-  const [role, setRole]       = useState(ROLES[0])
-  const [purpose, setPurpose] = useState('work')
+  const [step, setStep]         = useState(0)
+  const [name, setName]         = useState('')
+  const [role, setRole]         = useState(ROLES[0])
+  const [focus, setFocus]       = useState('both')
   const [favTools, setFavTools] = useState([])
+  const [favLlm, setFavLlm]     = useState([])
 
-  const toggleTool = (id) =>
-    setFavTools(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  const toggleIn = (setter) => (id) =>
+    setter(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  const toggleTool = toggleIn(setFavTools)
+  const toggleLlm  = toggleIn(setFavLlm)
 
   const trimmedName = name.trim()
   const nameValid   = trimmedName.length >= 1 && trimmedName.length <= 40
@@ -64,8 +82,9 @@ export function WelcomeWizard({ onComplete }) {
     onComplete?.({
       name: trimmedName || 'Captain',
       role,
-      purpose,
-      favTools,
+      focus,
+      favTools: focus === 'llm' ? [] : favTools,
+      favLlm:   focus === 'db'  ? [] : favLlm,
     })
   }
 
@@ -114,31 +133,37 @@ export function WelcomeWizard({ onComplete }) {
       canAdvance: true,
     },
     {
-      key: 'purpose',
-      title: 'WHAT ARE YOU SHIPPING?',
-      subtitle: 'Tells us which surface to highlight first.',
-      icon: <Sparkles className="w-6 h-6" />,
+      key: 'focus',
+      title: 'WHAT WILL YOU WRANGLE?',
+      subtitle: 'Shapes your home page — you can use everything either way.',
+      icon: <Layers className="w-6 h-6" />,
       body: (
-        <div className="grid grid-cols-2 gap-2">
-          {PURPOSES.map(p => (
+        <div className="grid grid-cols-1 gap-2">
+          {FOCUS_OPTIONS.map(f => (
             <button
-              key={p.id}
+              key={f.id}
               type="button"
-              onClick={() => setPurpose(p.id)}
-              className={`wizard-option ${purpose === p.id ? 'wizard-option-active' : ''}`}
+              onClick={() => setFocus(f.id)}
+              className={`wizard-option ${focus === f.id ? 'wizard-option-active' : ''}`}
             >
-              <span className="flex items-center gap-2">{p.icon}{p.label}</span>
-              {purpose === p.id && <Check className="w-4 h-4" />}
+              <span className="flex items-center gap-2 min-w-0">
+                {f.icon}
+                <span className="text-left">
+                  <span className="block">{f.label}</span>
+                  <span className="block text-[11px] font-normal text-(--text-muted)">{f.desc}</span>
+                </span>
+              </span>
+              {focus === f.id && <Check className="w-4 h-4 shrink-0" />}
             </button>
           ))}
         </div>
       ),
       canAdvance: true,
     },
-    {
+    ...(focus !== 'llm' ? [{
       key: 'tools',
-      title: 'PICK YOUR FAVORITES',
-      subtitle: 'We will pin these on your home page. Skip if you cannot decide.',
+      title: 'PICK YOUR DATABASES',
+      subtitle: 'Pinned on your home page for one-click deploys. Skip if unsure.',
       icon: <Database className="w-6 h-6" />,
       body: (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
@@ -159,11 +184,37 @@ export function WelcomeWizard({ onComplete }) {
         </div>
       ),
       canAdvance: true,
-    },
+    }] : []),
+    ...(focus !== 'db' ? [{
+      key: 'llm',
+      title: 'PICK YOUR AI STARTERS',
+      subtitle: 'Shortcuts pinned next to your databases. Skip if unsure.',
+      icon: <Sparkles className="w-6 h-6" />,
+      body: (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {LLM_OPTIONS.map(o => {
+            const on = favLlm.includes(o.id)
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => toggleLlm(o.id)}
+                className={`wizard-option ${on ? 'wizard-option-active' : ''}`}
+              >
+                <span className="flex items-center gap-2">{o.icon}{o.label}</span>
+                {on && <Check className="w-4 h-4" />}
+              </button>
+            )
+          })}
+        </div>
+      ),
+      canAdvance: true,
+    }] : []),
   ]
 
-  const current = steps[step]
-  const lastStep = step === steps.length - 1
+  const safeStep = Math.min(step, steps.length - 1)
+  const current  = steps[safeStep]
+  const lastStep = safeStep === steps.length - 1
 
   return (
     <div className="wizard-backdrop" role="dialog" aria-modal="true" aria-label="Welcome to Port Wrangler">
@@ -186,7 +237,7 @@ export function WelcomeWizard({ onComplete }) {
             <div
               key={i}
               className="h-1.5 flex-1 rounded-full border border-(--border-strong)"
-              style={{ background: i <= step ? 'var(--accent)' : 'var(--bg-surface-2)' }}
+              style={{ background: i <= safeStep ? 'var(--accent)' : 'var(--bg-surface-2)' }}
             />
           ))}
         </div>
@@ -210,16 +261,16 @@ export function WelcomeWizard({ onComplete }) {
         <div className="flex items-center justify-between mt-6 gap-2">
           <button
             type="button"
-            onClick={() => step > 0 ? setStep(step - 1) : null}
-            disabled={step === 0}
+            onClick={() => safeStep > 0 ? setStep(safeStep - 1) : null}
+            disabled={safeStep === 0}
             className="btn-ghost disabled:opacity-40"
           >
             Back
           </button>
 
           <div className="flex items-center gap-2">
-            {!lastStep && step >= 1 && (
-              <button type="button" onClick={() => setStep(step + 1)} className="btn-ghost">
+            {!lastStep && safeStep >= 1 && (
+              <button type="button" onClick={() => setStep(safeStep + 1)} className="btn-ghost">
                 Skip
               </button>
             )}
@@ -230,7 +281,7 @@ export function WelcomeWizard({ onComplete }) {
             ) : (
               <button
                 type="button"
-                onClick={() => setStep(step + 1)}
+                onClick={() => setStep(safeStep + 1)}
                 disabled={!current.canAdvance}
                 className="btn-primary disabled:opacity-50"
               >

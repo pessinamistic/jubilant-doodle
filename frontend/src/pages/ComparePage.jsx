@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
+import { ModelSelect } from '../components/ModelSelect'
 import { Bot, MessageSquare, Play } from 'lucide-react'
 
 export function ComparePage() {
@@ -45,8 +46,8 @@ export function ComparePage() {
 
       <div className="flex flex-col gap-2 mb-4 animate-fade-up delay-100">
         <div className="flex gap-2">
-          <input value={modelA} onChange={e => setModelA(e.target.value)} placeholder="Model A" className="input flex-1" />
-          <input value={modelB} onChange={e => setModelB(e.target.value)} placeholder="Model B" className="input flex-1" />
+          <ModelSelect value={modelA} onChange={setModelA} placeholder="Model A" className="flex-1" />
+          <ModelSelect value={modelB} onChange={setModelB} placeholder="Model B" className="flex-1" />
         </div>
         <div className="flex gap-2">
           <input

@@ -1,0 +1,1182 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1782881639.700676,
+    "ast_hash": "e51077b6a7f1f67afc748f1a32a1557d",
+    "semantic_hash": "e51077b6a7f1f67afc748f1a32a1557d"
+  },
+  ".claude/settings.local.json": {
+    "mtime": 1781505960.0878124,
+    "ast_hash": "1e5f608b7166aca44cd3da6b2f77d40b",
+    "semantic_hash": "1e5f608b7166aca44cd3da6b2f77d40b"
+  },
+  ".mcp/port-wrangler.json": {
+    "mtime": 1782881245.7748482,
+    "ast_hash": "194f43e33ad262cee762cf621c8911c7",
+    "semantic_hash": "194f43e33ad262cee762cf621c8911c7"
+  },
+  "backend/build.gradle.kts": {
+    "mtime": 1782881245.7753997,
+    "ast_hash": "44fe7ef15801f3e01944a5e2253ffc41",
+    "semantic_hash": "44fe7ef15801f3e01944a5e2253ffc41"
+  },
+  "backend/gradlew": {
+    "mtime": 1779726172.1962764,
+    "ast_hash": "780b1d3e23a3b82154795f73df943a14",
+    "semantic_hash": "780b1d3e23a3b82154795f73df943a14"
+  },
+  "backend/settings.gradle.kts": {
+    "mtime": 1779726172.1964374,
+    "ast_hash": "00893dd2b7545857626e641280c3858a",
+    "semantic_hash": "00893dd2b7545857626e641280c3858a"
+  },
+  "backend/src/main/java/com/dbdeployer/DbDeployerApplication.java": {
+    "mtime": 1781332820.563268,
+    "ast_hash": "6d6e5f971cef0768e0e0b16f88e93fbb",
+    "semantic_hash": "6d6e5f971cef0768e0e0b16f88e93fbb"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/AgentChatService.java": {
+    "mtime": 1782881245.7755785,
+    "ast_hash": "4c819342b93da8db829ea1150f6a662b",
+    "semantic_hash": "4c819342b93da8db829ea1150f6a662b"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/AgentEvent.java": {
+    "mtime": 1782881245.7756643,
+    "ast_hash": "e56811fe0398c9f06c4af3d1715d2a46",
+    "semantic_hash": "e56811fe0398c9f06c4af3d1715d2a46"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ChatClientConfig.java": {
+    "mtime": 1782881245.7757468,
+    "ast_hash": "a5ab2a7c091f9aa57629a66d1a51ce9a",
+    "semantic_hash": "a5ab2a7c091f9aa57629a66d1a51ce9a"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ChatToken.java": {
+    "mtime": 1782881245.7758265,
+    "ast_hash": "f2c326b8b37c295beac74d992b26a537",
+    "semantic_hash": "f2c326b8b37c295beac74d992b26a537"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ComparisonChunk.java": {
+    "mtime": 1782881245.775905,
+    "ast_hash": "6ed3cad94812b168f392a8d5a3190fd7",
+    "semantic_hash": "6ed3cad94812b168f392a8d5a3190fd7"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/IngestionService.java": {
+    "mtime": 1782881245.7760098,
+    "ast_hash": "ee1b913c93418434d08c9050ae251378",
+    "semantic_hash": "ee1b913c93418434d08c9050ae251378"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/LogChunker.java": {
+    "mtime": 1782881245.7760923,
+    "ast_hash": "83eed429b4748238915a54692a5bf059",
+    "semantic_hash": "83eed429b4748238915a54692a5bf059"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/MemoryRetriever.java": {
+    "mtime": 1782881245.7761796,
+    "ast_hash": "d2fad549f1e041dc4e8372714bec8f27",
+    "semantic_hash": "d2fad549f1e041dc4e8372714bec8f27"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ModelComparisonService.java": {
+    "mtime": 1782881245.7762587,
+    "ast_hash": "842415c9bc676111fc04b0b116241719",
+    "semantic_hash": "842415c9bc676111fc04b0b116241719"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ModelRouter.java": {
+    "mtime": 1782881245.7763379,
+    "ast_hash": "22b46fdec23889e1f7c0ab5fe2d2534e",
+    "semantic_hash": "22b46fdec23889e1f7c0ab5fe2d2534e"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ModelSelection.java": {
+    "mtime": 1782881245.7764113,
+    "ast_hash": "175afb3a05b3aa666ee90074d415a69c",
+    "semantic_hash": "175afb3a05b3aa666ee90074d415a69c"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/RagChatService.java": {
+    "mtime": 1782881245.7764869,
+    "ast_hash": "38dd9051b0d04bbe19a89be1fa5b3491",
+    "semantic_hash": "38dd9051b0d04bbe19a89be1fa5b3491"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/RecencyFrequencyScorer.java": {
+    "mtime": 1782881245.776574,
+    "ast_hash": "646222d668bb94d759bdb5303c7dee2d",
+    "semantic_hash": "646222d668bb94d759bdb5303c7dee2d"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/RollingSummaryService.java": {
+    "mtime": 1782881245.7766619,
+    "ast_hash": "3878fc725d0c1cf5db0331b30ee9c09b",
+    "semantic_hash": "3878fc725d0c1cf5db0331b30ee9c09b"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/ScoredChunk.java": {
+    "mtime": 1782881245.7767565,
+    "ast_hash": "f8e1224f551e3210fc4f0c9e147c9a55",
+    "semantic_hash": "f8e1224f551e3210fc4f0c9e147c9a55"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/SmartContextBuilder.java": {
+    "mtime": 1782881245.776858,
+    "ast_hash": "60334ea5fdcdcece129bb01188ecb0bf",
+    "semantic_hash": "60334ea5fdcdcece129bb01188ecb0bf"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/TokenBudget.java": {
+    "mtime": 1782881245.7769368,
+    "ast_hash": "89d7dc4e37c42c506d8c4202b60772de",
+    "semantic_hash": "89d7dc4e37c42c506d8c4202b60772de"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/tools/AgentSafety.java": {
+    "mtime": 1782881245.7770576,
+    "ast_hash": "148cd46070febc9cd05b6d00813bf6c0",
+    "semantic_hash": "148cd46070febc9cd05b6d00813bf6c0"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/tools/InfrastructureTools.java": {
+    "mtime": 1782881245.7771645,
+    "ast_hash": "5068f2b73503e761a4701980acf060a3",
+    "semantic_hash": "5068f2b73503e761a4701980acf060a3"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/tools/InstanceSummary.java": {
+    "mtime": 1782881245.777237,
+    "ast_hash": "225757a0a67b130c8611e0058e3c1e44",
+    "semantic_hash": "225757a0a67b130c8611e0058e3c1e44"
+  },
+  "backend/src/main/java/com/dbdeployer/ai/tools/StackSummary.java": {
+    "mtime": 1782881245.777305,
+    "ast_hash": "52d72795cca8d370c5713e9a6fc77263",
+    "semantic_hash": "52d72795cca8d370c5713e9a6fc77263"
+  },
+  "backend/src/main/java/com/dbdeployer/api/AgentChatController.java": {
+    "mtime": 1782881245.7773917,
+    "ast_hash": "b341fbce9afadc7085d0ea6ee4402571",
+    "semantic_hash": "b341fbce9afadc7085d0ea6ee4402571"
+  },
+  "backend/src/main/java/com/dbdeployer/api/CatalogController.java": {
+    "mtime": 1781332820.5633974,
+    "ast_hash": "eaa8a57d2c07ab0c3b1df9a31694308d",
+    "semantic_hash": "eaa8a57d2c07ab0c3b1df9a31694308d"
+  },
+  "backend/src/main/java/com/dbdeployer/api/ChatController.java": {
+    "mtime": 1782881245.7774744,
+    "ast_hash": "155d771cf6abb026b8301b75c6717ad0",
+    "semantic_hash": "155d771cf6abb026b8301b75c6717ad0"
+  },
+  "backend/src/main/java/com/dbdeployer/api/ComposeExportController.java": {
+    "mtime": 1782881245.7775564,
+    "ast_hash": "57e8c98c1ddf9320ae5287455db1f0a3",
+    "semantic_hash": "57e8c98c1ddf9320ae5287455db1f0a3"
+  },
+  "backend/src/main/java/com/dbdeployer/api/ConfigTemplateController.java": {
+    "mtime": 1781332820.56355,
+    "ast_hash": "8fecad3633c31ef03af8ea6dfad702a0",
+    "semantic_hash": "8fecad3633c31ef03af8ea6dfad702a0"
+  },
+  "backend/src/main/java/com/dbdeployer/api/DbInstanceController.java": {
+    "mtime": 1782881245.7780333,
+    "ast_hash": "2fa7d960bb110635acb6e60a16b4feef",
+    "semantic_hash": "2fa7d960bb110635acb6e60a16b4feef"
+  },
+  "backend/src/main/java/com/dbdeployer/api/ImageController.java": {
+    "mtime": 1781332820.5638146,
+    "ast_hash": "f04c7b8d33153417344ee26662cf0284",
+    "semantic_hash": "f04c7b8d33153417344ee26662cf0284"
+  },
+  "backend/src/main/java/com/dbdeployer/api/InstanceResponseAssembler.java": {
+    "mtime": 1781332820.563943,
+    "ast_hash": "dad312b3e8d0dec8240a23b84f89c7dc",
+    "semantic_hash": "dad312b3e8d0dec8240a23b84f89c7dc"
+  },
+  "backend/src/main/java/com/dbdeployer/api/ModelComparisonController.java": {
+    "mtime": 1782881245.778125,
+    "ast_hash": "8ac5c0d302e5e2b166091bb9eb86038e",
+    "semantic_hash": "8ac5c0d302e5e2b166091bb9eb86038e"
+  },
+  "backend/src/main/java/com/dbdeployer/api/ModelCookbookController.java": {
+    "mtime": 1782881245.7782047,
+    "ast_hash": "1d0edeedc032da903dd2a7e08f641bff",
+    "semantic_hash": "1d0edeedc032da903dd2a7e08f641bff"
+  },
+  "backend/src/main/java/com/dbdeployer/api/OperatingSystemController.java": {
+    "mtime": 1781332820.564031,
+    "ast_hash": "0c40eaa827227caeb7745bf71a7c6720",
+    "semantic_hash": "0c40eaa827227caeb7745bf71a7c6720"
+  },
+  "backend/src/main/java/com/dbdeployer/api/SystemMetricsController.java": {
+    "mtime": 1781332820.5644841,
+    "ast_hash": "ca083db6392c072c685877c8d1ae1942",
+    "semantic_hash": "ca083db6392c072c685877c8d1ae1942"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ConfigTemplateRequest.java": {
+    "mtime": 1781332820.564628,
+    "ast_hash": "40e8c6256f560ffadc6f45cc49fe13cd",
+    "semantic_hash": "40e8c6256f560ffadc6f45cc49fe13cd"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ConfigTemplateResponse.java": {
+    "mtime": 1781332820.5647635,
+    "ast_hash": "ae6c7cffea36966eb8be71a4861a6453",
+    "semantic_hash": "ae6c7cffea36966eb8be71a4861a6453"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ContainerMetricsResponse.java": {
+    "mtime": 1781332820.5649192,
+    "ast_hash": "11ec36ea2139264ec44f21e21f209fca",
+    "semantic_hash": "11ec36ea2139264ec44f21e21f209fca"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/DeployFromTemplateRequest.java": {
+    "mtime": 1781332820.5650446,
+    "ast_hash": "261b616e78610c8c90d551d74491fad2",
+    "semantic_hash": "261b616e78610c8c90d551d74491fad2"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/DeploymentActivityResponse.java": {
+    "mtime": 1781332820.565408,
+    "ast_hash": "d1ed8a0fa2f518563e3970b14551d511",
+    "semantic_hash": "d1ed8a0fa2f518563e3970b14551d511"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/DiscoveredContainerDto.java": {
+    "mtime": 1781332820.5656338,
+    "ast_hash": "bd2e038c02b579fb2296996ae4c2c106",
+    "semantic_hash": "bd2e038c02b579fb2296996ae4c2c106"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ImageCheckResponse.java": {
+    "mtime": 1781332820.5660462,
+    "ast_hash": "429166cbb87c1f67e887933316f953fb",
+    "semantic_hash": "429166cbb87c1f67e887933316f953fb"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ImageToolDetailResponse.java": {
+    "mtime": 1781332820.566427,
+    "ast_hash": "57280cd2f813ed81e2469aeb2124d824",
+    "semantic_hash": "57280cd2f813ed81e2469aeb2124d824"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ImageToolSummaryResponse.java": {
+    "mtime": 1781332820.5666478,
+    "ast_hash": "6717a1e1c63b49f7c2b8484593bc50a4",
+    "semantic_hash": "6717a1e1c63b49f7c2b8484593bc50a4"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ImportRequest.java": {
+    "mtime": 1781332820.5668893,
+    "ast_hash": "36a154d13dba0170afadf86f8a6ce797",
+    "semantic_hash": "36a154d13dba0170afadf86f8a6ce797"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/InstanceResponse.java": {
+    "mtime": 1781332820.5671873,
+    "ast_hash": "9154156a354b38d5ac25bf678e89b6e6",
+    "semantic_hash": "9154156a354b38d5ac25bf678e89b6e6"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/InstanceStatsResponse.java": {
+    "mtime": 1781332820.567492,
+    "ast_hash": "76241c0a599fff2e3ab6bc126a906702",
+    "semantic_hash": "76241c0a599fff2e3ab6bc126a906702"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/MetricsHistoryResponse.java": {
+    "mtime": 1781332820.5677538,
+    "ast_hash": "0818f5f5c930d3277c20fd01af5905d5",
+    "semantic_hash": "0818f5f5c930d3277c20fd01af5905d5"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/PipelineResponse.java": {
+    "mtime": 1781332820.5682292,
+    "ast_hash": "5bb81335becd4c0c33909ab0b11572a1",
+    "semantic_hash": "5bb81335becd4c0c33909ab0b11572a1"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/PipelineStepResponse.java": {
+    "mtime": 1781332820.5684917,
+    "ast_hash": "9f3f6d036ad4bc1b7d679baa44fcf4be",
+    "semantic_hash": "9f3f6d036ad4bc1b7d679baa44fcf4be"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/ReImportRequest.java": {
+    "mtime": 1780911938.882889,
+    "ast_hash": "770f5e83deb7c73414ece7ef89badb2f",
+    "semantic_hash": "770f5e83deb7c73414ece7ef89badb2f"
+  },
+  "backend/src/main/java/com/dbdeployer/api/dto/SystemDbStatsResponse.java": {
+    "mtime": 1781332820.5687847,
+    "ast_hash": "e923e7f92080978011698892eacc205e",
+    "semantic_hash": "e923e7f92080978011698892eacc205e"
+  },
+  "backend/src/main/java/com/dbdeployer/config/ApiRequestLoggingInterceptor.java": {
+    "mtime": 1781332820.5689774,
+    "ast_hash": "a3da4b3c2df1c73fe1618801a75833bc",
+    "semantic_hash": "a3da4b3c2df1c73fe1618801a75833bc"
+  },
+  "backend/src/main/java/com/dbdeployer/config/AppConfig.java": {
+    "mtime": 1781332820.5692375,
+    "ast_hash": "0424b7df246be58246a980f7ba19cc16",
+    "semantic_hash": "0424b7df246be58246a980f7ba19cc16"
+  },
+  "backend/src/main/java/com/dbdeployer/config/DeploymentRecovery.java": {
+    "mtime": 1781332820.56941,
+    "ast_hash": "59814ac49607e071353afe058f3fb374",
+    "semantic_hash": "59814ac49607e071353afe058f3fb374"
+  },
+  "backend/src/main/java/com/dbdeployer/config/DockerHealthChecker.java": {
+    "mtime": 1781332820.569694,
+    "ast_hash": "ec408a81f62b54d93dc15d3fe7b4c108",
+    "semantic_hash": "ec408a81f62b54d93dc15d3fe7b4c108"
+  },
+  "backend/src/main/java/com/dbdeployer/config/DockerSocketResolver.java": {
+    "mtime": 1781332820.5698996,
+    "ast_hash": "304fc6609e63b2ff56c1011495ecc536",
+    "semantic_hash": "304fc6609e63b2ff56c1011495ecc536"
+  },
+  "backend/src/main/java/com/dbdeployer/config/H2DataMigrator.java": {
+    "mtime": 1781332820.5701053,
+    "ast_hash": "a41def7903b5bccd48ca446628afd973",
+    "semantic_hash": "a41def7903b5bccd48ca446628afd973"
+  },
+  "backend/src/main/java/com/dbdeployer/config/ImageTrackingScheduler.java": {
+    "mtime": 1781332820.5703886,
+    "ast_hash": "e22989cf268dae987eb3bdadc491b47a",
+    "semantic_hash": "e22989cf268dae987eb3bdadc491b47a"
+  },
+  "backend/src/main/java/com/dbdeployer/config/ImageValidationProperties.java": {
+    "mtime": 1781332820.5707684,
+    "ast_hash": "cb71f31f105ce784aa0517106d9bf454",
+    "semantic_hash": "cb71f31f105ce784aa0517106d9bf454"
+  },
+  "backend/src/main/java/com/dbdeployer/config/StatusSyncScheduler.java": {
+    "mtime": 1781332820.5709045,
+    "ast_hash": "783fb72656e379ac622315b82f217ea1",
+    "semantic_hash": "783fb72656e379ac622315b82f217ea1"
+  },
+  "backend/src/main/java/com/dbdeployer/config/SystemDbProvisioner.java": {
+    "mtime": 1781332820.57119,
+    "ast_hash": "15e65f08c3a01cf07094b9955fc41b95",
+    "semantic_hash": "15e65f08c3a01cf07094b9955fc41b95"
+  },
+  "backend/src/main/java/com/dbdeployer/config/SystemDbRegistrar.java": {
+    "mtime": 1781332820.5713532,
+    "ast_hash": "c9812bfd5913a925dfe8268f151e45cc",
+    "semantic_hash": "c9812bfd5913a925dfe8268f151e45cc"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/BrewDeployEngine.java": {
+    "mtime": 1781332820.571561,
+    "ast_hash": "e131610d1266a01152e1c98ac5ab4832",
+    "semantic_hash": "e131610d1266a01152e1c98ac5ab4832"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/ConnectionStringBuilder.java": {
+    "mtime": 1782881245.7784424,
+    "ast_hash": "b63680220480ffd9c5b5052bbc7e7812",
+    "semantic_hash": "b63680220480ffd9c5b5052bbc7e7812"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/DatabaseCatalog.java": {
+    "mtime": 1781332820.5725236,
+    "ast_hash": "b30785d02b176c69ec04e3299c7e06fe",
+    "semantic_hash": "b30785d02b176c69ec04e3299c7e06fe"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/DockerDeployEngine.java": {
+    "mtime": 1782881245.7786455,
+    "ast_hash": "8f80e7488e1b4ba361ad79da554c4339",
+    "semantic_hash": "8f80e7488e1b4ba361ad79da554c4339"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/GpuHostConfigurer.java": {
+    "mtime": 1782881245.7787426,
+    "ast_hash": "283fb9394ed79944a09ed0805868c769",
+    "semantic_hash": "283fb9394ed79944a09ed0805868c769"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/OsDetector.java": {
+    "mtime": 1781332820.5730627,
+    "ast_hash": "56e658275cff821fc7e4c0de45d3bf5c",
+    "semantic_hash": "56e658275cff821fc7e4c0de45d3bf5c"
+  },
+  "backend/src/main/java/com/dbdeployer/deploy/ToolMetricsProbe.java": {
+    "mtime": 1781332820.5733032,
+    "ast_hash": "4ec6e3bf5b7150ad67bdfa20f8639405",
+    "semantic_hash": "4ec6e3bf5b7150ad67bdfa20f8639405"
+  },
+  "backend/src/main/java/com/dbdeployer/mcp/McpServerConfig.java": {
+    "mtime": 1782881245.7788672,
+    "ast_hash": "6e8da61aec87c184b3bd5eee8550f585",
+    "semantic_hash": "6e8da61aec87c184b3bd5eee8550f585"
+  },
+  "backend/src/main/java/com/dbdeployer/model/DbType.java": {
+    "mtime": 1781332820.573642,
+    "ast_hash": "fbf4acb58d975bdeb5dc2205d636998f",
+    "semantic_hash": "fbf4acb58d975bdeb5dc2205d636998f"
+  },
+  "backend/src/main/java/com/dbdeployer/model/DeployMethod.java": {
+    "mtime": 1781332820.574241,
+    "ast_hash": "60ba4a0c44c07f59ae8ff876063f4773",
+    "semantic_hash": "60ba4a0c44c07f59ae8ff876063f4773"
+  },
+  "backend/src/main/java/com/dbdeployer/model/DeployedContainer.java": {
+    "mtime": 1781332820.5745063,
+    "ast_hash": "63bb9114915b028b25ae3b61100b71fb",
+    "semantic_hash": "63bb9114915b028b25ae3b61100b71fb"
+  },
+  "backend/src/main/java/com/dbdeployer/model/DeploymentConfig.java": {
+    "mtime": 1781332820.5746386,
+    "ast_hash": "1daabec143cdbf0c6cdb396f21c6d2b6",
+    "semantic_hash": "1daabec143cdbf0c6cdb396f21c6d2b6"
+  },
+  "backend/src/main/java/com/dbdeployer/model/DeploymentResponse.java": {
+    "mtime": 1781332820.5747597,
+    "ast_hash": "7134742f6483bf38a2458ca7f5bb471c",
+    "semantic_hash": "7134742f6483bf38a2458ca7f5bb471c"
+  },
+  "backend/src/main/java/com/dbdeployer/model/ImageAvailabilityState.java": {
+    "mtime": 1781332820.5752614,
+    "ast_hash": "51367474e8c7088945cd2b8816079d02",
+    "semantic_hash": "51367474e8c7088945cd2b8816079d02"
+  },
+  "backend/src/main/java/com/dbdeployer/model/ImageTrackingStatus.java": {
+    "mtime": 1781332820.5755208,
+    "ast_hash": "ec8aebe0e2f4178e2a91ec054a16ee3e",
+    "semantic_hash": "ec8aebe0e2f4178e2a91ec054a16ee3e"
+  },
+  "backend/src/main/java/com/dbdeployer/model/ImageValidationDecision.java": {
+    "mtime": 1781332820.5758438,
+    "ast_hash": "e043177ec0c917bd4d89ce0951403213",
+    "semantic_hash": "e043177ec0c917bd4d89ce0951403213"
+  },
+  "backend/src/main/java/com/dbdeployer/model/InstanceStatus.java": {
+    "mtime": 1781332820.5760527,
+    "ast_hash": "f8f2e08bf560a6056ae808045972fa1b",
+    "semantic_hash": "f8f2e08bf560a6056ae808045972fa1b"
+  },
+  "backend/src/main/java/com/dbdeployer/os/OperatingSystemService.java": {
+    "mtime": 1781506113.5174122,
+    "ast_hash": "c500652fd9c65a4fe4aebbef661b08e8",
+    "semantic_hash": "c500652fd9c65a4fe4aebbef661b08e8"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/PipelineConfiguration.java": {
+    "mtime": 1781332820.5762815,
+    "ast_hash": "6bdda09836398fcb4df28f61de8aabd2",
+    "semantic_hash": "6bdda09836398fcb4df28f61de8aabd2"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/PipelineOrchestrator.java": {
+    "mtime": 1781332820.5764315,
+    "ast_hash": "182b5e39967fc8890d24f46522743087",
+    "semantic_hash": "182b5e39967fc8890d24f46522743087"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/PipelineProperties.java": {
+    "mtime": 1781332820.5767877,
+    "ast_hash": "b05383aa0bd72e21f3537af5f9f89acc",
+    "semantic_hash": "b05383aa0bd72e21f3537af5f9f89acc"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/PipelineRunner.java": {
+    "mtime": 1781332820.5769386,
+    "ast_hash": "bd243452df6720ea4d6bd4a82b0ce750",
+    "semantic_hash": "bd243452df6720ea4d6bd4a82b0ce750"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/model/DeployErrorCode.java": {
+    "mtime": 1782881245.7791004,
+    "ast_hash": "c1589a124cb7c1324701015b5cc469f2",
+    "semantic_hash": "c1589a124cb7c1324701015b5cc469f2"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/model/DeploymentPipeline.java": {
+    "mtime": 1781332820.5772839,
+    "ast_hash": "ecd3ad6bfe7eebe2329b8916ddbdda52",
+    "semantic_hash": "ecd3ad6bfe7eebe2329b8916ddbdda52"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/model/PipelineStatus.java": {
+    "mtime": 1781332820.57741,
+    "ast_hash": "cb177b114b95fd7dc42a16e092572b9d",
+    "semantic_hash": "cb177b114b95fd7dc42a16e092572b9d"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/model/PipelineStep.java": {
+    "mtime": 1781332820.577733,
+    "ast_hash": "1239c85f0e05d0c8e935d38e073caad6",
+    "semantic_hash": "1239c85f0e05d0c8e935d38e073caad6"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/model/StepStatus.java": {
+    "mtime": 1781332820.5778515,
+    "ast_hash": "aed788dc1f0e899f9c87e978d345e1d2",
+    "semantic_hash": "aed788dc1f0e899f9c87e978d345e1d2"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/model/StepType.java": {
+    "mtime": 1782881245.7792208,
+    "ast_hash": "9ae3b897b41f226c5983894977a0520e",
+    "semantic_hash": "9ae3b897b41f226c5983894977a0520e"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/ContainerCreateStep.java": {
+    "mtime": 1781332820.578116,
+    "ast_hash": "0c58254861f696d4c2ed3cc775904f71",
+    "semantic_hash": "0c58254861f696d4c2ed3cc775904f71"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/ContainerStartStep.java": {
+    "mtime": 1781332820.578243,
+    "ast_hash": "544166d07219cd1be084ecaaeab70964",
+    "semantic_hash": "544166d07219cd1be084ecaaeab70964"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/DeployStep.java": {
+    "mtime": 1781332820.5786045,
+    "ast_hash": "fd59145beb7e8f7b14bd1fb74f74c55a",
+    "semantic_hash": "fd59145beb7e8f7b14bd1fb74f74c55a"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/FinaliseStep.java": {
+    "mtime": 1781332820.5787618,
+    "ast_hash": "bf3218b704812e14d2b21ebdbde543c0",
+    "semantic_hash": "bf3218b704812e14d2b21ebdbde543c0"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/ImagePullStep.java": {
+    "mtime": 1781332820.5789208,
+    "ast_hash": "8d2d4e56e84e02e6970abb9fcede1076",
+    "semantic_hash": "8d2d4e56e84e02e6970abb9fcede1076"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/ModelPullStep.java": {
+    "mtime": 1782881245.7792997,
+    "ast_hash": "972494dd2007da676cd941772bfcb87a",
+    "semantic_hash": "972494dd2007da676cd941772bfcb87a"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/step/StepExecutionException.java": {
+    "mtime": 1781332820.5791852,
+    "ast_hash": "4dc7327a95974f44919aeefd0323693a",
+    "semantic_hash": "4dc7327a95974f44919aeefd0323693a"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/store/DeploymentPipelineRepository.java": {
+    "mtime": 1781332820.57945,
+    "ast_hash": "a1dc3b17951a6d1289331aad6b740b48",
+    "semantic_hash": "a1dc3b17951a6d1289331aad6b740b48"
+  },
+  "backend/src/main/java/com/dbdeployer/pipeline/store/PipelineStepRepository.java": {
+    "mtime": 1781332820.5797014,
+    "ast_hash": "da7a1ac9beba64bd098e0b27f3269bad",
+    "semantic_hash": "da7a1ac9beba64bd098e0b27f3269bad"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/CompatibilityLevel.java": {
+    "mtime": 1782881245.7794268,
+    "ast_hash": "61e04c956252ad2157d3969d7419344a",
+    "semantic_hash": "61e04c956252ad2157d3969d7419344a"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/GpuDetector.java": {
+    "mtime": 1782881245.779524,
+    "ast_hash": "1eec40d4996dfc070c29f670dc23e0ba",
+    "semantic_hash": "1eec40d4996dfc070c29f670dc23e0ba"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/GpuVendor.java": {
+    "mtime": 1782881245.779596,
+    "ast_hash": "bf2027fc2af2870e53366305508154cd",
+    "semantic_hash": "bf2027fc2af2870e53366305508154cd"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/ModelCatalog.java": {
+    "mtime": 1782881245.779735,
+    "ast_hash": "5a4a7fd67cfc1678e0eed8ef5d659b31",
+    "semantic_hash": "5a4a7fd67cfc1678e0eed8ef5d659b31"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/ModelDefinition.java": {
+    "mtime": 1782881245.7798169,
+    "ast_hash": "7e28b70ca8cd33b137828da9db7195c9",
+    "semantic_hash": "7e28b70ca8cd33b137828da9db7195c9"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/ModelRuntime.java": {
+    "mtime": 1782881245.7799013,
+    "ast_hash": "2c5e73ad7627dee5a5636efa9b047f53",
+    "semantic_hash": "2c5e73ad7627dee5a5636efa9b047f53"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/ModelSuggestion.java": {
+    "mtime": 1782881245.7799726,
+    "ast_hash": "636875ba4d7a36e3f19b3e489c9c4fdb",
+    "semantic_hash": "636875ba4d7a36e3f19b3e489c9c4fdb"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/ModelSuggestionService.java": {
+    "mtime": 1782881245.7800477,
+    "ast_hash": "719a1634c07b250c3d16be0e2f1e4f21",
+    "semantic_hash": "719a1634c07b250c3d16be0e2f1e4f21"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/ModelType.java": {
+    "mtime": 1782881245.7801237,
+    "ast_hash": "f260e2e159d08d1b63091c97936ce31b",
+    "semantic_hash": "f260e2e159d08d1b63091c97936ce31b"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/OllamaModelPuller.java": {
+    "mtime": 1782881245.7802033,
+    "ast_hash": "384dc09283b6c7afc0cd0776b7d744ba",
+    "semantic_hash": "384dc09283b6c7afc0cd0776b7d744ba"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/Quantization.java": {
+    "mtime": 1782881245.7802794,
+    "ast_hash": "2239d8827b52bde0989d3b67f9aa48c6",
+    "semantic_hash": "2239d8827b52bde0989d3b67f9aa48c6"
+  },
+  "backend/src/main/java/com/dbdeployer/runtime/SystemProfile.java": {
+    "mtime": 1782881245.7803597,
+    "ast_hash": "9c4940c4dffa81a7b68e63f9ceab63aa",
+    "semantic_hash": "9c4940c4dffa81a7b68e63f9ceab63aa"
+  },
+  "backend/src/main/java/com/dbdeployer/service/AsyncDeployer.java": {
+    "mtime": 1781332820.5799913,
+    "ast_hash": "c039d98f6d2391d7c84fc5223903e412",
+    "semantic_hash": "c039d98f6d2391d7c84fc5223903e412"
+  },
+  "backend/src/main/java/com/dbdeployer/service/ComposeExportService.java": {
+    "mtime": 1782881245.7804701,
+    "ast_hash": "ae18a2f8b84ae3aa83f89de3a2b542f5",
+    "semantic_hash": "ae18a2f8b84ae3aa83f89de3a2b542f5"
+  },
+  "backend/src/main/java/com/dbdeployer/service/ConfigTemplateService.java": {
+    "mtime": 1781332820.580169,
+    "ast_hash": "479753d2c66e487cd016b1fc5c7a5b26",
+    "semantic_hash": "479753d2c66e487cd016b1fc5c7a5b26"
+  },
+  "backend/src/main/java/com/dbdeployer/service/DbInstanceService.java": {
+    "mtime": 1781332820.5803814,
+    "ast_hash": "7b207029d01c3b3d909a066c54213433",
+    "semantic_hash": "7b207029d01c3b3d909a066c54213433"
+  },
+  "backend/src/main/java/com/dbdeployer/service/DockerHubTagClient.java": {
+    "mtime": 1781332820.5806842,
+    "ast_hash": "3fa5c1cc5817bc56e32969972a05521e",
+    "semantic_hash": "3fa5c1cc5817bc56e32969972a05521e"
+  },
+  "backend/src/main/java/com/dbdeployer/service/ImageTagVersionService.java": {
+    "mtime": 1781332820.580969,
+    "ast_hash": "418b036618cc73eb7e66bdef180be1d3",
+    "semantic_hash": "418b036618cc73eb7e66bdef180be1d3"
+  },
+  "backend/src/main/java/com/dbdeployer/service/ImageValidationService.java": {
+    "mtime": 1781332820.5811431,
+    "ast_hash": "426d76e1800aba7346e6d9077039a6e6",
+    "semantic_hash": "426d76e1800aba7346e6d9077039a6e6"
+  },
+  "backend/src/main/java/com/dbdeployer/service/MetricsHistoryService.java": {
+    "mtime": 1781332820.5814,
+    "ast_hash": "efc926178e4e3be70006dee6abf8e29a",
+    "semantic_hash": "efc926178e4e3be70006dee6abf8e29a"
+  },
+  "backend/src/main/java/com/dbdeployer/service/SystemDbStatsService.java": {
+    "mtime": 1781332820.5815504,
+    "ast_hash": "fec02f5ffd4e834e6205f34f04ae3015",
+    "semantic_hash": "fec02f5ffd4e834e6205f34f04ae3015"
+  },
+  "backend/src/main/java/com/dbdeployer/startup/DockerStartupCheck.java": {
+    "mtime": 1781332820.5817041,
+    "ast_hash": "5ef35b835308cee93d1de19cc6cd29a9",
+    "semantic_hash": "5ef35b835308cee93d1de19cc6cd29a9"
+  },
+  "backend/src/main/java/com/dbdeployer/store/DeployedContainerRepository.java": {
+    "mtime": 1781332820.5820718,
+    "ast_hash": "b7721469f479543dc0762630e789366d",
+    "semantic_hash": "b7721469f479543dc0762630e789366d"
+  },
+  "backend/src/main/java/com/dbdeployer/store/DeploymentConfigRepository.java": {
+    "mtime": 1781332820.5823066,
+    "ast_hash": "5f317fe715c7d907627c6094bb4d6d07",
+    "semantic_hash": "5f317fe715c7d907627c6094bb4d6d07"
+  },
+  "backend/src/main/java/com/dbdeployer/store/ImageTrackingStatusRepository.java": {
+    "mtime": 1781332820.582532,
+    "ast_hash": "d3199e208ffc15d4714f01c1782583e0",
+    "semantic_hash": "d3199e208ffc15d4714f01c1782583e0"
+  },
+  "backend/src/main/java/com/dbdeployer/validations/DeploymentValidations.java": {
+    "mtime": 1781332820.5827105,
+    "ast_hash": "f1492b8f2afffcf5c7716143f4c51583",
+    "semantic_hash": "f1492b8f2afffcf5c7716143f4c51583"
+  },
+  "backend/src/main/java/com/dbdeployer/validations/ValidationInterface.java": {
+    "mtime": 1781332820.5828063,
+    "ast_hash": "cecfa934e60bea2c4627455a285de0ef",
+    "semantic_hash": "cecfa934e60bea2c4627455a285de0ef"
+  },
+  "backend/src/main/resources/db/changelog/changes/V1__init.sql": {
+    "mtime": 1780911938.8976827,
+    "ast_hash": "faefd8afcfa9d29815cf8fd3c4b34c6d",
+    "semantic_hash": "faefd8afcfa9d29815cf8fd3c4b34c6d"
+  },
+  "backend/src/main/resources/db/changelog/changes/V2__add_config_template.sql": {
+    "mtime": 1780911938.8977895,
+    "ast_hash": "4224608c769ccaa4ef01db15462a7845",
+    "semantic_hash": "4224608c769ccaa4ef01db15462a7845"
+  },
+  "backend/src/main/resources/db/changelog/changes/V3__merge_config_template.sql": {
+    "mtime": 1780911938.8979008,
+    "ast_hash": "a4ff196cc5f40613a28eb42d6687353a",
+    "semantic_hash": "a4ff196cc5f40613a28eb42d6687353a"
+  },
+  "backend/src/main/resources/db/changelog/changes/V5__baseline.sql": {
+    "mtime": 1781505779.0185041,
+    "ast_hash": "0ec197c81a6be1dfc6223711dc255231",
+    "semantic_hash": "0ec197c81a6be1dfc6223711dc255231"
+  },
+  "backend/src/main/resources/db/changelog/changes/V6__add_model_runtime.sql": {
+    "mtime": 1782881245.7809227,
+    "ast_hash": "e8385e09f1fadfd6daa985005b9e01da",
+    "semantic_hash": "e8385e09f1fadfd6daa985005b9e01da"
+  },
+  "backend/src/main/resources/db/changelog/changes/V7__add_chat_memory.sql": {
+    "mtime": 1782881245.7810059,
+    "ast_hash": "8c844aacd8fdb86165a65b1b1f168b55",
+    "semantic_hash": "8c844aacd8fdb86165a65b1b1f168b55"
+  },
+  "backend/src/main/resources/db/changelog/changes/V8__enable_pgvector.sql": {
+    "mtime": 1782881245.7811015,
+    "ast_hash": "88e7a9a0b0fe9e5700b2209b3af360b8",
+    "semantic_hash": "88e7a9a0b0fe9e5700b2209b3af360b8"
+  },
+  "backend/src/main/resources/db/changelog/changes/v4__add_container_port.sql": {
+    "mtime": 1780911938.8979952,
+    "ast_hash": "0f3082c8599100a5318434621f21afcc",
+    "semantic_hash": "0f3082c8599100a5318434621f21afcc"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/AgentChatServiceTest.java": {
+    "mtime": 1782881245.7813003,
+    "ast_hash": "6b6964030cc714816ee9cf9e7bba69a2",
+    "semantic_hash": "6b6964030cc714816ee9cf9e7bba69a2"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/IngestionServiceTest.java": {
+    "mtime": 1782881245.7813747,
+    "ast_hash": "17cdb260cc1448512dd6d2ff9a73a886",
+    "semantic_hash": "17cdb260cc1448512dd6d2ff9a73a886"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/LogChunkerTest.java": {
+    "mtime": 1782881245.781482,
+    "ast_hash": "033fa9f14c5be3629b7dcbdf6328243f",
+    "semantic_hash": "033fa9f14c5be3629b7dcbdf6328243f"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/MemoryRetrieverTest.java": {
+    "mtime": 1782881245.781572,
+    "ast_hash": "52eb3c2fe136e161dfafd2210c4c7a11",
+    "semantic_hash": "52eb3c2fe136e161dfafd2210c4c7a11"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/ModelComparisonServiceTest.java": {
+    "mtime": 1782881245.7816455,
+    "ast_hash": "de9eab15a340379c8421f16b78dc234c",
+    "semantic_hash": "de9eab15a340379c8421f16b78dc234c"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/RagChatServiceTest.java": {
+    "mtime": 1782881245.7817383,
+    "ast_hash": "eadfcd36b1f0747539ddc0286ad28ad9",
+    "semantic_hash": "eadfcd36b1f0747539ddc0286ad28ad9"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/RecencyFrequencyScorerTest.java": {
+    "mtime": 1782881245.7818134,
+    "ast_hash": "d73a0e44ff9643555eb94a005aa27f9b",
+    "semantic_hash": "d73a0e44ff9643555eb94a005aa27f9b"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/RollingSummaryServiceTest.java": {
+    "mtime": 1782881245.7818842,
+    "ast_hash": "6ee697209119954536d31e7679332c47",
+    "semantic_hash": "6ee697209119954536d31e7679332c47"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/SmartContextBuilderTest.java": {
+    "mtime": 1782881245.7819705,
+    "ast_hash": "e06f412384c70c2f7181a1bb64552aff",
+    "semantic_hash": "e06f412384c70c2f7181a1bb64552aff"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/TokenBudgetTest.java": {
+    "mtime": 1782881245.7820773,
+    "ast_hash": "66e74b82d55fcea69ac8ef19f66426bb",
+    "semantic_hash": "66e74b82d55fcea69ac8ef19f66426bb"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/tools/AgentSafetyTest.java": {
+    "mtime": 1782881245.7822335,
+    "ast_hash": "0048ac15af4df94303475e8c72c315c1",
+    "semantic_hash": "0048ac15af4df94303475e8c72c315c1"
+  },
+  "backend/src/test/java/com/dbdeployer/ai/tools/InfrastructureToolsTest.java": {
+    "mtime": 1782881245.7823873,
+    "ast_hash": "e8f264c7aa590df3071b2bec25d4200f",
+    "semantic_hash": "e8f264c7aa590df3071b2bec25d4200f"
+  },
+  "backend/src/test/java/com/dbdeployer/api/AgentChatControllerTest.java": {
+    "mtime": 1782881245.7825384,
+    "ast_hash": "92dde2602de3346b9150432694b45c1c",
+    "semantic_hash": "92dde2602de3346b9150432694b45c1c"
+  },
+  "backend/src/test/java/com/dbdeployer/api/ComposeExportControllerTest.java": {
+    "mtime": 1782881245.7826433,
+    "ast_hash": "666d45a57fd903b7d34c92ae05096612",
+    "semantic_hash": "666d45a57fd903b7d34c92ae05096612"
+  },
+  "backend/src/test/java/com/dbdeployer/api/DbInstanceControllerSpringConfigTest.java": {
+    "mtime": 1782881245.7827334,
+    "ast_hash": "3de870fb3bd6ccd4af27648b1375bc13",
+    "semantic_hash": "3de870fb3bd6ccd4af27648b1375bc13"
+  },
+  "backend/src/test/java/com/dbdeployer/api/ModelCookbookControllerTest.java": {
+    "mtime": 1782881245.7829103,
+    "ast_hash": "7936a58f709eef71071365cf4afd7a5f",
+    "semantic_hash": "7936a58f709eef71071365cf4afd7a5f"
+  },
+  "backend/src/test/java/com/dbdeployer/config/SystemDbRegistrarTest.java": {
+    "mtime": 1781332820.5833602,
+    "ast_hash": "c78aa70624a4fc79dc0e57c7fed9bcf9",
+    "semantic_hash": "c78aa70624a4fc79dc0e57c7fed9bcf9"
+  },
+  "backend/src/test/java/com/dbdeployer/deploy/ConnectionStringBuilderTest.java": {
+    "mtime": 1782881245.7830474,
+    "ast_hash": "dfb1dc1a2f7e176bf8494de82a88cbce",
+    "semantic_hash": "dfb1dc1a2f7e176bf8494de82a88cbce"
+  },
+  "backend/src/test/java/com/dbdeployer/deploy/GpuHostConfigurerTest.java": {
+    "mtime": 1782881245.7831347,
+    "ast_hash": "b9b37ed3744a6060ae61967061e4279e",
+    "semantic_hash": "b9b37ed3744a6060ae61967061e4279e"
+  },
+  "backend/src/test/java/com/dbdeployer/mcp/McpServerConfigTest.java": {
+    "mtime": 1782881245.7832656,
+    "ast_hash": "dbdbe60e48b681277bfc362a2ac6ce70",
+    "semantic_hash": "dbdbe60e48b681277bfc362a2ac6ce70"
+  },
+  "backend/src/test/java/com/dbdeployer/pipeline/DeployPipelineIT.java": {
+    "mtime": 1781510906.4385273,
+    "ast_hash": "16604aad52cc410c8a03d7965f2360de",
+    "semantic_hash": "16604aad52cc410c8a03d7965f2360de"
+  },
+  "backend/src/test/java/com/dbdeployer/pipeline/step/ModelPullStepTest.java": {
+    "mtime": 1782881245.7834036,
+    "ast_hash": "ae265e6ca14203dfab334dee75376db7",
+    "semantic_hash": "ae265e6ca14203dfab334dee75376db7"
+  },
+  "backend/src/test/java/com/dbdeployer/runtime/GpuDetectorTest.java": {
+    "mtime": 1782881245.7835178,
+    "ast_hash": "64cdd3a20cc9390212bd074fcbd7d9a7",
+    "semantic_hash": "64cdd3a20cc9390212bd074fcbd7d9a7"
+  },
+  "backend/src/test/java/com/dbdeployer/runtime/ModelCatalogTest.java": {
+    "mtime": 1782881245.783597,
+    "ast_hash": "5c124714538c996059952b32ec9ca2b9",
+    "semantic_hash": "5c124714538c996059952b32ec9ca2b9"
+  },
+  "backend/src/test/java/com/dbdeployer/runtime/ModelSuggestionServiceTest.java": {
+    "mtime": 1782881245.7836714,
+    "ast_hash": "d01327b70d1caf4ea93b7ff6757a011d",
+    "semantic_hash": "d01327b70d1caf4ea93b7ff6757a011d"
+  },
+  "backend/src/test/java/com/dbdeployer/runtime/OllamaModelPullerTest.java": {
+    "mtime": 1782881245.7837439,
+    "ast_hash": "d99b6124f9c8cbc6bb7b4d2026183e9f",
+    "semantic_hash": "d99b6124f9c8cbc6bb7b4d2026183e9f"
+  },
+  "backend/src/test/java/com/dbdeployer/service/ComposeExportServiceTest.java": {
+    "mtime": 1782881245.783881,
+    "ast_hash": "8ddcb8b691a22672d2415e55b28f73a8",
+    "semantic_hash": "8ddcb8b691a22672d2415e55b28f73a8"
+  },
+  "frontend/eslint.config.js": {
+    "mtime": 1779726172.204268,
+    "ast_hash": "3aa4b57d7f08181d86bde52a4dcb7f22",
+    "semantic_hash": "3aa4b57d7f08181d86bde52a4dcb7f22"
+  },
+  "frontend/package.json": {
+    "mtime": 1779781020.523732,
+    "ast_hash": "befebcf117c71b51329c76abcc49e4a4",
+    "semantic_hash": "befebcf117c71b51329c76abcc49e4a4"
+  },
+  "frontend/src/App.jsx": {
+    "mtime": 1782881245.7843573,
+    "ast_hash": "424eabdedb783725584df6c51f30e74f",
+    "semantic_hash": "424eabdedb783725584df6c51f30e74f"
+  },
+  "frontend/src/api/client.js": {
+    "mtime": 1782881245.7845747,
+    "ast_hash": "a0ba8e5efaf068fd0d8335b17fef0d44",
+    "semantic_hash": "a0ba8e5efaf068fd0d8335b17fef0d44"
+  },
+  "frontend/src/components/AppShell.jsx": {
+    "mtime": 1782881245.7849126,
+    "ast_hash": "0c96c56d4053c98255931d2bbf7d95be",
+    "semantic_hash": "0c96c56d4053c98255931d2bbf7d95be"
+  },
+  "frontend/src/components/ConfirmModal.jsx": {
+    "mtime": 1779813136.4064753,
+    "ast_hash": "64b2b09dfaacecf914ef0c5e8e22c4cf",
+    "semantic_hash": "64b2b09dfaacecf914ef0c5e8e22c4cf"
+  },
+  "frontend/src/components/ConnectionString.jsx": {
+    "mtime": 1779726172.2065716,
+    "ast_hash": "8f7e632cc1087833759c2f71d90ee7df",
+    "semantic_hash": "8f7e632cc1087833759c2f71d90ee7df"
+  },
+  "frontend/src/components/DeployModal.jsx": {
+    "mtime": 1779781020.5241365,
+    "ast_hash": "5b242ca1a8793ce7d314debc320d6e39",
+    "semantic_hash": "5b242ca1a8793ce7d314debc320d6e39"
+  },
+  "frontend/src/components/ImportModal.jsx": {
+    "mtime": 1781332820.584077,
+    "ast_hash": "6fa6b49ccd43103b578c915b23063d5a",
+    "semantic_hash": "6fa6b49ccd43103b578c915b23063d5a"
+  },
+  "frontend/src/components/InstanceCard.jsx": {
+    "mtime": 1779813136.4066615,
+    "ast_hash": "f8d7c646ae75794803f4a050a7df7357",
+    "semantic_hash": "f8d7c646ae75794803f4a050a7df7357"
+  },
+  "frontend/src/components/SplashScreen.jsx": {
+    "mtime": 1780911938.9001276,
+    "ast_hash": "39540b1f5a5859024e8dc638f5faa809",
+    "semantic_hash": "39540b1f5a5859024e8dc638f5faa809"
+  },
+  "frontend/src/components/StatusBadge.jsx": {
+    "mtime": 1779726172.2072184,
+    "ast_hash": "93a307b0257b58bf5f408565aae1c9d7",
+    "semantic_hash": "93a307b0257b58bf5f408565aae1c9d7"
+  },
+  "frontend/src/components/SystemBanner.jsx": {
+    "mtime": 1779726172.2073126,
+    "ast_hash": "eac4761eaf5e09918b9d5cc6f47b15c7",
+    "semantic_hash": "eac4761eaf5e09918b9d5cc6f47b15c7"
+  },
+  "frontend/src/components/WelcomeWizard.jsx": {
+    "mtime": 1780911938.9003756,
+    "ast_hash": "97d05e27a3f9f7ab4deade09d9790638",
+    "semantic_hash": "97d05e27a3f9f7ab4deade09d9790638"
+  },
+  "frontend/src/hooks/useUserProfile.js": {
+    "mtime": 1780911938.900548,
+    "ast_hash": "20d3b50654332b6abac28804bc8c1995",
+    "semantic_hash": "20d3b50654332b6abac28804bc8c1995"
+  },
+  "frontend/src/main.jsx": {
+    "mtime": 1779726172.2075891,
+    "ast_hash": "1a2085a0ae85ea5571bee49568790ed6",
+    "semantic_hash": "1a2085a0ae85ea5571bee49568790ed6"
+  },
+  "frontend/src/pages/AgentPage.jsx": {
+    "mtime": 1782881245.785083,
+    "ast_hash": "b08bf795c6a927c9c674a2d2ef5c0be0",
+    "semantic_hash": "b08bf795c6a927c9c674a2d2ef5c0be0"
+  },
+  "frontend/src/pages/ChatPage.jsx": {
+    "mtime": 1782881245.785198,
+    "ast_hash": "92704c523d57c33e4d7c4ef3b21584c5",
+    "semantic_hash": "92704c523d57c33e4d7c4ef3b21584c5"
+  },
+  "frontend/src/pages/ComparePage.jsx": {
+    "mtime": 1782881245.7862725,
+    "ast_hash": "d02acf31344ad2a7af2bae8fe16db584",
+    "semantic_hash": "d02acf31344ad2a7af2bae8fe16db584"
+  },
+  "frontend/src/pages/ConfigurationFormPage.jsx": {
+    "mtime": 1780911938.9011135,
+    "ast_hash": "fa7cf3e3d595066d3282af268a78f512",
+    "semantic_hash": "fa7cf3e3d595066d3282af268a78f512"
+  },
+  "frontend/src/pages/ConfigurationsPage.jsx": {
+    "mtime": 1780911938.9013019,
+    "ast_hash": "53983676133d128212bf456578025493",
+    "semantic_hash": "53983676133d128212bf456578025493"
+  },
+  "frontend/src/pages/DashboardPage.jsx": {
+    "mtime": 1780911938.901654,
+    "ast_hash": "ac022a2e9535b85d1b743db99d96a950",
+    "semantic_hash": "ac022a2e9535b85d1b743db99d96a950"
+  },
+  "frontend/src/pages/DeployPage.jsx": {
+    "mtime": 1780911938.9018288,
+    "ast_hash": "e950b716e0fbb0dfa13744922ed036d0",
+    "semantic_hash": "e950b716e0fbb0dfa13744922ed036d0"
+  },
+  "frontend/src/pages/HomePage.jsx": {
+    "mtime": 1780911938.9021218,
+    "ast_hash": "9e8ec3ac3c7cc750ad024f1ff1856104",
+    "semantic_hash": "9e8ec3ac3c7cc750ad024f1ff1856104"
+  },
+  "frontend/src/pages/ImageManagementPage.jsx": {
+    "mtime": 1779813136.407698,
+    "ast_hash": "4949e5502b6c585279436cd902a30eff",
+    "semantic_hash": "4949e5502b6c585279436cd902a30eff"
+  },
+  "frontend/src/pages/ImageToolPage.jsx": {
+    "mtime": 1779813136.4078472,
+    "ast_hash": "7a277622511e1ce679f0e0df016a7001",
+    "semantic_hash": "7a277622511e1ce679f0e0df016a7001"
+  },
+  "frontend/src/pages/InstanceDetailPage.jsx": {
+    "mtime": 1782881245.7868164,
+    "ast_hash": "dbeb64ea9cbd05d6cb6541389e35dfd2",
+    "semantic_hash": "dbeb64ea9cbd05d6cb6541389e35dfd2"
+  },
+  "frontend/src/pages/InstancesPage.jsx": {
+    "mtime": 1782881245.787221,
+    "ast_hash": "8f520a8c6c58c47a9e56b282335dfa04",
+    "semantic_hash": "8f520a8c6c58c47a9e56b282335dfa04"
+  },
+  "frontend/src/pages/ModelCookbookPage.jsx": {
+    "mtime": 1782881245.7874122,
+    "ast_hash": "ab5ed4d1781dd8dfa02a94ff11ee9edf",
+    "semantic_hash": "ab5ed4d1781dd8dfa02a94ff11ee9edf"
+  },
+  "frontend/src/theme/ThemeProvider.jsx": {
+    "mtime": 1779726172.2087584,
+    "ast_hash": "d70e8e94657275962d7f3749b0bb1c06",
+    "semantic_hash": "d70e8e94657275962d7f3749b0bb1c06"
+  },
+  "frontend/src/theme/initializeTheme.js": {
+    "mtime": 1779726172.2088354,
+    "ast_hash": "a368a873bd4023f5dfb167bc94234855",
+    "semantic_hash": "a368a873bd4023f5dfb167bc94234855"
+  },
+  "frontend/src/theme/statusTokens.js": {
+    "mtime": 1779813136.4088428,
+    "ast_hash": "fa59f6fdb50380e51ced29c0688187ee",
+    "semantic_hash": "fa59f6fdb50380e51ced29c0688187ee"
+  },
+  "frontend/src/theme/themeCore.js": {
+    "mtime": 1779726172.209012,
+    "ast_hash": "5673382ed01d691d3c8ee19a2d360895",
+    "semantic_hash": "5673382ed01d691d3c8ee19a2d360895"
+  },
+  "frontend/src/theme/useTheme.js": {
+    "mtime": 1779726172.2091327,
+    "ast_hash": "e9174ba12eb6e3aa256a3bff51ecdb27",
+    "semantic_hash": "e9174ba12eb6e3aa256a3bff51ecdb27"
+  },
+  "frontend/vite.config.js": {
+    "mtime": 1779781020.525074,
+    "ast_hash": "a6087c51bee7e2fc1bb59f89e917adce",
+    "semantic_hash": "a6087c51bee7e2fc1bb59f89e917adce"
+  },
+  ".claude/CLAUDE.md": {
+    "mtime": 1782881639.6998956,
+    "ast_hash": "9b31786b637be3c13978bec4c2330752",
+    "semantic_hash": "9b31786b637be3c13978bec4c2330752"
+  },
+  ".claude/skills/graphify/SKILL.md": {
+    "mtime": 1782881639.6996243,
+    "ast_hash": "5bc28728a68fa52adb97f26b0ffa1324",
+    "semantic_hash": "5bc28728a68fa52adb97f26b0ffa1324"
+  },
+  ".claude/skills/graphify/references/add-watch.md": {
+    "mtime": 1782832564.3404944,
+    "ast_hash": "d59d027fe449f06aa03905a01184e779",
+    "semantic_hash": "d59d027fe449f06aa03905a01184e779"
+  },
+  ".claude/skills/graphify/references/exports.md": {
+    "mtime": 1782832564.3405967,
+    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "semantic_hash": "9da2a2152e60a22f07f05fed5158f287"
+  },
+  ".claude/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1782832564.3407528,
+    "ast_hash": "42fef56a01698118f7fd722acdadea34",
+    "semantic_hash": "42fef56a01698118f7fd722acdadea34"
+  },
+  ".claude/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1782832564.3408587,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": "cde13df085e4c492aeb7ba298a996d0d"
+  },
+  ".claude/skills/graphify/references/hooks.md": {
+    "mtime": 1782832564.3409572,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": "3f545db6ce646650bb9de588f5512a27"
+  },
+  ".claude/skills/graphify/references/query.md": {
+    "mtime": 1782832564.341178,
+    "ast_hash": "9e5aadc2c57ab561bc56600fcfa70735",
+    "semantic_hash": "9e5aadc2c57ab561bc56600fcfa70735"
+  },
+  ".claude/skills/graphify/references/transcribe.md": {
+    "mtime": 1782832564.3412728,
+    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "semantic_hash": "67b6a5fa6c0974e18f60db9f8932fbd8"
+  },
+  ".claude/skills/graphify/references/update.md": {
+    "mtime": 1782832564.3415418,
+    "ast_hash": "c698309979460d0f02ba616417844399",
+    "semantic_hash": "c698309979460d0f02ba616417844399"
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1781505845.9488842,
+    "ast_hash": "2b98ffbc49201a29d688a083abe4dbfe",
+    "semantic_hash": "2b98ffbc49201a29d688a083abe4dbfe"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1779813136.3995264,
+    "ast_hash": "c1481d12da21df80d14f252306783a69",
+    "semantic_hash": "c1481d12da21df80d14f252306783a69"
+  },
+  "CLAUDE.md": {
+    "mtime": 1782881639.7004712,
+    "ast_hash": "82efb97a359f5c7290bf2513d14686be",
+    "semantic_hash": "82efb97a359f5c7290bf2513d14686be"
+  },
+  "README.md": {
+    "mtime": 1780911938.8739927,
+    "ast_hash": "dbece05a4ffbd2f309bdef91921755f2",
+    "semantic_hash": "dbece05a4ffbd2f309bdef91921755f2"
+  },
+  "backend/docs/port-wrangler-roadmap.md": {
+    "mtime": 1781332820.5583885,
+    "ast_hash": "a5452cc1b5cebed2de2f17668c871cd9",
+    "semantic_hash": "a5452cc1b5cebed2de2f17668c871cd9"
+  },
+  "backend/src/main/resources/application.yml": {
+    "mtime": 1782881245.7808316,
+    "ast_hash": "ae7726dc49763f84895bec5466b27dbc",
+    "semantic_hash": "ae7726dc49763f84895bec5466b27dbc"
+  },
+  "backend/src/main/resources/banner.txt": {
+    "mtime": 1781332820.583168,
+    "ast_hash": "ef9bea7c6e5fc647e227259321536956",
+    "semantic_hash": "ef9bea7c6e5fc647e227259321536956"
+  },
+  "backend/src/main/resources/db/changelog/db.changelog-master.yaml": {
+    "mtime": 1780911938.8980846,
+    "ast_hash": "9757fa7a0582c6880f4ad50a8df751a8",
+    "semantic_hash": "9757fa7a0582c6880f4ad50a8df751a8"
+  },
+  "docker-compose.yml": {
+    "mtime": 1780911938.8989038,
+    "ast_hash": "5be42131e839efa47a542f144f46e139",
+    "semantic_hash": "5be42131e839efa47a542f144f46e139"
+  },
+  "docs/HANDOVER-port-wrangler-ai.md": {
+    "mtime": 1782881245.7839966,
+    "ast_hash": "531ef3615bb3bdb24fb247cb121f5f4b",
+    "semantic_hash": "531ef3615bb3bdb24fb247cb121f5f4b"
+  },
+  "docs/cgpt-deep-research-report.md": {
+    "mtime": 1780924133.061132,
+    "ast_hash": "736251558f7531c71504c6b9d80bfde8",
+    "semantic_hash": "736251558f7531c71504c6b9d80bfde8"
+  },
+  "docs/claude_ai_management_tool.md": {
+    "mtime": 1780924118.4646595,
+    "ast_hash": "de82b58e4c1cabdac59b3b14cf2cc461",
+    "semantic_hash": "de82b58e4c1cabdac59b3b14cf2cc461"
+  },
+  "docs/deepseek-research.md": {
+    "mtime": 1780924762.0412004,
+    "ast_hash": "08c6a8f9d6bee22774544ccdbf4bc392",
+    "semantic_hash": "08c6a8f9d6bee22774544ccdbf4bc392"
+  },
+  "docs/port-wrangler-future-roadmap.md": {
+    "mtime": 1782881245.7841482,
+    "ast_hash": "92b5dd9372144ca7db843ce885b34257",
+    "semantic_hash": "92b5dd9372144ca7db843ce885b34257"
+  },
+  "docs/port-wrangler-roadmap-grounded.md": {
+    "mtime": 1781445412.183053,
+    "ast_hash": "3868c31c178dc8acd4680852ebb0be63",
+    "semantic_hash": "3868c31c178dc8acd4680852ebb0be63"
+  },
+  "frontend/README.md": {
+    "mtime": 1779726172.2041805,
+    "ast_hash": "a28dc4cb878325f3e9e5649f3e1469ac",
+    "semantic_hash": "a28dc4cb878325f3e9e5649f3e1469ac"
+  },
+  "frontend/index.html": {
+    "mtime": 1779726172.2043526,
+    "ast_hash": "4313edf4e09bc7231464b44dcc3cbfe1",
+    "semantic_hash": "4313edf4e09bc7231464b44dcc3cbfe1"
+  },
+  "backend/docs/port-wrangler-roadmap.md.pdf": {
+    "mtime": 1781332820.5621328,
+    "ast_hash": "ee364474a662ba1e81a49b73ae6186ab",
+    "semantic_hash": "ee364474a662ba1e81a49b73ae6186ab"
+  },
+  "docs/port-wrangler-roadmap-grounded.pdf": {
+    "mtime": 1781445807.8873873,
+    "ast_hash": "de63ed2922cb22fb58fd26f5bc8b2812",
+    "semantic_hash": "de63ed2922cb22fb58fd26f5bc8b2812"
+  },
+  "frontend/public/favicon.svg": {
+    "mtime": 1779726172.2048535,
+    "ast_hash": "7e840862161341271697daa99a40d76b",
+    "semantic_hash": "7e840862161341271697daa99a40d76b"
+  },
+  "frontend/public/icons.svg": {
+    "mtime": 1779726172.2051315,
+    "ast_hash": "3b4fcfcf393eca4d264dca4a4663bc37",
+    "semantic_hash": "3b4fcfcf393eca4d264dca4a4663bc37"
+  },
+  "frontend/src/assets/hero.png": {
+    "mtime": 1779726172.2057319,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": "aead493361b27e7510691c5d7072dfc1"
+  },
+  "frontend/src/assets/react.svg": {
+    "mtime": 1779726172.2060056,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": "f0402b67b6ce880f65666bb49e841696"
+  },
+  "frontend/src/assets/vite.svg": {
+    "mtime": 1779726172.2061183,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": "9960a24288958394ac50e57ff638b036"
+  }
+}

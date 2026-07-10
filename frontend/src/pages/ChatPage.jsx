@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
+import { ModelSelect } from '../components/ModelSelect'
 import { Bot, Columns2, Send, User } from 'lucide-react'
 
 // Stable per-tab session id so the verbatim chat-memory window keys correctly.
@@ -81,11 +82,12 @@ export function ChatPage() {
       </div>
 
       <div className="flex items-center gap-2 animate-fade-up delay-150">
-        <input
+        <ModelSelect
           value={model}
-          onChange={e => setModel(e.target.value)}
-          placeholder="model (optional, e.g. llama3.1:8b)"
-          className="input max-w-56"
+          onChange={setModel}
+          allowEmpty
+          placeholder="model (optional)"
+          className="w-56 shrink-0"
         />
         <input
           value={input}

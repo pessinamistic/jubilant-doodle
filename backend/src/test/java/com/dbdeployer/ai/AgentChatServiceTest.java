@@ -74,7 +74,9 @@ class AgentChatServiceTest {
   private static ChatResponse toolResponse(String name, String args) {
     ToolCall tc = new ToolCall("call-" + name, "function", name, args);
     return new ChatResponse(
-        List.of(new Generation(new AssistantMessage("", Map.of(), List.of(tc)))));
+        List.of(
+            new Generation(
+                AssistantMessage.builder().content("").toolCalls(List.of(tc)).build())));
   }
 
   private static ChatResponse textResponse(String text) {

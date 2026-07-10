@@ -215,20 +215,24 @@ a {
 
 /* ── Animation utility classes (Tailwind v4 @utility) ───────────────────── */
 
+/* NOTE: transform-based animations use `backwards`, not `both`.
+   `both` keeps the final transform applied forever, which turns every
+   animated element into a containing block for position:fixed children —
+   that clipped the collapsed-sidebar tooltips under overflow-x-hidden. */
 @utility animate-fade-up {
-  animation: fade-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @utility animate-fade-in {
   animation: fade-in 0.22s ease both;
 }
 @utility animate-scale-in {
-  animation: scale-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: scale-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @utility animate-slide-down {
-  animation: slide-down 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: slide-down 0.24s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @utility animate-slide-right {
-  animation: slide-right 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: slide-right 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* Stagger helpers — apply to list children */

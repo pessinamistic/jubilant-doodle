@@ -338,7 +338,7 @@ function Tooltip({ children }) {
         px-2.5 py-1 text-xs shadow-lg
         opacity-0 group-hover:opacity-100
         -translate-y-1 group-hover:translate-y-0
-        transition-all duration-150 z-100
+        transition-all duration-150
       "
       style={{
         background: 'var(--bg-surface)',
@@ -346,6 +346,7 @@ function Tooltip({ children }) {
         color: 'var(--text-primary)',
         boxShadow: 'var(--shadow-raised)',
         left: SIDEBAR_COLLAPSED + 8,
+        zIndex: 100,
       }}
     >
       {children}

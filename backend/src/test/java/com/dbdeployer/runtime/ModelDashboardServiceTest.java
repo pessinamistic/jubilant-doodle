@@ -2,6 +2,7 @@ package com.dbdeployer.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -157,22 +158,25 @@ class ModelDashboardServiceTest {
 
   @Test
   void pullAsync_reports_failures_in_the_pull_status_map() throws Exception {
-    when(puller.pull(URL, "bad:model"))
+    when(puller.pull(eq(URL), eq("bad:model"), any()))
         .thenReturn(new OllamaModelPuller.PullResult(false, "no such model"));
 
     service.pullAsync("bad:model");
 
     // The pull runs on a virtual thread; poll briefly for the terminal state.
-    String status = null;
+    ModelDashboardService.PullState status = null;
     for (int i = 0; i < 50; i++) {
       status = dashboardPulls().get("bad:model");
-      if (status != null && status.startsWith("failed")) break;
+      if (status != null && "failed".equals(status.state())) break;
       Thread.sleep(20);
     }
-    assertThat(status).startsWith("failed");
+    assertThat(status).isNotNull();
+    assertThat(status.state()).isEqualTo("failed");
+    assertThat(status.status()).contains("no such model");
   }
 
-  private java.util.Map<String, String> dashboardPulls() throws Exception {
+  private java.util.Map<String, ModelDashboardService.PullState> dashboardPulls()
+      throws Exception {
     when(admin.listLocal(URL)).thenReturn(List.of());
     when(admin.listLoaded(URL)).thenReturn(List.of());
     when(pulledRepo.findByRuntimeId("rt-1")).thenReturn(List.of());

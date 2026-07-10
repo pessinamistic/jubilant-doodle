@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { ConfirmModal } from '../components/ConfirmModal'
+import { ModelSelect } from '../components/ModelSelect'
 import {
   Bot,
   ChevronDown,
@@ -222,11 +223,12 @@ export function AgentPage() {
       </div>
 
       <div className="flex items-center gap-2 animate-fade-up delay-150">
-        <input
+        <ModelSelect
           value={model}
-          onChange={e => setModel(e.target.value)}
+          onChange={setModel}
+          allowEmpty
           placeholder="model (optional)"
-          className="input max-w-44"
+          className="w-52 shrink-0"
         />
         <input
           value={input}

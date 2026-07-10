@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   getRuntimeDashboard,
+  getModelSuggestions,
   loadRuntimeModel,
   unloadRuntimeModel,
   deleteRuntimeModel,
@@ -9,17 +10,23 @@ import {
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { ConfirmModal } from '../components/ConfirmModal'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
-  Gauge, Play, Pause, Trash2, Settings2, Download, Loader2, MemoryStick, Zap,
+  Gauge, Play, Pause, Trash2, Settings2, Download, Loader2, MemoryStick, RotateCw,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const REFRESH_MS = 15000
+const REFRESH_PULLING_MS = 2000 // poll fast while a download is in flight
 
 function gb(bytes) {
   if (!bytes) return '—'
   return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`
+}
+
+/** Like {@link gb} but renders 0 as "0.0 GB" (progress counters start at zero). */
+function gbProgress(bytes) {
+  return `${((bytes ?? 0) / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
 
 function expiryLabel(expiresAt) {
@@ -39,7 +46,10 @@ export function RuntimePage() {
   const [settingsFor, setSettingsFor] = useState(null) // model whose editor is open
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [pullTag, setPullTag]     = useState('')
+  const [catalog, setCatalog]     = useState([]) // model suggestions for autocomplete
+  const [searchParams, setSearchParams] = useSearchParams()
   const timerRef = useRef(null)
+  const autoPulledRef = useRef(false)
 
   const refresh = useCallback(async (silent = true) => {
     if (!silent) setLoading(true)
@@ -52,14 +62,48 @@ export function RuntimePage() {
     }
   }, [])
 
+  const hasActivePull = Object.values(dash?.pulls ?? {}).some(p => p?.state === 'pulling')
+
   useEffect(() => {
     const kick = setTimeout(() => refresh(false), 0)
-    timerRef.current = setInterval(() => refresh(true), REFRESH_MS)
-    return () => {
-      clearTimeout(kick)
-      clearInterval(timerRef.current)
+    return () => clearTimeout(kick)
+  }, [refresh])
+
+  // Poll fast while a pull is downloading so the progress bar moves.
+  useEffect(() => {
+    timerRef.current = setInterval(
+      () => refresh(true),
+      hasActivePull ? REFRESH_PULLING_MS : REFRESH_MS,
+    )
+    return () => clearInterval(timerRef.current)
+  }, [refresh, hasActivePull])
+
+  // Catalog for the pull autocomplete — one fetch, filtered client-side.
+  useEffect(() => {
+    getModelSuggestions('', '').then(setCatalog).catch(() => {})
+  }, [])
+
+  const startPull = useCallback(async (tag) => {
+    const trimmed = (tag ?? '').trim()
+    if (!trimmed) return
+    try {
+      await pullRuntimeModel(trimmed)
+      toast.success(`Pulling ${trimmed}`)
+      setPullTag('')
+      await refresh(true)
+    } catch {
+      toast.error(`Could not start pull for ${trimmed}`)
     }
   }, [refresh])
+
+  // Arriving from the Model Cookbook with ?pull=<tag> starts the pull immediately.
+  useEffect(() => {
+    const tag = searchParams.get('pull')
+    if (!tag || autoPulledRef.current) return
+    autoPulledRef.current = true
+    setSearchParams({}, { replace: true })
+    startPull(tag)
+  }, [searchParams, setSearchParams, startPull])
 
   const act = async (model, fn, okMsg) => {
     setBusyModel(model)
@@ -74,21 +118,9 @@ export function RuntimePage() {
     }
   }
 
-  const onPull = async () => {
-    const tag = pullTag.trim()
-    if (!tag) return
-    try {
-      await pullRuntimeModel(tag)
-      toast.success(`Pulling ${tag} — it appears in the list when done`)
-      setPullTag('')
-      await refresh(true)
-    } catch {
-      toast.error(`Could not start pull for ${tag}`)
-    }
-  }
-
-  const models = dash?.models ?? []
+  const models = useMemo(() => dash?.models ?? [], [dash])
   const pulls = Object.entries(dash?.pulls ?? {})
+  const installed = useMemo(() => new Set(models.map(m => m.name)), [models])
   const loadedCount = models.filter(m => m.loaded).length
 
   return (
@@ -125,52 +157,60 @@ export function RuntimePage() {
       {dash && !dash.managedInstanceName && (
         <div className="card p-3 mb-6 text-sm text-[var(--text-muted)] animate-fade-up delay-150">
           No managed Ollama instance is running.{' '}
-          <Link to="/deploy" className="underline text-[var(--text-primary)]">
-            Deploy one from the catalog
-          </Link>{' '}
-          (type <span className="font-mono">OLLAMA</span>) to let Port Wrangler manage the runtime.
+          {dash.reachable ? (
+            <>
+              A runtime is reachable at <span className="font-mono">{dash.baseUrl}</span> (e.g. a
+              Homebrew <span className="font-mono">ollama</span> service), but Port Wrangler is not
+              managing it yet.{' '}
+              <Link to="/instances" className="underline text-[var(--text-primary)]">
+                Import it from the Instances page
+              </Link>{' '}
+              to manage it here, or{' '}
+              <Link to="/deploy" className="underline text-[var(--text-primary)]">
+                deploy a new one
+              </Link>{' '}
+              (type <span className="font-mono">OLLAMA</span>).
+            </>
+          ) : (
+            <>
+              <Link to="/deploy" className="underline text-[var(--text-primary)]">
+                Deploy one from the catalog
+              </Link>{' '}
+              (type <span className="font-mono">OLLAMA</span>), or start a Homebrew{' '}
+              <span className="font-mono">ollama</span> service and{' '}
+              <Link to="/instances" className="underline text-[var(--text-primary)]">
+                import it from the Instances page
+              </Link>
+              .
+            </>
+          )}
         </div>
       )}
 
       {/* ── Pull ── */}
       <div className="card p-4 mb-6 animate-fade-up delay-150">
-        <div className="flex flex-wrap items-center gap-2">
-          <Download className="w-4 h-4 text-[var(--text-muted)]" />
-          <input
-            value={pullTag}
-            onChange={e => setPullTag(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onPull()}
-            placeholder="Pull a model tag, e.g. llama3.1:8b"
-            className="input flex-1 min-w-[220px]"
-          />
-          <button className="btn-primary" onClick={onPull} disabled={!pullTag.trim()}>
-            Pull
-          </button>
-        </div>
-        {pulls.length > 0 && (
-          <ul className="mt-3 space-y-1">
-            {pulls.map(([tag, status]) => (
-              <li key={tag} className="text-sm flex items-center gap-2">
-                {status === 'pulling'
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--status-deploying)]" />
-                  : <Zap className="w-3.5 h-3.5 text-[var(--status-error,#ef4444)]" />}
-                <span className="font-mono">{tag}</span>
-                <span className="text-[var(--text-muted)]">{status}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <PullBar
+          value={pullTag}
+          onChange={setPullTag}
+          onPull={startPull}
+          catalog={catalog}
+          installed={installed}
+        />
       </div>
 
       {/* ── Models ── */}
       {loading ? (
         <div className="text-sm text-[var(--text-muted)] animate-pulse">Loading models…</div>
-      ) : models.length === 0 ? (
+      ) : models.length === 0 && pulls.length === 0 ? (
         <div className="card p-6 text-sm text-[var(--text-muted)] animate-fade-up delay-200">
           No models yet. Pull one above, or from the <Link to="/models" className="underline">Model Cookbook</Link>.
         </div>
       ) : (
         <div className="space-y-3 animate-fade-up delay-200">
+          {/* In-flight and failed pulls render as cards ahead of the installed models. */}
+          {pulls.map(([tag, pull]) => (
+            <PullCard key={`pull-${tag}`} tag={tag} pull={pull} onRetry={() => startPull(tag)} />
+          ))}
           {models.map(m => (
             <div key={m.name} className="card p-4">
               <div className="flex flex-wrap items-center gap-3">
@@ -274,6 +314,188 @@ export function RuntimePage() {
         onCancel={() => setDeleteTarget(null)}
       />
     </AppShell>
+  )
+}
+
+/** Pull input with tag autocomplete fed by the Model Cookbook catalog. */
+function PullBar({ value, onChange, onPull, catalog, installed }) {
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(-1)
+
+  const matches = useMemo(() => {
+    const q = value.trim().toLowerCase()
+    const pool = q
+      ? catalog.filter(s =>
+          s.model.ollamaTag.toLowerCase().includes(q) ||
+          s.model.family.toLowerCase().includes(q))
+      : catalog
+    return pool.slice(0, 8)
+  }, [catalog, value])
+
+  const pick = (tag) => {
+    setOpen(false)
+    setHighlight(-1)
+    onChange(tag)
+    onPull(tag)
+  }
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      setHighlight(h => Math.min(h + 1, matches.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlight(h => Math.max(h - 1, -1))
+    } else if (e.key === 'Enter') {
+      if (open && highlight >= 0 && matches[highlight]) {
+        pick(matches[highlight].model.ollamaTag)
+      } else if (value.trim()) {
+        setOpen(false)
+        onPull(value)
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setHighlight(-1)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap items-center gap-2">
+        <Download className="w-4 h-4 text-[var(--text-muted)]" />
+        <input
+          value={value}
+          onChange={e => { onChange(e.target.value); setOpen(true); setHighlight(-1) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={onKeyDown}
+          placeholder="Pull a model — type to search the catalog, e.g. llama3.1:8b"
+          className="input flex-1 min-w-[220px]"
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
+        />
+        <button className="btn-primary" onClick={() => onPull(value)} disabled={!value.trim()}>
+          Pull
+        </button>
+      </div>
+
+      {open && matches.length > 0 && (
+        <ul
+          className="absolute left-6 right-16 z-20 mt-1 max-h-72 overflow-auto rounded-[6px] border-2 border-[var(--border-strong)] bg-[var(--bg-surface)] shadow-[var(--shadow-raised)]"
+          role="listbox"
+        >
+          {matches.map((s, i) => {
+            const tag = s.model.ollamaTag
+            const isInstalled = installed.has(tag)
+            return (
+              <li
+                key={tag}
+                role="option"
+                aria-selected={i === highlight}
+                onMouseDown={e => { e.preventDefault(); pick(tag) }}
+                onMouseEnter={() => setHighlight(i)}
+                className={`px-3 py-2 cursor-pointer flex items-center gap-3 text-sm ${
+                  i === highlight ? 'bg-[var(--accent-soft)]' : ''
+                }`}
+              >
+                <span className="font-mono text-[var(--text-primary)]">{tag}</span>
+                <span className="text-xs text-[var(--text-muted)] truncate">{s.model.family} · {s.model.paramsBillions}B</span>
+                <span className="ml-auto flex items-center gap-2 shrink-0">
+                  {isInstalled && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-[var(--border-strong)] text-[var(--text-muted)]">
+                      installed
+                    </span>
+                  )}
+                  <CompatDot compatibility={s.compatibility} />
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+const COMPAT_DOT = {
+  FAST: '#22c55e', OK: '#f59e0b', CPU_ONLY: '#fb923c', TOO_LARGE: '#ef4444',
+}
+
+function CompatDot({ compatibility }) {
+  return (
+    <span
+      title={compatibility}
+      className="w-2 h-2 rounded-full inline-block"
+      style={{ background: COMPAT_DOT[compatibility] ?? '#6b7280' }}
+    />
+  )
+}
+
+/**
+ * An in-flight or failed pull rendered as a model card, so a downloading model looks like it is
+ * already "arriving" in the list — same layout as installed rows, with a live progress bar.
+ */
+function PullCard({ tag, pull, onRetry }) {
+  const failed = pull?.state === 'failed'
+  const total = pull?.totalBytes ?? 0
+  const done  = pull?.completedBytes ?? 0
+  const pct   = total > 0 ? Math.min(100, (done / total) * 100) : 0
+
+  return (
+    <div className="card p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[200px]">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm text-[var(--text-primary)]">{tag}</span>
+            {failed ? (
+              <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold"
+                    style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)' }}>
+                pull failed
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1"
+                    style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--status-deploying)', border: '1px solid rgba(59,130,246,0.4)' }}>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                downloading{total > 0 ? ` · ${pct.toFixed(0)}%` : ''}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-[var(--text-muted)] mt-1 flex flex-wrap gap-x-4">
+            {failed ? (
+              <span className="text-[var(--status-error,#ef4444)] break-all">{pull.status}</span>
+            ) : (
+              <>
+                <span className="tabular-nums">
+                  {total > 0 ? `${gbProgress(done)} of ${gbProgress(total)}` : 'waiting for size…'}
+                </span>
+                <span className="truncate">{pull?.status || 'starting'}</span>
+              </>
+            )}
+          </div>
+        </div>
+        {failed && (
+          <button className="btn-secondary" onClick={onRetry} title="Retry pull">
+            <RotateCw className="w-4 h-4" />
+            <span className="ml-1">Retry</span>
+          </button>
+        )}
+      </div>
+
+      {!failed && (
+        <div className="mt-3 h-2 rounded-full bg-[var(--bg-surface-2)] border border-[var(--border-strong)] overflow-hidden">
+          <div
+            className="h-full rounded-full transition-[width] duration-500"
+            style={{
+              width: total > 0 ? `${pct}%` : '100%',
+              background: 'var(--status-deploying)',
+              opacity: total > 0 ? 1 : 0.25, // indeterminate until Ollama reports sizes
+            }}
+          />
+        </div>
+      )}
+    </div>
   )
 }
 

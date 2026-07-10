@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { getModelSuggestions, getSystemProfile } from '../api/client'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { getModelSuggestions, getSystemProfile, getRuntimeDashboard } from '../api/client'
 import { AppShell } from '../components/AppShell'
-import { Cpu, Sparkles, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Check, Copy, Cpu, Download, Search, Sparkles, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const TYPE_FILTERS = [
@@ -38,7 +39,11 @@ export function ModelCookbookPage() {
   const [suggestions, setSuggestions] = useState([])
   const [typeFilter, setTypeFilter]   = useState('')
   const [compatFilter, setCompatFilter] = useState('')
+  const [query, setQuery]             = useState('')
+  const [installed, setInstalled]     = useState(new Set()) // tags already on the runtime's disk
+  const [pulling, setPulling]         = useState(new Set()) // tags with a pull in flight
   const [loading, setLoading]         = useState(true)
+  const navigate = useNavigate()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -60,6 +65,32 @@ export function ModelCookbookPage() {
     const kick = setTimeout(() => load(), 0)
     return () => clearTimeout(kick)
   }, [load])
+
+  // Which catalog models are already pulled / being pulled — badges on the cards.
+  useEffect(() => {
+    getRuntimeDashboard()
+      .then(dash => {
+        setInstalled(new Set((dash.models ?? []).map(m => m.name)))
+        setPulling(new Set(
+          Object.entries(dash.pulls ?? {})
+            .filter(([, p]) => p?.state === 'pulling')
+            .map(([tag]) => tag),
+        ))
+      })
+      .catch(() => {})
+  }, [])
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return suggestions
+    return suggestions.filter(s =>
+      s.model.ollamaTag.toLowerCase().includes(q) ||
+      s.model.family.toLowerCase().includes(q) ||
+      (s.model.description ?? '').toLowerCase().includes(q))
+  }, [suggestions, query])
+
+  // Pull starts on the Runtime page (?pull=<tag>) so progress is visible immediately.
+  const pullAndOpen = (tag) => navigate(`/runtime?pull=${encodeURIComponent(tag)}`)
 
   return (
     <AppShell onRefresh={load}>
@@ -90,8 +121,17 @@ export function ModelCookbookPage() {
         </div>
       )}
 
-      {/* ── Filters ── */}
+      {/* ── Search + filters ── */}
       <div className="flex flex-col gap-3 mb-6 animate-fade-up delay-150">
+        <div className="relative max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search models — name, family, or use case…"
+            className="input w-full pl-9"
+          />
+        </div>
         <FilterRow label="Type" options={TYPE_FILTERS} active={typeFilter} onChange={setTypeFilter} />
         <FilterRow label="Fit" options={COMPAT_FILTERS} active={compatFilter} onChange={setCompatFilter} />
       </div>
@@ -102,16 +142,22 @@ export function ModelCookbookPage() {
           <div className="w-5 h-5 border-2 border-[var(--status-deploying)] border-t-transparent rounded-full animate-spin" />
           Loading models…
         </div>
-      ) : suggestions.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="card p-16 text-center animate-scale-in">
           <div className="text-5xl mb-4">🍳</div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">No models match</h2>
-          <p className="text-[var(--text-muted)] text-sm">Try widening the type or fit filters.</p>
+          <p className="text-[var(--text-muted)] text-sm">Try a different search, or widen the type and fit filters.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children animate-fade-up delay-200">
-          {suggestions.map(s => (
-            <ModelCard key={s.model.ollamaTag} suggestion={s} />
+          {visible.map(s => (
+            <ModelCard
+              key={s.model.ollamaTag}
+              suggestion={s}
+              installed={installed.has(s.model.ollamaTag)}
+              pulling={pulling.has(s.model.ollamaTag)}
+              onPull={() => pullAndOpen(s.model.ollamaTag)}
+            />
           ))}
         </div>
       )}
@@ -150,15 +196,16 @@ function FilterRow({ label, options, active, onChange }) {
   )
 }
 
-function ModelCard({ suggestion }) {
+function ModelCard({ suggestion, installed, pulling, onPull }) {
   const { model, compatibility, speedTier } = suggestion
   const style = COMPAT_STYLE[compatibility] ?? COMPAT_STYLE.TOO_LARGE
   const [copied, setCopied] = useState(false)
+  const tooLarge = compatibility === 'TOO_LARGE'
 
-  const copyPull = async () => {
-    await navigator.clipboard.writeText(`ollama pull ${model.ollamaTag}`)
+  const copyTag = async () => {
+    await navigator.clipboard.writeText(model.ollamaTag)
     setCopied(true)
-    toast.success(`Copied: ollama pull ${model.ollamaTag}`)
+    toast.success(`Copied ${model.ollamaTag}`)
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -180,19 +227,45 @@ function ModelCard({ suggestion }) {
 
       <p className="text-xs text-[var(--text-muted)] line-clamp-2 min-h-[2rem]">{model.description}</p>
 
-      <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
+      <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)] flex-wrap">
         <span className="px-1.5 py-0.5 rounded bg-[var(--bg-surface-2)] border border-[var(--border-strong)]">{model.type}</span>
         <span>{model.paramsBillions}B</span>
         <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{speedTier}</span>
+        <span title="Minimum VRAM (GPU) / RAM (CPU fallback) at the default quantization">
+          needs {gbLabel(model.minVramMb)} VRAM · {gbLabel(model.minRamMb)} RAM
+        </span>
       </div>
 
-      <button
-        onClick={copyPull}
-        disabled={compatibility === 'TOO_LARGE'}
-        className="btn-secondary text-xs w-full justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {copied ? 'Copied!' : `Pull ${model.ollamaTag}`}
-      </button>
+      <div className="flex items-center gap-2 mt-auto">
+        {installed ? (
+          <button onClick={onPull} className="btn-secondary text-xs flex-1 justify-center">
+            <Check className="w-3.5 h-3.5 text-[#22c55e]" />
+            <span className="ml-1">Installed — open Runtime</span>
+          </button>
+        ) : pulling ? (
+          <button onClick={onPull} className="btn-secondary text-xs flex-1 justify-center">
+            <Download className="w-3.5 h-3.5 animate-pulse" />
+            <span className="ml-1">Pulling… view progress</span>
+          </button>
+        ) : (
+          <button
+            onClick={onPull}
+            disabled={tooLarge}
+            title={tooLarge ? 'Too large for the detected hardware' : `Pull ${model.ollamaTag} and open the Runtime page`}
+            className="btn-primary text-xs flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="ml-1">Pull & run</span>
+          </button>
+        )}
+        <button
+          onClick={copyTag}
+          title={`Copy tag: ${model.ollamaTag}`}
+          className="btn-secondary text-xs shrink-0"
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-[#22c55e]" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
+      </div>
     </div>
   )
 }

@@ -49,6 +49,13 @@ public class ModelDashboardService {
       Integer numCtx,
       String keepAlive) {}
 
+  /**
+   * State of an in-flight or failed pull: {@code state} is {@code "pulling"} or {@code "failed"},
+   * {@code status} is Ollama's human-readable phase (e.g. {@code "pulling 6a0746a1ec1a"}), and the
+   * byte counters drive the UI progress bar ({@code totalBytes == 0} means "size unknown yet").
+   */
+  public record PullState(String state, String status, long totalBytes, long completedBytes) {}
+
   /** The whole dashboard payload. */
   public record RuntimeDashboard(
       String baseUrl,
@@ -57,15 +64,15 @@ public class ModelDashboardService {
       String managedInstanceName,
       String managedInstanceStatus,
       List<RuntimeModelView> models,
-      Map<String, String> pulls) {}
+      Map<String, PullState> pulls) {}
 
   private final OllamaAdminClient admin;
   private final ModelRuntimeService runtimes;
   private final PulledModelRepository pulledRepo;
   private final OllamaModelPuller puller;
 
-  /** In-flight/last pull status per model tag: "pulling" or "failed: <reason>". */
-  private final Map<String, String> pullStatus = new ConcurrentHashMap<>();
+  /** In-flight/last pull state per model tag; removed on success (the model row takes over). */
+  private final Map<String, PullState> pullStatus = new ConcurrentHashMap<>();
 
   private final ExecutorService pullExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -182,19 +189,28 @@ public class ModelDashboardService {
         .map(m -> new ModelSettings(m.getTemperature(), m.getNumCtx(), m.getKeepAlive()));
   }
 
-  /** Fire-and-forget pull; the dashboard's {@code pulls} map reports progress state. */
+  /** Fire-and-forget pull; the dashboard's {@code pulls} map reports live progress. */
   public void pullAsync(String modelTag) {
     String tag = modelTag.trim();
-    if ("pulling".equals(pullStatus.get(tag))) return; // already in flight
-    pullStatus.put(tag, "pulling");
+    PullState current = pullStatus.get(tag);
+    if (current != null && "pulling".equals(current.state())) return; // already in flight
+    pullStatus.put(tag, new PullState("pulling", "starting", 0, 0));
     String baseUrl = runtimes.resolveOllamaBaseUrl();
     pullExecutor.submit(
         () -> {
-          OllamaModelPuller.PullResult result = puller.pull(baseUrl, tag);
+          OllamaModelPuller.PullResult result =
+              puller.pull(
+                  baseUrl,
+                  tag,
+                  p ->
+                      pullStatus.put(
+                          tag,
+                          new PullState(
+                              "pulling", p.status(), p.totalBytes(), p.completedBytes())));
           if (result.success()) {
             pullStatus.remove(tag);
           } else {
-            pullStatus.put(tag, "failed: " + result.message());
+            pullStatus.put(tag, new PullState("failed", result.message(), 0, 0));
           }
         });
   }
