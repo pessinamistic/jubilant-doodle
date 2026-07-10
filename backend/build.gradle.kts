@@ -68,6 +68,10 @@ dependencies {
     // Utilities
     implementation("org.apache.commons:commons-lang3:3.17.0")
 
+    // OSHI — cross-platform (macOS/Windows/Linux) hardware & OS metrics for the
+    // System Health page: CPU load (total + per-core), memory, sensors, GPU inventory.
+    implementation("com.github.oshi:oshi-core:6.8.0")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.testcontainers:junit-jupiter")

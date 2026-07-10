@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   BarChart3,
@@ -358,16 +358,18 @@ function DockerPill({ info }) {
   const ok = info.dockerAvailable
   const os = info.osType === 'MACOS' ? 'macOS' : (info.osType ?? 'Docker')
   if (!ok) return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2" style={{
+    <Link to="/system" title="Open System Health — live CPU, memory, temperature and GPU metrics"
+      className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-pointer transition-all duration-200 hover:brightness-110" style={{
       background: 'var(--status-error-bg)',
       borderColor: 'var(--status-error-border)',
       color: 'var(--status-error)',
     }}>
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--status-error)' }} />Docker offline
-    </div>
+    </Link>
   )
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-default transition-all duration-200" style={{
+    <Link to="/system" title="Open System Health — live CPU, memory, temperature and GPU metrics"
+      className="group flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-pointer transition-all duration-200 hover:brightness-110" style={{
       background: 'var(--status-running-bg)',
       borderColor: 'var(--status-running-border)',
       color: 'var(--status-running)',
@@ -375,7 +377,8 @@ function DockerPill({ info }) {
       <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: 'var(--status-running)' }} />
       <HardDrive className="w-3.5 h-3.5" />
       Docker {os} · {info.arch}
-    </div>
+      <ChevronRight className="w-3 h-3 ml-auto opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+    </Link>
   )
 }
 
@@ -384,9 +387,9 @@ function DockerDot({ info }) {
   const ok = info.dockerAvailable
   const os = info.osType === 'MACOS' ? 'macOS' : (info.osType ?? 'Docker')
   return (
-    <div className="group relative flex items-center justify-center py-2.5 w-full cursor-default rounded-sm">
+    <Link to="/system" className="group relative flex items-center justify-center py-2.5 w-full cursor-pointer rounded-sm">
       <span className={`w-2 h-2 rounded-full ${ok ? 'animate-pulse' : ''}`} style={{ backgroundColor: ok ? 'var(--status-running)' : 'var(--status-error)' }} />
-      <Tooltip>{ok ? `Docker · ${os} · ${info.arch}` : 'Docker offline'}</Tooltip>
-    </div>
+      <Tooltip>{ok ? `Docker · ${os} · ${info.arch} — System Health` : 'Docker offline — System Health'}</Tooltip>
+    </Link>
   )
 }

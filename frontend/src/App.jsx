@@ -15,6 +15,7 @@ import { RuntimePage } from './pages/RuntimePage'
 import { ChatPage } from './pages/ChatPage'
 import { AgentPage } from './pages/AgentPage'
 import { ComparePage } from './pages/ComparePage'
+import { SystemHealthPage } from './pages/SystemHealthPage'
 import { SplashScreen } from './components/SplashScreen'
 import { WelcomeWizard } from './components/WelcomeWizard'
 import { useUserProfile } from './hooks/useUserProfile'
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/agent"                   element={<AgentPage />} />
         <Route path="/compare"                 element={<ComparePage />} />
         <Route path="/dashboard"              element={<DashboardPage />} />
+        <Route path="/system"                 element={<SystemHealthPage />} />
       </Routes>
       {!profile && <WelcomeWizard onComplete={save} />}
     </BrowserRouter>
