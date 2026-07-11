@@ -138,3 +138,10 @@ logging:
     org.hibernate.SQL: WARN
     org.springframework.boot.autoconfigure.condition: DEBUG
     org.springframework.ai.mcp: DEBUG
+
+# ── Swagger / OpenAPI (SpringDoc) ─────────────────────────────────────────────
+springdoc:
+  swagger-ui:
+    # Available at: http://localhost:8080/api/swagger-ui/index.html
+    enabled: true
+    path: /swagger-ui.html

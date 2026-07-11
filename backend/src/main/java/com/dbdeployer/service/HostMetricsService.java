@@ -34,8 +34,8 @@ import oshi.software.os.OperatingSystem;
  * <ul>
  *   <li><b>All platforms:</b> CPU total + per-core load (tick deltas between calls), memory, swap,
  *       load average, CPU frequency, process/thread counts, sensors (temp / fans / voltage).
- *   <li><b>NVIDIA (Linux/Windows):</b> utilization, VRAM use and temperature via {@code
- *       nvidia-smi} when present.
+ *   <li><b>NVIDIA (Linux/Windows):</b> utilization, VRAM use and temperature via {@code nvidia-smi}
+ *       when present.
  *   <li><b>macOS:</b> GPU "Device Utilization %" parsed from {@code ioreg -c IOAccelerator} (works
  *       for Apple Silicon and most Intel-era GPUs, no sudo required).
  * </ul>
@@ -118,8 +118,7 @@ public class HostMetricsService {
     Sensors sensors = hardware.getSensors();
     double tempRaw = sensors.getCpuTemperature();
     Double cpuTemp = (tempRaw > 0 && !Double.isNaN(tempRaw)) ? round1(tempRaw) : null;
-    List<Integer> fans =
-        Arrays.stream(sensors.getFanSpeeds()).filter(f -> f > 0).boxed().toList();
+    List<Integer> fans = Arrays.stream(sensors.getFanSpeeds()).filter(f -> f > 0).boxed().toList();
     double voltRaw = sensors.getCpuVoltage();
     Double voltage = voltRaw > 0 ? round2(voltRaw) : null;
     SensorMetrics sensorMetrics =

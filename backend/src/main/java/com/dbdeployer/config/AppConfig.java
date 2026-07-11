@@ -37,15 +37,25 @@ public class AppConfig implements WebMvcConfigurer {
 
   @Override
   public void addCorsMappings(CorsRegistry registry) {
+    // API endpoints
     registry
         .addMapping("/api/**")
         .allowedOrigins(allowedOrigins)
         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         .allowedHeaders("*");
+
+    // Swagger UI — served under context-path /api
+    registry.addMapping("/swagger-ui/**").allowedOrigins("*");
+    registry.addMapping("/swagger-ui.html").allowedOrigins("*");
+    registry.addMapping("/v3/api-docs/**").allowedOrigins("*");
   }
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
-    registry.addInterceptor(apiRequestLoggingInterceptor).addPathPatterns("/api/**");
+    // Exclude Swagger UI paths from request logging to avoid log spam on page load
+    registry
+        .addInterceptor(apiRequestLoggingInterceptor)
+        .addPathPatterns("/api/**")
+        .excludePathPatterns("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**");
   }
 }

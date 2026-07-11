@@ -175,8 +175,7 @@ class ModelDashboardServiceTest {
     assertThat(status.status()).contains("no such model");
   }
 
-  private java.util.Map<String, ModelDashboardService.PullState> dashboardPulls()
-      throws Exception {
+  private java.util.Map<String, ModelDashboardService.PullState> dashboardPulls() throws Exception {
     when(admin.listLocal(URL)).thenReturn(List.of());
     when(admin.listLoaded(URL)).thenReturn(List.of());
     when(pulledRepo.findByRuntimeId("rt-1")).thenReturn(List.of());

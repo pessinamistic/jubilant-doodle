@@ -53,9 +53,9 @@ public class ChatMemoryIngestionService {
   }
 
   /** Pure: builds the Q/A document for one turn. */
-  static Document turnDocument(String sessionId, int turn, String userMessage, String assistantReply) {
-    String content =
-        "USER: " + safe(userMessage) + "\nASSISTANT: " + safe(assistantReply);
+  static Document turnDocument(
+      String sessionId, int turn, String userMessage, String assistantReply) {
+    String content = "USER: " + safe(userMessage) + "\nASSISTANT: " + safe(assistantReply);
 
     Map<String, Object> meta = new LinkedHashMap<>();
     meta.put("type", TYPE);

@@ -35,7 +35,8 @@ public record HostMetricsResponse(
       int logicalCores,
       double totalLoadPct,
       List<Double> perCoreLoadPct,
-      List<Double> loadAverage, // 1 / 5 / 15 min; entries may be negative when unsupported (Windows)
+      List<Double>
+          loadAverage, // 1 / 5 / 15 min; entries may be negative when unsupported (Windows)
       Long maxFreqHz,
       Long currentFreqHz) {}
 

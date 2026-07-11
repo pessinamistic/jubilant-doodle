@@ -65,7 +65,11 @@ dependencies {
     // JSON
     implementation("com.fasterxml.jackson.core:jackson-databind")
 
-    // Utilities
+     // OpenAPI / Swagger — auto-generates API documentation from Spring MVC annotations.
+     // UI at /api/swagger-ui/index.html, spec JSON at /api/v3/api-docs
+     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+
+     // Utilities
     implementation("org.apache.commons:commons-lang3:3.17.0")
 
     // OSHI — cross-platform (macOS/Windows/Linux) hardware & OS metrics for the

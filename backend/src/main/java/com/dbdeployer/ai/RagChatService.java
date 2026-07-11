@@ -87,7 +87,8 @@ public class RagChatService {
       memoryIngestion.ingestTurn(sessionId, session.getCurrentSeq(), userMessage, assistantReply);
       summaryWorker.summariseIfNeeded(session);
     } catch (Exception e) {
-      log.warn("Turn persistence failed for session {} (best-effort): {}", sessionId, e.getMessage());
+      log.warn(
+          "Turn persistence failed for session {} (best-effort): {}", sessionId, e.getMessage());
     }
   }
 
