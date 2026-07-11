@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -35,6 +36,18 @@ public class ModelRuntimeController {
   @GetMapping
   public ModelDashboardService.RuntimeDashboard dashboard() {
     return dashboard.dashboard();
+  }
+
+  /**
+   * Detail card for one model tag. The tag rides in a query param (never a path variable) because
+   * Ollama tags carry {@code :} and {@code /}.
+   */
+  @GetMapping("/detail")
+  public ModelDashboardService.RuntimeModelDetail detail(@RequestParam String model) {
+    if (model == null || model.isBlank()) {
+      throw new IllegalArgumentException("model is required");
+    }
+    return dashboard.modelDetail(model.trim());
   }
 
   @PostMapping("/load")

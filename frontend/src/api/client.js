@@ -115,6 +115,8 @@ export const searchOllamaLibrary = (q, limit=15)  => api.get('/models/library-se
 
 // ── Model runtime dashboard ────────────────────────────────────────────────
 export const getRuntimeDashboard  = ()      => api.get('/models/runtime').then(r => r.data)
+// Detail card for one tag — /api/show data + residency + managed-instance link for logs.
+export const getRuntimeModelDetail = (model) => api.get('/models/runtime/detail', { params: { model } }).then(r => r.data)
 export const loadRuntimeModel     = (model) => api.post('/models/runtime/load', { model }).then(r => r.data)
 export const unloadRuntimeModel   = (model) => api.post('/models/runtime/unload', { model }).then(r => r.data)
 export const deleteRuntimeModel   = (model) => api.post('/models/runtime/delete', { model }).then(r => r.data)
