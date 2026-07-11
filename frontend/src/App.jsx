@@ -11,7 +11,9 @@ import { ImageManagementPage } from './pages/ImageManagementPage'
 import { ImageToolPage } from './pages/ImageToolPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ModelCookbookPage } from './pages/ModelCookbookPage'
+import { ModelDetailPage } from './pages/ModelDetailPage'
 import { RuntimePage } from './pages/RuntimePage'
+import { RuntimeModelDetailPage } from './pages/RuntimeModelDetailPage'
 import { ChatPage } from './pages/ChatPage'
 import { AgentPage } from './pages/AgentPage'
 import { ComparePage } from './pages/ComparePage'
@@ -57,6 +59,9 @@ export default function App() {
         <Route path="/images"                  element={<ImageManagementPage />} />
         <Route path="/images/:dbType" element={<ImageToolPage />} />
         <Route path="/models"                  element={<ModelCookbookPage />} />
+        {/* Splat routes: model tags/identifiers carry ':' and '/', so they ride after the prefix. */}
+        <Route path="/runtime/models/*"        element={<RuntimeModelDetailPage />} />
+        <Route path="/models/*"                element={<ModelDetailPage />} />
         <Route path="/runtime"                 element={<RuntimePage />} />
         <Route path="/chat"                    element={<ChatPage />} />
         <Route path="/agent"                   element={<AgentPage />} />

@@ -341,8 +341,11 @@ function ModelCard({ suggestion, installed, pulling, onPull }) {
   const style = COMPAT_STYLE[compatibility] ?? COMPAT_STYLE.TOO_LARGE
   const [copied, setCopied] = useState(false)
   const tooLarge = compatibility === 'TOO_LARGE'
+  const navigate = useNavigate()
+  const detailPath = `/models/${encodeURIComponent(model.ollamaTag.split(':')[0])}`
 
-  const copyTag = async () => {
+  const copyTag = async (e) => {
+    e.stopPropagation()
     await navigator.clipboard.writeText(model.ollamaTag)
     setCopied(true)
     toast.success(`Copied ${model.ollamaTag}`)
@@ -350,10 +353,21 @@ function ModelCard({ suggestion, installed, pulling, onPull }) {
   }
 
   return (
-    <div className="card p-4 flex flex-col gap-3 animate-fade-up">
+    <div
+      onClick={() => navigate(detailPath)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') navigate(detailPath) }}
+      className="card p-4 flex flex-col gap-3 animate-fade-up cursor-pointer transition-transform duration-150 hover:scale-[1.015]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{model.family}</p>
+          <Link
+            to={`/models/${encodeURIComponent(model.ollamaTag.split(':')[0])}`}
+            className="text-sm font-semibold text-[var(--text-primary)] truncate block hover:underline"
+            title={`${model.family} — open details`}
+          >
+            {model.family}
+          </Link>
           <p className="text-xs text-[var(--text-muted)] font-mono truncate">{model.ollamaTag}</p>
         </div>
         <span
@@ -384,7 +398,7 @@ function ModelCard({ suggestion, installed, pulling, onPull }) {
         )}
       </div>
 
-      <div className="flex items-center gap-2 mt-auto">
+      <div className="flex items-center gap-2 mt-auto" onClick={e => e.stopPropagation()}>
         {installed ? (
           <button onClick={onPull} className="btn-secondary text-xs flex-1 justify-center">
             <Check className="w-3.5 h-3.5 text-[#22c55e]" />
@@ -493,16 +507,29 @@ function LibrarySearchPanel({ query, onPull, compact }) {
 
 function LibraryResultRow({ result, onPull }) {
   const sizes = (result.labels ?? []).slice(0, 5)
+  const navigate = useNavigate()
+  const detailPath = `/models/${encodeURIComponent(result.modelIdentifier)}`
   return (
-    <div className="card p-3 flex items-start justify-between gap-3">
+    <div
+      onClick={() => navigate(detailPath)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') navigate(detailPath) }}
+      className="card p-3 flex items-start justify-between gap-3 cursor-pointer">
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-[var(--text-primary)]">{result.modelIdentifier}</span>
+          <Link
+            to={`/models/${encodeURIComponent(result.modelIdentifier)}`}
+            className="text-sm font-semibold text-[var(--text-primary)] hover:underline"
+            title={`${result.modelIdentifier} — open details`}
+          >
+            {result.modelIdentifier}
+          </Link>
           {!result.officialSource && (
             <span className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border-strong)] text-[var(--text-muted)]">community</span>
           )}
           {result.url && (
-            <a href={result.url} target="_blank" rel="noreferrer" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" title="View on ollama.com">
+            <a href={result.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" title="View on ollama.com">
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
@@ -512,7 +539,7 @@ function LibraryResultRow({ result, onPull }) {
           <p className="text-[11px] text-[var(--text-muted)] mt-1">{result.pulls.toLocaleString()} pulls · {result.tagCount} tags</p>
         )}
       </div>
-      <div className="flex flex-wrap gap-1.5 justify-end shrink-0 max-w-[45%]">
+      <div className="flex flex-wrap gap-1.5 justify-end shrink-0 max-w-[45%]" onClick={e => e.stopPropagation()}>
         {(sizes.length > 0 ? sizes : ['latest']).map(size => {
           const tag = size === 'latest' ? result.modelIdentifier : `${result.modelIdentifier}:${size.toLowerCase()}`
           return (
