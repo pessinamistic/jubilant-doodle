@@ -11,6 +11,8 @@ import com.dbdeployer.runtime.ModelCatalog;
 import com.dbdeployer.runtime.ModelSuggestion;
 import com.dbdeployer.runtime.ModelSuggestionService;
 import com.dbdeployer.runtime.ModelType;
+import com.dbdeployer.runtime.OllamaLibraryModel;
+import com.dbdeployer.runtime.OllamaLibrarySearchService;
 import com.dbdeployer.runtime.SystemProfile;
 import java.util.List;
 import java.util.Set;
@@ -26,13 +28,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class ModelCookbookControllerTest {
 
   @Mock private ModelSuggestionService suggestionService;
+  @Mock private OllamaLibrarySearchService librarySearchService;
 
   private MockMvc mockMvc;
 
   @BeforeEach
   void setup() {
     mockMvc =
-        MockMvcBuilders.standaloneSetup(new ModelCookbookController(suggestionService)).build();
+        MockMvcBuilders.standaloneSetup(
+                new ModelCookbookController(suggestionService, librarySearchService))
+            .build();
   }
 
   @Test
@@ -60,5 +65,28 @@ class ModelCookbookControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].model.ollamaTag").value("llama3.1:8b"))
         .andExpect(jsonPath("$[0].compatibility").value("FAST"));
+  }
+
+  @Test
+  void library_search_endpoint_delegates_to_service() throws Exception {
+    when(librarySearchService.search("phi", 15))
+        .thenReturn(
+            List.of(
+                new OllamaLibraryModel(
+                    "phi4",
+                    null,
+                    "Microsoft's dense STEM model",
+                    null,
+                    List.of("14b"),
+                    12345,
+                    3,
+                    true,
+                    "https://ollama.com/library/phi4")));
+
+    mockMvc
+        .perform(get("/models/library-search?q=phi"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].modelIdentifier").value("phi4"))
+        .andExpect(jsonPath("$[0].officialSource").value(true));
   }
 }

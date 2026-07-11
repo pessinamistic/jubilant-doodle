@@ -6,5 +6,7 @@ public enum Quantization {
   Q5_K_M,
   Q6_K,
   Q8_0,
-  F16
+  F16,
+  /** MoE weight format used by OpenAI's gpt-oss family — smaller footprint than the param count suggests. */
+  MXFP4
 }

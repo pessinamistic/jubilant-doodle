@@ -20,10 +20,10 @@ class ModelSuggestionServiceTest {
 
   private static final ModelDefinition SMALL =
       new ModelDefinition(
-          "test:1b", "Test", ModelType.CHAT, 1, Quantization.Q4_K_M, 1000, 2000, "tiny");
+          "test:1b", "Test", ModelType.CHAT, 1, Quantization.Q4_K_M, 1000, 2000, "tiny", true);
   private static final ModelDefinition HUGE =
       new ModelDefinition(
-          "test:70b", "Test", ModelType.CHAT, 70, Quantization.Q4_K_M, 42000, 48000, "huge");
+          "test:70b", "Test", ModelType.CHAT, 70, Quantization.Q4_K_M, 42000, 48000, "huge", true);
 
   @Test
   void score_fast_when_vram_has_headroom() {

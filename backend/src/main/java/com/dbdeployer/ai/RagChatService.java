@@ -33,18 +33,21 @@ public class RagChatService {
   private final SmartContextBuilder smartContextBuilder;
   private final ChatSessionService chatSessions;
   private final RollingSummaryWorker summaryWorker;
+  private final ChatMemoryIngestionService memoryIngestion;
 
   public RagChatService(
       ModelRouter modelRouter,
       MemoryRetriever memoryRetriever,
       SmartContextBuilder smartContextBuilder,
       ChatSessionService chatSessions,
-      RollingSummaryWorker summaryWorker) {
+      RollingSummaryWorker summaryWorker,
+      ChatMemoryIngestionService memoryIngestion) {
     this.modelRouter = modelRouter;
     this.memoryRetriever = memoryRetriever;
     this.smartContextBuilder = smartContextBuilder;
     this.chatSessions = chatSessions;
     this.summaryWorker = summaryWorker;
+    this.memoryIngestion = memoryIngestion;
   }
 
   public Flux<ServerSentEvent<ChatToken>> stream(
@@ -81,9 +84,10 @@ public class RagChatService {
       String sessionId, String userMessage, String assistantReply, ModelSelection selection) {
     try {
       var session = chatSessions.recordTurn(sessionId, userMessage, assistantReply, selection);
+      memoryIngestion.ingestTurn(sessionId, session.getCurrentSeq(), userMessage, assistantReply);
       summaryWorker.summariseIfNeeded(session);
     } catch (Exception e) {
-      log.debug("Turn persistence skipped (best-effort): {}", e.getMessage());
+      log.warn("Turn persistence failed for session {} (best-effort): {}", sessionId, e.getMessage());
     }
   }
 

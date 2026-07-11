@@ -109,6 +109,9 @@ export const getCatalogVersions  = (dbType, refresh=false) => api.get(`/catalog/
 // ── Model Cookbook ─────────────────────────────────────────────────────────
 export const getSystemProfile    = ()             => api.get('/models/profile').then(r => r.data)
 export const getModelSuggestions = (type, compat) => api.get('/models/suggestions', { params: { type: type || undefined, compat: compat || undefined } }).then(r => r.data)
+// Fallback discovery for models outside the curated catalog — proxies a community Ollama library
+// index. Best-effort: the backend degrades to [] on any failure rather than throwing.
+export const searchOllamaLibrary = (q, limit=15)  => api.get('/models/library-search', { params: { q, limit } }).then(r => r.data)
 
 // ── Model runtime dashboard ────────────────────────────────────────────────
 export const getRuntimeDashboard  = ()      => api.get('/models/runtime').then(r => r.data)
@@ -146,6 +149,12 @@ export const getImageToolDetails = (dbType, refresh=false) =>
 
 export const refreshImageTool = (dbType, scope='all') =>
 	api.post(`/images/tools/${dbType}/refresh`, null, { params: { scope } }).then(r => r.data)
+
+// ── Chat sessions ──────────────────────────────────────────────────────────
+export const getChatSessions       = ()          => api.get('/chat/sessions').then(r => r.data)
+export const getChatHistory        = (id)        => api.get(`/chat/sessions/${id}/messages`).then(r => r.data)
+export const renameChatSession     = (id, title) => api.patch(`/chat/sessions/${id}`, { title }).then(r => r.data)
+export const deleteChatSession     = (id)        => api.delete(`/chat/sessions/${id}`)
 
 // ── Config Templates ───────────────────────────────────────────────────────
 export const getTemplates      = ()           => api.get('/templates').then(r => r.data)

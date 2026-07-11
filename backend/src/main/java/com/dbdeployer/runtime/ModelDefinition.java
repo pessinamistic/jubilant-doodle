@@ -12,6 +12,9 @@ package com.dbdeployer.runtime;
  * @param minVramMb minimum GPU VRAM to run comfortably (at the default quant)
  * @param minRamMb minimum system RAM for a CPU fallback
  * @param description one-line description for the model card
+ * @param toolCalling true when the model has reliable native function/tool-calling support —
+ *     drives the Model Cookbook's "Tools" filter for agentic use cases. Conservative: models with
+ *     only "partial"/"weak"/"indirect" tool support upstream are marked {@code false}.
  */
 public record ModelDefinition(
     String ollamaTag,
@@ -21,4 +24,5 @@ public record ModelDefinition(
     Quantization defaultQuant,
     long minVramMb,
     long minRamMb,
-    String description) {}
+    String description,
+    boolean toolCalling) {}

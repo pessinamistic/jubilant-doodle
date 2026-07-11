@@ -35,6 +35,7 @@ class RagChatServiceTest {
   @Mock private MemoryRetriever memoryRetriever;
   @Mock private ChatSessionService chatSessions;
   @Mock private RollingSummaryWorker summaryWorker;
+  @Mock private ChatMemoryIngestionService memoryIngestion;
 
   private final SmartContextBuilder smartContextBuilder = new SmartContextBuilder();
 
@@ -77,7 +78,8 @@ class RagChatServiceTest {
   private RagChatService service() {
     lenient().when(chatSessions.rollingSummaryFor(any())).thenReturn(Optional.empty());
     return new RagChatService(
-        modelRouter, memoryRetriever, smartContextBuilder, chatSessions, summaryWorker);
+        modelRouter, memoryRetriever, smartContextBuilder, chatSessions, summaryWorker,
+        memoryIngestion);
   }
 
   @Test
@@ -148,7 +150,8 @@ class RagChatServiceTest {
         .thenReturn(Optional.of("user deployed postgres 'orders' on 5544"));
 
     new RagChatService(
-            modelRouter, memoryRetriever, smartContextBuilder, chatSessions, summaryWorker)
+            modelRouter, memoryRetriever, smartContextBuilder, chatSessions, summaryWorker,
+            memoryIngestion)
         .stream("s1", "what did I deploy?", new ModelSelection(null, null)).collectList().block();
 
     String system =

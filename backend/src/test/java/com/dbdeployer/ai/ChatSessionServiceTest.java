@@ -15,23 +15,29 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.chat.memory.ChatMemory;
 
 @ExtendWith(MockitoExtension.class)
 class ChatSessionServiceTest {
 
   @Mock private ChatSessionRepository sessionRepo;
   @Mock private ChatMessageRepository messageRepo;
+  @Mock private ChatMemory chatMemory;
+  @Mock private ChatMemoryIngestionService memoryIngestion;
 
   private ChatSessionService service() {
-    return new ChatSessionService(sessionRepo, messageRepo, new TokenBudget());
+    return new ChatSessionService(
+        sessionRepo, messageRepo, new TokenBudget(), chatMemory, memoryIngestion);
   }
 
   @Test
   void first_turn_creates_the_session_with_a_title_and_two_messages() {
     when(sessionRepo.findById("s1")).thenReturn(Optional.empty());
-    when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(sessionRepo.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
     ChatSession session =
         service()
@@ -53,6 +59,12 @@ class ChatSessionServiceTest {
     assertThat(saved.get(0).getSeq()).isEqualTo(1);
     assertThat(saved.get(1).getRole()).isEqualTo("ASSISTANT");
     assertThat(saved.get(1).getSeq()).isEqualTo(2);
+
+    // Regression for chat_message_session_id_fkey: the session row must be flushed BEFORE
+    // any chat_message insert, otherwise the FK is violated on a session's first turn.
+    InOrder inOrder = Mockito.inOrder(sessionRepo, messageRepo);
+    inOrder.verify(sessionRepo).saveAndFlush(any());
+    inOrder.verify(messageRepo, times(2)).save(any());
   }
 
   @Test
@@ -62,7 +74,7 @@ class ChatSessionServiceTest {
     existing.setTitle("first question");
     existing.setCurrentSeq(3);
     when(sessionRepo.findById("s1")).thenReturn(Optional.of(existing));
-    when(sessionRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(sessionRepo.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
     ChatSession session =
         service().recordTurn("s1", "and now?", "Done.", new ModelSelection(null, null));
@@ -89,6 +101,25 @@ class ChatSessionServiceTest {
     assertThat(session.getSummarizedThroughSeq()).isEqualTo(6);
     assertThat(session.getSummaryTokenCount()).isGreaterThan(0);
     verify(sessionRepo).save(session);
+  }
+
+  @Test
+  void deleteSession_removes_messages_session_memory_window_and_vector_docs() {
+    when(sessionRepo.existsById("s1")).thenReturn(true);
+
+    assertThat(service().deleteSession("s1")).isTrue();
+
+    InOrder inOrder = Mockito.inOrder(messageRepo, sessionRepo);
+    inOrder.verify(messageRepo).deleteBySessionId("s1"); // messages first for the FK
+    inOrder.verify(sessionRepo).deleteById("s1");
+    verify(chatMemory).clear("s1");
+    verify(memoryIngestion).deleteForSession("s1");
+  }
+
+  @Test
+  void deleteSession_returns_false_for_unknown_sessions() {
+    when(sessionRepo.existsById("nope")).thenReturn(false);
+    assertThat(service().deleteSession("nope")).isFalse();
   }
 
   @Test

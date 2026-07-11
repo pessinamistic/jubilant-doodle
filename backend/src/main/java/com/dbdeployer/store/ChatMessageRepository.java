@@ -14,4 +14,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, String
   List<ChatMessage> findBySessionIdAndSeqGreaterThanOrderBySeqAsc(String sessionId, int seq);
 
   int countBySessionId(String sessionId);
+
+  /** Bulk-delete a session's messages (must run before the session row for the FK). */
+  void deleteBySessionId(String sessionId);
 }
