@@ -56,6 +56,24 @@ public class ModelDashboardService {
    */
   public record PullState(String state, String status, long totalBytes, long completedBytes) {}
 
+  /**
+   * Everything the model detail page needs for one tag: the dashboard row (null when the model is
+   * not on disk yet), the full {@code /api/show} card (null when the runtime is unreachable or the
+   * tag unknown), the managed instance backing the runtime (for the logs tab), and any in-flight
+   * pull for this tag.
+   */
+  public record RuntimeModelDetail(
+      String name,
+      boolean reachable,
+      String baseUrl,
+      String managedInstanceId,
+      String managedInstanceName,
+      String managedInstanceStatus,
+      String gpuVendor,
+      RuntimeModelView model,
+      OllamaAdminClient.ModelShow show,
+      PullState pull) {}
+
   /** The whole dashboard payload. */
   public record RuntimeDashboard(
       String baseUrl,
@@ -132,6 +150,42 @@ public class ModelDashboardService {
         managed.map(c -> String.valueOf(c.getStatus())).orElse(null),
         views,
         Map.copyOf(pullStatus));
+  }
+
+  /**
+   * Detail view for a single model tag. Reuses {@link #dashboard()} for the row (so the DB mirror
+   * stays in sync) and layers the {@code /api/show} card on top; both degrade to null rather than
+   * failing the whole page.
+   */
+  @Transactional
+  public RuntimeModelDetail modelDetail(String model) {
+    RuntimeDashboard dash = dashboard();
+    RuntimeModelView view =
+        dash.models().stream().filter(m -> m.name().equals(model)).findFirst().orElse(null);
+
+    OllamaAdminClient.ModelShow show = null;
+    if (dash.reachable()) {
+      try {
+        show = admin.show(dash.baseUrl(), model);
+      } catch (Exception e) {
+        log.debug("[dashboard] /api/show failed for {}: {}", model, e.getMessage());
+      }
+    }
+
+    String managedInstanceId =
+        runtimes.findRunningOllama().map(DeployedContainer::getId).orElse(null);
+
+    return new RuntimeModelDetail(
+        model,
+        dash.reachable(),
+        dash.baseUrl(),
+        managedInstanceId,
+        dash.managedInstanceName(),
+        dash.managedInstanceStatus(),
+        dash.gpuVendor(),
+        view,
+        show,
+        dash.pulls().get(model));
   }
 
   /** Load ("run") a model into memory using its saved keep-alive, resident by default. */

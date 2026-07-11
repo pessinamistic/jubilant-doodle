@@ -1,11 +1,13 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
+  Activity,
   BarChart3,
   ChevronLeft,
   ChevronRight,
   Database,
   Gauge,
+  GitCompare,
   HardDrive,
   House,
   Laptop,
@@ -27,6 +29,82 @@ import toast from 'react-hot-toast'
 const SIDEBAR_EXPANDED = 224
 const SIDEBAR_COLLAPSED = 56
 const LS_KEY = 'sidebar-collapsed'
+
+// ── Navigation config — single source of truth for desktop + mobile ──────────
+// To add a page: add one entry here. Order within a section = display order.
+const NAV_SECTIONS = [
+  {
+    label: 'Overview',
+    items: [
+      { to: '/', label: 'Home', icon: House, end: true },
+      { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Databases',
+    items: [
+      { to: '/instances', label: 'Instances', icon: Database },
+      { to: '/configurations', label: 'Configurations', icon: SlidersHorizontal },
+      { to: '/images', label: 'Images', icon: HardDrive },
+    ],
+  },
+  {
+    label: 'LLM',
+    items: [
+      { to: '/models', label: 'Models', icon: Sparkles },
+      { to: '/runtime', label: 'Runtime', icon: Gauge },
+      { to: '/compare', label: 'Compare', icon: GitCompare },
+    ],
+  },
+  {
+    label: 'AI Tools',
+    items: [
+      { to: '/chat', label: 'Assistant', icon: MessageSquare },
+      { to: '/agent', label: 'Agent', icon: Wrench },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/system', label: 'System Health', icon: Activity },
+    ],
+  },
+]
+
+// Staggered entrance delay per nav row (uses delay classes already defined in CSS)
+const ROW_DELAYS = ['delay-200', 'delay-225', 'delay-250', 'delay-300']
+const rowDelay = i => `animate-fade-up ${ROW_DELAYS[Math.min(i, ROW_DELAYS.length - 1)]}`
+
+function SideNav({ collapsed, onNavigate }) {
+  let row = 0
+  return (
+    <nav className="flex-1 space-y-0.5 px-2 overflow-y-auto">
+      {NAV_SECTIONS.map((section, si) => (
+        <div key={section.label}>
+          {collapsed
+            ? si > 0 && <div className="mx-2 my-2 border-t border-(--border-soft)" />
+            : (
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 pt-3 pb-1 animate-fade-in delay-150">
+                {section.label}
+              </p>
+            )}
+          {section.items.map(({ to, label, icon: Icon, end }) => (
+            <SideNavItem
+              key={to}
+              to={to}
+              end={end}
+              icon={<Icon className="w-4 h-4" />}
+              label={label}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+              className={rowDelay(row++)}
+            />
+          ))}
+        </div>
+      ))}
+    </nav>
+  )
+}
 
 export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }) {
   const navigate = useNavigate()
@@ -138,58 +216,7 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
           <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0 animate-fade-in delay-150" />
 
           {/* Nav */}
-          <nav className={`flex-1 space-y-0.5 ${collapsed ? 'px-2' : 'px-2'}`}>
-            {!collapsed && (
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2 animate-fade-in delay-150">
-                Navigation
-              </p>
-            )}
-            <SideNavItem
-              to="/" icon={<House className="w-4 h-4" />}
-              label="Home" end collapsed={collapsed}
-              className="animate-fade-up delay-200"
-            />
-            <SideNavItem
-              to="/dashboard" icon={<BarChart3 className="w-4 h-4" />}
-              label="Dashboard" collapsed={collapsed}
-              className="animate-fade-up delay-225"
-            />
-            <SideNavItem
-              to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />}
-              label="Configurations" collapsed={collapsed}
-              className="animate-fade-up delay-250"
-            />
-            <SideNavItem
-              to="/instances" icon={<Database className="w-4 h-4" />}
-              label="Instances" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-            <SideNavItem
-              to="/images" icon={<HardDrive className="w-4 h-4" />}
-              label="Images" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-            <SideNavItem
-              to="/models" icon={<Sparkles className="w-4 h-4" />}
-              label="Models" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-            <SideNavItem
-              to="/runtime" icon={<Gauge className="w-4 h-4" />}
-              label="Runtime" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-            <SideNavItem
-              to="/chat" icon={<MessageSquare className="w-4 h-4" />}
-              label="Assistant" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-            <SideNavItem
-              to="/agent" icon={<Wrench className="w-4 h-4" />}
-              label="Agent" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-          </nav>
+          <SideNav collapsed={collapsed} />
 
           {/* Collapse toggle */}
           <div className={`shrink-0 border-t-2 border-(--border-strong) py-3 animate-fade-up delay-300 ${collapsed ? 'px-2' : 'px-3'}`}>
@@ -234,18 +261,7 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
                 <SidebarBtn icon={<Plus className="w-4 h-4 shrink-0" />} label="Deploy DB" collapsed={false} onClick={() => { goToDeploy(); setMobileOpen(false) }} primary />
               </div>
               <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0" />
-              <nav className="flex-1 space-y-0.5 px-2 animate-fade-up delay-100">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2">Navigation</p>
-                <SideNavItem to="/" icon={<House className="w-4 h-4" />} label="Home" end collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-150" />
-                <SideNavItem to="/dashboard" icon={<BarChart3 className="w-4 h-4" />} label="Dashboard" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-160" />
-                <SideNavItem to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />} label="Configurations" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-175" />
-                <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-                <SideNavItem to="/images" icon={<HardDrive className="w-4 h-4" />} label="Images" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-                <SideNavItem to="/models" icon={<Sparkles className="w-4 h-4" />} label="Models" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-                <SideNavItem to="/runtime" icon={<Gauge className="w-4 h-4" />} label="Runtime" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-                <SideNavItem to="/chat" icon={<MessageSquare className="w-4 h-4" />} label="Assistant" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-                <SideNavItem to="/agent" icon={<Wrench className="w-4 h-4" />} label="Agent" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-              </nav>
+              <SideNav collapsed={false} onNavigate={() => setMobileOpen(false)} />
             </div>
           </aside>
         </>

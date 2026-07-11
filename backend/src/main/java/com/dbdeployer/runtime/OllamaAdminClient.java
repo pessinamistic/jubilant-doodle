@@ -31,6 +31,27 @@ public class OllamaAdminClient {
   /** A model resident in memory right now ({@code GET /api/ps}). */
   public record LoadedModel(String name, long sizeBytes, long sizeVramBytes, String expiresAt) {}
 
+  /**
+   * Full model card from {@code POST /api/show} — capabilities (completion/tools/vision/thinking/
+   * embedding), architecture facts from {@code model_info}, and the Modelfile-level text blobs
+   * (parameters, template, license).
+   */
+  public record ModelShow(
+      List<String> capabilities,
+      String parameters,
+      String template,
+      String license,
+      String modifiedAt,
+      String format,
+      String family,
+      List<String> families,
+      String parameterSize,
+      String quantizationLevel,
+      String architecture,
+      Long contextLength,
+      Long embeddingLength,
+      Long parameterCount) {}
+
   /** Outcome of a state-changing admin call. */
   public record AdminResult(boolean success, String message) {}
 
@@ -47,6 +68,21 @@ public class OllamaAdminClient {
   /** Models resident in memory. Throws on an unreachable runtime. */
   public List<LoadedModel> listLoaded(String baseUrl) throws Exception {
     return parsePs(get(baseUrl, "/api/ps", Duration.ofSeconds(20)));
+  }
+
+  /** Full model card ({@code POST /api/show}). Throws on an unreachable runtime or unknown tag. */
+  public ModelShow show(String baseUrl, String model) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(root(baseUrl) + "/api/show"))
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(20))
+            .POST(HttpRequest.BodyPublishers.ofString(modelBody(model)))
+            .build();
+    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() / 100 != 2) {
+      throw new IllegalStateException("/api/show returned HTTP " + response.statusCode());
+    }
+    return parseShow(response.body());
   }
 
   /**
@@ -130,6 +166,10 @@ public class OllamaAdminClient {
     return "{\"name\":\"" + escape(model) + "\"}";
   }
 
+  static String modelBody(String model) {
+    return "{\"model\":\"" + escape(model) + "\"}";
+  }
+
   static List<LocalModel> parseTags(String json) throws Exception {
     List<LocalModel> models = new ArrayList<>();
     JsonNode root = MAPPER.readTree(json);
@@ -158,6 +198,60 @@ public class OllamaAdminClient {
               m.path("expires_at").asText("")));
     }
     return models;
+  }
+
+  /** License texts run to tens of KB; cap what we ship to the UI. */
+  private static final int MAX_TEXT_BLOB = 8_000;
+
+  static ModelShow parseShow(String json) throws Exception {
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode details = root.path("details");
+    JsonNode info = root.path("model_info");
+
+    List<String> capabilities = new ArrayList<>();
+    for (JsonNode c : root.path("capabilities")) {
+      capabilities.add(c.asText());
+    }
+    List<String> families = new ArrayList<>();
+    for (JsonNode f : details.path("families")) {
+      families.add(f.asText());
+    }
+
+    // model_info keys are architecture-prefixed, e.g. "gemma3.context_length".
+    String architecture = info.path("general.architecture").asText(null);
+    Long contextLength = infoLong(info, architecture, "context_length");
+    Long embeddingLength = infoLong(info, architecture, "embedding_length");
+    Long parameterCount =
+        info.path("general.parameter_count").isNumber()
+            ? info.path("general.parameter_count").asLong()
+            : null;
+
+    return new ModelShow(
+        capabilities,
+        truncate(root.path("parameters").asText(null)),
+        truncate(root.path("template").asText(null)),
+        truncate(root.path("license").asText(null)),
+        root.path("modified_at").asText(null),
+        details.path("format").asText(null),
+        details.path("family").asText(null),
+        families,
+        details.path("parameter_size").asText(null),
+        details.path("quantization_level").asText(null),
+        architecture,
+        contextLength,
+        embeddingLength,
+        parameterCount);
+  }
+
+  private static Long infoLong(JsonNode info, String architecture, String suffix) {
+    if (architecture == null) return null;
+    JsonNode node = info.path(architecture + "." + suffix);
+    return node.isNumber() ? node.asLong() : null;
+  }
+
+  private static String truncate(String s) {
+    if (s == null || s.length() <= MAX_TEXT_BLOB) return s;
+    return s.substring(0, MAX_TEXT_BLOB) + "\n… (truncated)";
   }
 
   private static String escape(String s) {
