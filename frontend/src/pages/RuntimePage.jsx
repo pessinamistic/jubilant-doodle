@@ -16,6 +16,7 @@ import {
   Search, LayoutGrid, Rows3, Copy, Check, Thermometer, Layers, Clock3, Sparkles, Zap, HardDrive,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getThemeForFamily } from '../utils/modelThemes'
 
 const REFRESH_MS = 15000
 const REFRESH_PULLING_MS = 2000 // poll fast while a download is in flight
@@ -318,9 +319,7 @@ export function RuntimePage() {
           {view === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children animate-fade-up delay-200">
               {pulls.map(([tag, pull]) => (
-                <div key={`pull-${tag}`} className="sm:col-span-2 xl:col-span-3 2xl:col-span-4">
-                  <PullCard tag={tag} pull={pull} onRetry={() => startPull(tag)} />
-                </div>
+                <PullCard key={`pull-${tag}`} tag={tag} pull={pull} onRetry={() => startPull(tag)} />
               ))}
               {filteredModels.map(m => (
                 <ModelCard
@@ -630,6 +629,13 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
   const token = m.loaded ? MODEL_STATUS_TOKENS.LOADED : MODEL_STATUS_TOKENS.ON_DISK
   const exp = expiryLabel(m.expiresAt)
   const navigate = useNavigate()
+  const familyTag = m.name.split(':')[0]
+  const theme = getThemeForFamily(familyTag)
+  const ThemeIcon = theme.icon
+
+  // Card background: green when running, gray when on disk
+  const cardBgColor = m.loaded ? 'rgba(34, 197, 86, 0.08)' : 'rgba(107, 114, 128, 0.05)'
+  const cardBorderColor = m.loaded ? 'rgba(34, 197, 86, 0.4)' : theme.borderColor
 
   return (
     <div
@@ -637,15 +643,21 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
       role="link"
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter') navigate(`/runtime/models/${encodeURIComponent(m.name)}`) }}
-      className="card h-full flex flex-col overflow-hidden group transition-transform duration-150 hover:scale-[1.015] cursor-pointer">
-      <div className="h-[3px]" style={{ backgroundColor: token.accent }} />
-      <div className="p-4 flex-1 flex flex-col" style={{ backgroundColor: token.background }}>
+      className="card h-full flex flex-col overflow-hidden group transition-all duration-150 hover:scale-[1.015] cursor-pointer"
+      style={{ borderColor: cardBorderColor }}>
+      <div className="h-[3px]" style={{ backgroundColor: theme.color }} />
+      <div className="p-4 flex-1 flex flex-col" style={{ backgroundColor: cardBgColor }}>
         <div className="flex items-start gap-3 mb-3">
           <span
-            className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center border-2"
-            style={{ borderColor: token.border, color: token.accent, background: 'var(--bg-surface)' }}
+            className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center border-2 relative"
+            style={{ borderColor: theme.borderColor, color: theme.color, background: 'var(--bg-surface)' }}
           >
-            {m.loaded ? <Zap className="w-4 h-4" /> : <HardDrive className="w-4 h-4" />}
+            <ThemeIcon className="w-4 h-4" />
+            <span
+              className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white"
+              title={m.loaded ? 'running' : 'on disk'}
+              style={{ background: m.loaded ? '#22c55e' : '#6B7280' }}
+            />
           </span>
 
           <div className="flex-1 min-w-0">
@@ -661,8 +673,8 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
             </div>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               {m.loaded ? (
-                <span className="status-pill" style={{ color: token.text, borderColor: token.border, background: 'transparent' }}>
-                  loaded{exp ? ` · ${exp}` : ''}
+                <span className="status-pill" style={{ color: '#22c55e', borderColor: '#22c55e', background: 'transparent' }}>
+                  running{exp ? ` · ${exp}` : ''}
                 </span>
               ) : (
                 <span className="status-pill" style={{ color: 'var(--text-muted)', borderColor: 'var(--border-strong)' }}>
@@ -678,8 +690,9 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
         </div>
 
         <div
-          className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-[var(--border-strong)]"
+          className="flex items-center gap-2 mt-4 pt-3 border-t-2"
           onClick={e => e.stopPropagation()}
+          style={{ borderColor: cardBorderColor }}
         >
           <ModelActions
             m={m} busy={busy} reachable={reachable}
@@ -701,6 +714,13 @@ function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, o
   const token = m.loaded ? MODEL_STATUS_TOKENS.LOADED : MODEL_STATUS_TOKENS.ON_DISK
   const exp = expiryLabel(m.expiresAt)
   const navigate = useNavigate()
+  const familyTag = m.name.split(':')[0]
+  const theme = getThemeForFamily(familyTag)
+  const ThemeIcon = theme.icon
+
+  // Card background: green when running, gray when on disk
+  const cardBgColor = m.loaded ? 'rgba(34, 197, 86, 0.08)' : 'rgba(107, 114, 128, 0.05)'
+  const cardBorderColor = m.loaded ? 'rgba(34, 197, 86, 0.4)' : theme.borderColor
 
   return (
     <div
@@ -708,15 +728,21 @@ function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, o
       role="link"
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter') navigate(`/runtime/models/${encodeURIComponent(m.name)}`) }}
-      className="card overflow-hidden flex group cursor-pointer">
-      <div className="w-[3px] shrink-0" style={{ backgroundColor: token.accent }} />
-      <div className="p-4 flex-1" style={{ backgroundColor: token.background }}>
+      className="card overflow-hidden flex group cursor-pointer transition-all duration-150"
+      style={{ borderColor: cardBorderColor }}>
+      <div className="w-[3px] shrink-0" style={{ backgroundColor: theme.color }} />
+      <div className="p-4 flex-1" style={{ backgroundColor: cardBgColor }}>
         <div className="flex flex-wrap items-center gap-3">
           <span
-            className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center border-2"
-            style={{ borderColor: token.border, color: token.accent, background: 'var(--bg-surface)' }}
+            className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center border-2 relative"
+            style={{ borderColor: theme.borderColor, color: theme.color, background: 'var(--bg-surface)' }}
           >
-            {m.loaded ? <Zap className="w-4 h-4" /> : <HardDrive className="w-4 h-4" />}
+            <ThemeIcon className="w-4 h-4" />
+            <span
+              className="absolute bottom-0 right-0 w-2 h-2 rounded-full border-2 border-white"
+              title={m.loaded ? 'running' : 'on disk'}
+              style={{ background: m.loaded ? '#22c55e' : '#6B7280' }}
+            />
           </span>
 
           <div className="flex-1 min-w-[220px]">
@@ -730,8 +756,8 @@ function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, o
               </Link>
               <CopyButton text={m.name} title="Copy model tag" />
               {m.loaded ? (
-                <span className="status-pill" style={{ color: token.text, borderColor: token.border, background: 'transparent' }}>
-                  loaded{exp ? ` · ${exp}` : ''}
+                <span className="status-pill" style={{ color: '#22c55e', borderColor: '#22c55e', background: 'transparent' }}>
+                  running{exp ? ` · ${exp}` : ''}
                 </span>
               ) : (
                 <span className="status-pill" style={{ color: 'var(--text-muted)', borderColor: 'var(--border-strong)' }}>
@@ -762,8 +788,10 @@ function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, o
 }
 
 /**
- * An in-flight or failed pull rendered as a model card, so a downloading model looks like it is
- * already "arriving" in the list — same layout as installed rows, with a live progress bar.
+ * An in-flight or failed pull rendered as a neat model card — same visual language as ModelCard
+ * (accent stripe, icon badge, status pill, progress bar), so a downloading model looks like it's
+ * already "arriving" in the grid. Clicking navigates to the model detail page, which already knows
+ * how to render live pull progress for a tag that isn't on disk yet.
  */
 function PullCard({ tag, pull, onRetry }) {
   const failed = pull?.state === 'failed'
@@ -771,15 +799,34 @@ function PullCard({ tag, pull, onRetry }) {
   const total = pull?.totalBytes ?? 0
   const done  = pull?.completedBytes ?? 0
   const pct   = total > 0 ? Math.min(100, (done / total) * 100) : 0
+  const navigate = useNavigate()
+  const goToDetail = () => navigate(`/runtime/models/${encodeURIComponent(tag)}`)
 
   return (
-    <div className="card overflow-hidden flex">
-      <div className="w-[3px] shrink-0" style={{ backgroundColor: token.accent }} />
-      <div className="p-4 flex-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm text-[var(--text-primary)]">{tag}</span>
+    <div
+      onClick={goToDetail}
+      role="link"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') goToDetail() }}
+      className="card h-full flex flex-col overflow-hidden group transition-transform duration-150 hover:scale-[1.015] cursor-pointer">
+      <div className="h-[3px]" style={{ backgroundColor: token.accent }} />
+      <div className="p-4 flex-1 flex flex-col" style={{ backgroundColor: token.background }}>
+        <div className="flex items-start gap-3 mb-3">
+          <span
+            className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center border-2"
+            style={{ borderColor: token.border, color: token.accent, background: 'var(--bg-surface)' }}
+          >
+            {failed ? <Download className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
+          </span>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="font-mono text-sm font-semibold text-[var(--text-primary)] truncate" title={`${tag} — open details`}>
+                {tag}
+              </span>
+              <CopyButton text={tag} title="Copy model tag" />
+            </div>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               {failed ? (
                 <span className="status-pill" style={{ color: token.text, borderColor: token.border, background: token.background }}>
                   pull failed
@@ -791,24 +838,19 @@ function PullCard({ tag, pull, onRetry }) {
                 </span>
               )}
             </div>
-            <div className="text-xs text-[var(--text-muted)] mt-1 flex flex-wrap gap-x-4">
-              {failed ? (
-                <span style={{ color: 'var(--status-error)' }} className="break-all">{pull.status}</span>
-              ) : (
-                <>
-                  <span className="tabular-nums">
-                    {total > 0 ? `${gbProgress(done)} of ${gbProgress(total)}` : 'waiting for size…'}
-                  </span>
-                  <span className="truncate">{pull?.status || 'starting'}</span>
-                </>
-              )}
-            </div>
           </div>
-          {failed && (
-            <button className="btn-secondary" onClick={onRetry} title="Retry pull">
-              <RotateCw className="w-4 h-4" />
-              <span className="ml-1">Retry</span>
-            </button>
+        </div>
+
+        <div className="text-xs text-[var(--text-muted)] space-y-1 pl-12 flex-1">
+          {failed ? (
+            <span style={{ color: 'var(--status-error)' }} className="break-all">{pull.status}</span>
+          ) : (
+            <>
+              <div className="tabular-nums">
+                {total > 0 ? `${gbProgress(done)} of ${gbProgress(total)}` : 'waiting for size…'}
+              </div>
+              <div className="truncate">{pull?.status || 'starting'}</div>
+            </>
           )}
         </div>
 
@@ -822,6 +864,18 @@ function PullCard({ tag, pull, onRetry }) {
                 opacity: total > 0 ? 1 : 0.25, // indeterminate until Ollama reports sizes
               }}
             />
+          </div>
+        )}
+
+        {failed && (
+          <div
+            className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-[var(--border-strong)]"
+            onClick={e => e.stopPropagation()}
+          >
+            <button className="btn-secondary" onClick={onRetry} title="Retry pull">
+              <RotateCw className="w-4 h-4" />
+              <span className="ml-1">Retry</span>
+            </button>
           </div>
         )}
       </div>
