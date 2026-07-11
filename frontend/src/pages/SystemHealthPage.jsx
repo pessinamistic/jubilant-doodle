@@ -61,6 +61,15 @@ function coreColor(pct) {
   return '#22c55e'
 }
 
+// Not all machines list the discrete GPU first (e.g. an AMD iGPU can enumerate
+// before an NVIDIA card) — pick whichever GPU actually reports live utilization
+// so history/graphs track the right device instead of always index 0.
+function findPrimaryGpuIndex(gpus) {
+  if (!gpus?.length) return -1
+  const idx = gpus.findIndex(g => g.utilizationPct != null)
+  return idx >= 0 ? idx : 0
+}
+
 function StatCard({ icon, label, value, sub, tone }) {
   return (
     <div className="card p-4 flex items-start gap-3">
@@ -94,14 +103,16 @@ export function SystemHealthPage() {
         setLatest(m)
         setError(null)
         setHistory(prev => {
+          const gpuIdx = findPrimaryGpuIndex(m.gpus)
+          const primaryGpu = gpuIdx >= 0 ? m.gpus[gpuIdx] : null
           const point = {
             time: new Date(m.timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }),
             cpu: m.cpu.totalLoadPct,
             memUsedGb: +(m.memory.usedBytes / GB).toFixed(2),
             memPct: m.memory.usedPct,
             cpuTemp: m.sensors.cpuTempC,
-            gpu: m.gpus?.[0]?.utilizationPct ?? null,
-            gpuTemp: m.gpus?.[0]?.tempC ?? null,
+            gpu: primaryGpu?.utilizationPct ?? null,
+            gpuTemp: primaryGpu?.tempC ?? m.gpus?.find(g => g.tempC != null)?.tempC ?? null,
           }
           return [...prev, point].slice(-WINDOW_SIZE)
         })
@@ -125,6 +136,10 @@ export function SystemHealthPage() {
   const hasTemp = history.some(p => p.cpuTemp != null || p.gpuTemp != null)
   const hasGpuUsage = gpus.some(g => g.utilizationPct != null)
   const memTotalGb = mem ? +(mem.totalBytes / GB).toFixed(1) : 0
+  const primaryGpuIdx = findPrimaryGpuIndex(gpus)
+  const gpuWithUtil = gpus.find(g => g.utilizationPct != null)
+  const gpuWithTemp = gpus.find(g => g.tempC != null)
+  const gpuForDisplay = gpuWithUtil ?? gpuWithTemp ?? gpus[0]
 
   return (
     <AppShell>
@@ -182,8 +197,11 @@ export function SystemHealthPage() {
             <StatCard
               icon={<MonitorCog className="w-4 h-4" />}
               label="GPU"
-              value={hasGpuUsage ? `${gpus.find(g => g.utilizationPct != null).utilizationPct.toFixed(0)}%` : gpus.length ? '—' : 'None'}
-              sub={gpus[0]?.name}
+              value={hasGpuUsage ? `${gpuWithUtil.utilizationPct.toFixed(0)}%` : gpus.length ? '—' : 'None'}
+              sub={gpuForDisplay
+                ? `${gpuForDisplay.name}${gpuWithTemp ? ` · ${gpuWithTemp.tempC.toFixed(0)}°C` : ''}`
+                : null}
+              tone={gpuWithTemp?.tempC >= 85 ? 'bg-red-500/10 text-red-400' : undefined}
             />
           </section>
 
@@ -311,7 +329,7 @@ export function SystemHealthPage() {
                       {g.utilizationPct != null ? `${g.utilizationPct.toFixed(0)}%` : 'N/A'}
                     </span>
                   </div>
-                  {i === 0 && g.utilizationPct != null ? (
+                  {i === primaryGpuIdx && g.utilizationPct != null ? (
                     <ResponsiveContainer width="100%" height={120}>
                       <AreaChart data={history}>
                         <defs>
