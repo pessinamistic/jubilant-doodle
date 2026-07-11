@@ -10,7 +10,7 @@ import {
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { ConfirmModal } from '../components/ConfirmModal'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Gauge, Play, Pause, Trash2, Settings2, Download, Loader2, MemoryStick, RotateCw,
   Search, LayoutGrid, Rows3, Copy, Check, Thermometer, Layers, Clock3, Sparkles, Zap, HardDrive,
@@ -629,9 +629,15 @@ function ModelActions({ m, busy, reachable, onLoad, onUnload, onDelete, onToggle
 function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, onDelete, onToggleSettings, onSettingsSaved }) {
   const token = m.loaded ? MODEL_STATUS_TOKENS.LOADED : MODEL_STATUS_TOKENS.ON_DISK
   const exp = expiryLabel(m.expiresAt)
+  const navigate = useNavigate()
 
   return (
-    <div className="card h-full flex flex-col overflow-hidden group transition-transform duration-150 hover:scale-[1.015]">
+    <div
+      onClick={() => navigate(`/runtime/models/${encodeURIComponent(m.name)}`)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') navigate(`/runtime/models/${encodeURIComponent(m.name)}`) }}
+      className="card h-full flex flex-col overflow-hidden group transition-transform duration-150 hover:scale-[1.015] cursor-pointer">
       <div className="h-[3px]" style={{ backgroundColor: token.accent }} />
       <div className="p-4 flex-1 flex flex-col" style={{ backgroundColor: token.background }}>
         <div className="flex items-start gap-3 mb-3">
@@ -644,9 +650,13 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="font-mono text-sm font-semibold text-[var(--text-primary)] truncate" title={m.name}>
+              <Link
+                to={`/runtime/models/${encodeURIComponent(m.name)}`}
+                className="font-mono text-sm font-semibold text-[var(--text-primary)] truncate hover:underline"
+                title={`${m.name} — open details`}
+              >
                 {m.name}
-              </span>
+              </Link>
               <CopyButton text={m.name} title="Copy model tag" />
             </div>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
@@ -667,7 +677,10 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
           <ModelMeta m={m} />
         </div>
 
-        <div className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-[var(--border-strong)]">
+        <div
+          className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-[var(--border-strong)]"
+          onClick={e => e.stopPropagation()}
+        >
           <ModelActions
             m={m} busy={busy} reachable={reachable}
             onLoad={onLoad} onUnload={onUnload} onDelete={onDelete}
@@ -687,9 +700,15 @@ function ModelCard({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, 
 function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, onDelete, onToggleSettings, onSettingsSaved }) {
   const token = m.loaded ? MODEL_STATUS_TOKENS.LOADED : MODEL_STATUS_TOKENS.ON_DISK
   const exp = expiryLabel(m.expiresAt)
+  const navigate = useNavigate()
 
   return (
-    <div className="card overflow-hidden flex group">
+    <div
+      onClick={() => navigate(`/runtime/models/${encodeURIComponent(m.name)}`)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') navigate(`/runtime/models/${encodeURIComponent(m.name)}`) }}
+      className="card overflow-hidden flex group cursor-pointer">
       <div className="w-[3px] shrink-0" style={{ backgroundColor: token.accent }} />
       <div className="p-4 flex-1" style={{ backgroundColor: token.background }}>
         <div className="flex flex-wrap items-center gap-3">
@@ -702,7 +721,13 @@ function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, o
 
           <div className="flex-1 min-w-[220px]">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono text-sm font-semibold text-[var(--text-primary)]">{m.name}</span>
+              <Link
+                to={`/runtime/models/${encodeURIComponent(m.name)}`}
+                className="font-mono text-sm font-semibold text-[var(--text-primary)] hover:underline"
+                title={`${m.name} — open details`}
+              >
+                {m.name}
+              </Link>
               <CopyButton text={m.name} title="Copy model tag" />
               {m.loaded ? (
                 <span className="status-pill" style={{ color: token.text, borderColor: token.border, background: 'transparent' }}>
@@ -719,7 +744,7 @@ function ModelRow({ model: m, busy, reachable, settingsOpen, onLoad, onUnload, o
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
             <ModelActions
               m={m} busy={busy} reachable={reachable}
               onLoad={onLoad} onUnload={onUnload} onDelete={onDelete}
