@@ -49,7 +49,9 @@ class OllamaModelPullerTest {
 
   @Test
   void extracts_error_lines() {
-    assertThat(OllamaModelPuller.extractError("{\"error\":\"pull model manifest: file does not exist\"}"))
+    assertThat(
+            OllamaModelPuller.extractError(
+                "{\"error\":\"pull model manifest: file does not exist\"}"))
         .isEqualTo("pull model manifest: file does not exist");
     assertThat(OllamaModelPuller.extractError("{\"status\":\"success\"}")).isNull();
     assertThat(OllamaModelPuller.extractError("not json")).isNull();

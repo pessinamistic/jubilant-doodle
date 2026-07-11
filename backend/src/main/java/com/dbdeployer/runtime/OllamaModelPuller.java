@@ -18,8 +18,8 @@ import org.springframework.stereotype.Component;
  * Pulls a model into a running Ollama runtime via its HTTP API ({@code POST /api/pull}). Uses the
  * JDK's built-in {@link HttpClient} — no new dependency. Streams the NDJSON progress lines Ollama
  * emits ({@code stream:true}) and reports layer download progress through a callback so the UI can
- * render a live progress bar. The body construction and line parsing are pure, unit-testable
- * static methods.
+ * render a live progress bar. The body construction and line parsing are pure, unit-testable static
+ * methods.
  */
 @Slf4j
 @Component
@@ -43,8 +43,8 @@ public class OllamaModelPuller {
 
   /**
    * Pulls {@code modelTag} into the Ollama runtime at {@code baseUrl} (blocking). Uses {@code
-   * stream:true} and invokes {@code onProgress} for every progress line so callers can surface
-   * live download state; returns once the stream ends.
+   * stream:true} and invokes {@code onProgress} for every progress line so callers can surface live
+   * download state; returns once the stream ends.
    */
   public PullResult pull(String baseUrl, String modelTag, Consumer<PullProgress> onProgress) {
     String url = baseUrl.replaceAll("/+$", "") + "/api/pull";

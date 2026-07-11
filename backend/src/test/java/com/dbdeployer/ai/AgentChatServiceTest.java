@@ -15,7 +15,6 @@ import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,8 +74,7 @@ class AgentChatServiceTest {
     ToolCall tc = new ToolCall("call-" + name, "function", name, args);
     return new ChatResponse(
         List.of(
-            new Generation(
-                AssistantMessage.builder().content("").toolCalls(List.of(tc)).build())));
+            new Generation(AssistantMessage.builder().content("").toolCalls(List.of(tc)).build())));
   }
 
   private static ChatResponse textResponse(String text) {

@@ -24,9 +24,9 @@ import org.springframework.stereotype.Service;
  * ollama.com/library with search/sort support that the official library page doesn't expose.
  *
  * <p>Not affiliated with Ollama — this is a best-effort convenience layer, not part of the
- * hardware-scored Cookbook path. Any failure (timeout, network, bad response) degrades to an
- * empty result rather than surfacing an error, since the curated catalog + free-text pull already
- * cover the primary flow.
+ * hardware-scored Cookbook path. Any failure (timeout, network, bad response) degrades to an empty
+ * result rather than surfacing an error, since the curated catalog + free-text pull already cover
+ * the primary flow.
  */
 @Slf4j
 @Service
@@ -97,7 +97,8 @@ public class OllamaLibrarySearchService {
       Thread.currentThread().interrupt();
       return List.of();
     } catch (RuntimeException e) {
-      log.warn("[ollama-library] search '{}' returned unparseable response: {}", query, e.getMessage());
+      log.warn(
+          "[ollama-library] search '{}' returned unparseable response: {}", query, e.getMessage());
       return List.of();
     }
   }

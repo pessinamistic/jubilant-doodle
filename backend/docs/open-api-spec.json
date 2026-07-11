@@ -1,0 +1,3724 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Port Wrangler API",
+    "description": "REST API for managing and deploying local database instances. Supports PostgreSQL, MySQL, Redis, MongoDB, Elasticsearch and more.",
+    "license": {
+      "name": "MIT"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api",
+      "description": "Generated server url"
+    }
+  ],
+  "paths": {
+    "/templates/{id}": {
+      "get": {
+        "tags": [
+          "config-template-controller"
+        ],
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config-template-controller"
+        ],
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "config-template-controller"
+        ],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/instances/{id}/reimport": {
+      "put": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "reImportInstance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates": {
+      "get": {
+        "tags": [
+          "config-template-controller"
+        ],
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigTemplateResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "config-template-controller"
+        ],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates/{id}/deploy": {
+      "post": {
+        "tags": [
+          "config-template-controller"
+        ],
+        "operationId": "deploy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployFromTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/runtime/unload": {
+      "post": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "unload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/runtime/settings": {
+      "post": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/models/runtime/pull": {
+      "post": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "pull",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/models/runtime/load": {
+      "post": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "load",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/runtime/delete": {
+      "post": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "delete_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "list_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InstanceResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "deploy_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/untrack": {
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "untrack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/instances/{id}/stop": {
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/start": {
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "start",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/retrack": {
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "retrack",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/sync": {
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "sync",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/instances/import": {
+      "post": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "importContainer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/tools/{dbType}/refresh": {
+      "post": {
+        "tags": [
+          "image-controller"
+        ],
+        "operationId": "refreshImageTool",
+        "parameters": [
+          {
+            "name": "dbType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DbType.POSTGRESQL",
+                "DbType.MYSQL",
+                "DbType.H2",
+                "DbType.MARIADB",
+                "DbType.MSSQL",
+                "DbType.MONGODB",
+                "DbType.COUCHDB",
+                "DbType.NEO4J",
+                "DbType.DYNAMODB_LOCAL",
+                "DbType.REDIS",
+                "DbType.CASSANDRA",
+                "DbType.CLICKHOUSE",
+                "DbType.ELASTICSEARCH",
+                "DbType.RABBITMQ",
+                "DbType.KAFKA",
+                "DbType.CONDUKTOR",
+                "DbType.GRAFANA",
+                "DbType.PROMETHEUS",
+                "DbType.LOKI",
+                "DbType.MINIO",
+                "DbType.KEYCLOAK",
+                "DbType.VAULT",
+                "DbType.NGINX",
+                "DbType.ADMINER",
+                "DbType.PGADMIN",
+                "DbType.OLLAMA"
+              ]
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/refresh": {
+      "post": {
+        "tags": [
+          "image-controller"
+        ],
+        "operationId": "refreshImages",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "get_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "remove",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "rename",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/sessions/{id}": {
+      "delete": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "delete_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "rename_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system": {
+      "get": {
+        "tags": [
+          "operating-system-controller"
+        ],
+        "operationId": "systemInfo",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/stats": {
+      "get": {
+        "tags": [
+          "operating-system-controller"
+        ],
+        "operationId": "systemStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemDbStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/metrics/history": {
+      "get": {
+        "tags": [
+          "system-metrics-controller"
+        ],
+        "operationId": "history",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/metrics/docker-status": {
+      "get": {
+        "tags": [
+          "system-metrics-controller"
+        ],
+        "operationId": "dockerStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/metrics/activity": {
+      "get": {
+        "tags": [
+          "system-metrics-controller"
+        ],
+        "operationId": "activity",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentActivityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/host-metrics": {
+      "get": {
+        "tags": [
+          "host-metrics-controller"
+        ],
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostMetricsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/suggestions": {
+      "get": {
+        "tags": [
+          "model-cookbook-controller"
+        ],
+        "operationId": "suggestions",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CHAT",
+                "CODE",
+                "EMBEDDING",
+                "VISION",
+                "REASONING"
+              ]
+            }
+          },
+          {
+            "name": "compat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelSuggestion"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/runtime": {
+      "get": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "dashboard",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeDashboard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/runtime/detail": {
+      "get": {
+        "tags": [
+          "model-runtime-controller"
+        ],
+        "operationId": "detail",
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeModelDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/profile": {
+      "get": {
+        "tags": [
+          "model-cookbook-controller"
+        ],
+        "operationId": "profile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/library-search": {
+      "get": {
+        "tags": [
+          "model-cookbook-controller"
+        ],
+        "operationId": "librarySearch",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OllamaLibraryModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/compare": {
+      "get": {
+        "tags": [
+          "model-comparison-controller"
+        ],
+        "operationId": "compare",
+        "parameters": [
+          {
+            "name": "prompt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelA",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelB",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelC",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "baseUrl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServerSentEventComparisonChunk"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/spring-config": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "springConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/pipeline": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "pipeline",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/logs": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "logs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tail",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/container-metrics": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "containerMetrics",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerMetricsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/{id}/connection-string": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "connectionString",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/stats": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "stats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instances/discover": {
+      "get": {
+        "tags": [
+          "db-instance-controller"
+        ],
+        "operationId": "discover",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveredContainerDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/tracking": {
+      "get": {
+        "tags": [
+          "image-controller"
+        ],
+        "operationId": "imageTracking",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageCheckResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/tools/{dbType}": {
+      "get": {
+        "tags": [
+          "image-controller"
+        ],
+        "operationId": "imageToolDetails",
+        "parameters": [
+          {
+            "name": "dbType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DbType.POSTGRESQL",
+                "DbType.MYSQL",
+                "DbType.H2",
+                "DbType.MARIADB",
+                "DbType.MSSQL",
+                "DbType.MONGODB",
+                "DbType.COUCHDB",
+                "DbType.NEO4J",
+                "DbType.DYNAMODB_LOCAL",
+                "DbType.REDIS",
+                "DbType.CASSANDRA",
+                "DbType.CLICKHOUSE",
+                "DbType.ELASTICSEARCH",
+                "DbType.RABBITMQ",
+                "DbType.KAFKA",
+                "DbType.CONDUKTOR",
+                "DbType.GRAFANA",
+                "DbType.PROMETHEUS",
+                "DbType.LOKI",
+                "DbType.MINIO",
+                "DbType.KEYCLOAK",
+                "DbType.VAULT",
+                "DbType.NGINX",
+                "DbType.ADMINER",
+                "DbType.PGADMIN",
+                "DbType.OLLAMA"
+              ]
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageToolDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/summary": {
+      "get": {
+        "tags": [
+          "image-controller"
+        ],
+        "operationId": "imageSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageToolSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/check": {
+      "get": {
+        "tags": [
+          "image-controller"
+        ],
+        "operationId": "checkImage",
+        "parameters": [
+          {
+            "name": "dbType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DbType.POSTGRESQL",
+                "DbType.MYSQL",
+                "DbType.H2",
+                "DbType.MARIADB",
+                "DbType.MSSQL",
+                "DbType.MONGODB",
+                "DbType.COUCHDB",
+                "DbType.NEO4J",
+                "DbType.DYNAMODB_LOCAL",
+                "DbType.REDIS",
+                "DbType.CASSANDRA",
+                "DbType.CLICKHOUSE",
+                "DbType.ELASTICSEARCH",
+                "DbType.RABBITMQ",
+                "DbType.KAFKA",
+                "DbType.CONDUKTOR",
+                "DbType.GRAFANA",
+                "DbType.PROMETHEUS",
+                "DbType.LOKI",
+                "DbType.MINIO",
+                "DbType.KEYCLOAK",
+                "DbType.VAULT",
+                "DbType.NGINX",
+                "DbType.ADMINER",
+                "DbType.PGADMIN",
+                "DbType.OLLAMA"
+              ]
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageCheckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/export/docker-compose": {
+      "get": {
+        "tags": [
+          "compose-export-controller"
+        ],
+        "operationId": "dockerCompose",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/x-yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/stream": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "stream",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "baseUrl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServerSentEventChatToken"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/sessions": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "listSessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatSessionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/sessions/{id}/messages": {
+      "get": {
+        "tags": [
+          "chat-controller"
+        ],
+        "operationId": "history_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatMessageResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/agent/stream": {
+      "get": {
+        "tags": [
+          "agent-chat-controller"
+        ],
+        "operationId": "stream_1",
+        "parameters": [
+          {
+            "name": "message",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "baseUrl",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "approve",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServerSentEventAgentEvent"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog": {
+      "get": {
+        "tags": [
+          "catalog-controller"
+        ],
+        "operationId": "catalog",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DbDefinition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/{dbType}/versions": {
+      "get": {
+        "tags": [
+          "catalog-controller"
+        ],
+        "operationId": "catalogVersions",
+        "parameters": [
+          {
+            "name": "dbType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DbType.POSTGRESQL",
+                "DbType.MYSQL",
+                "DbType.H2",
+                "DbType.MARIADB",
+                "DbType.MSSQL",
+                "DbType.MONGODB",
+                "DbType.COUCHDB",
+                "DbType.NEO4J",
+                "DbType.DYNAMODB_LOCAL",
+                "DbType.REDIS",
+                "DbType.CASSANDRA",
+                "DbType.CLICKHOUSE",
+                "DbType.ELASTICSEARCH",
+                "DbType.RABBITMQ",
+                "DbType.KAFKA",
+                "DbType.CONDUKTOR",
+                "DbType.GRAFANA",
+                "DbType.PROMETHEUS",
+                "DbType.LOKI",
+                "DbType.MINIO",
+                "DbType.KEYCLOAK",
+                "DbType.VAULT",
+                "DbType.NGINX",
+                "DbType.ADMINER",
+                "DbType.PGADMIN",
+                "DbType.OLLAMA"
+              ]
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ConfigTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "hostPort": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 65535,
+            "minimum": 1024
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "databaseName": {
+            "type": "string"
+          },
+          "extraEnvJson": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dbType",
+          "name",
+          "version"
+        ]
+      },
+      "ConfigTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "dbTypeDisplay": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "hostPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "databaseName": {
+            "type": "string"
+          },
+          "extraEnvJson": {
+            "type": "string"
+          },
+          "deployCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ReImportRequest": {
+        "type": "object",
+        "properties": {
+          "containerId": {
+            "type": "string"
+          },
+          "containerName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "containerId",
+          "containerName"
+        ]
+      },
+      "InstanceResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "dbTypeDisplay": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "hostPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "databaseName": {
+            "type": "string"
+          },
+          "deploymentConfigId": {
+            "type": "string"
+          },
+          "containerId": {
+            "type": "string"
+          },
+          "containerName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "InstanceStatus.DEPLOYING",
+              "InstanceStatus.RUNNING",
+              "InstanceStatus.RESTARTING",
+              "InstanceStatus.STOPPED",
+              "InstanceStatus.ERROR",
+              "InstanceStatus.REMOVING",
+              "InstanceStatus.REMOVED",
+              "InstanceStatus.UNTRACKED"
+            ]
+          },
+          "deployMethod": {
+            "type": "string",
+            "enum": [
+              "DeployMethod.DOCKER",
+              "DeployMethod.HOMEBREW",
+              "DeployMethod.APT",
+              "DeployMethod.CHOCOLATEY",
+              "DeployMethod.WINGET",
+              "DeployMethod.EMBEDDED"
+            ]
+          },
+          "dataDirectory": {
+            "type": "string"
+          },
+          "connectionString": {
+            "type": "string"
+          },
+          "connectionStringMasked": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "isImported": {
+            "type": "boolean"
+          },
+          "latestPipelineId": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "templateName": {
+            "type": "string"
+          }
+        }
+      },
+      "DeployFromTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "instanceName": {
+            "type": "string"
+          },
+          "hostPort": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 65535,
+            "minimum": 1024
+          }
+        },
+        "required": [
+          "instanceName"
+        ]
+      },
+      "ModelActionRequest": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "temperature": {
+            "type": "number",
+            "format": "double"
+          },
+          "numCtx": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "keepAlive": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportRequest": {
+        "type": "object",
+        "properties": {
+          "containerId": {
+            "type": "string"
+          },
+          "containerName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dbType": {
+            "type": "string"
+          },
+          "hostPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "containerPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "databaseName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatSessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "turnCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AppInfo": {
+        "type": "object",
+        "properties": {
+          "uptimeSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "DbInfo": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "databaseName": {
+            "type": "string"
+          },
+          "dbSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "JvmInfo": {
+        "type": "object",
+        "properties": {
+          "heapUsedMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "heapMaxMb": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PoolInfo": {
+        "type": "object",
+        "properties": {
+          "maxSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeConnections": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "idleConnections": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingThreads": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalConnections": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SchemaInfo": {
+        "type": "object",
+        "properties": {
+          "tableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TableStat"
+            }
+          }
+        }
+      },
+      "SystemDbStatsResponse": {
+        "type": "object",
+        "properties": {
+          "db": {
+            "$ref": "#/components/schemas/DbInfo"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/SchemaInfo"
+          },
+          "pool": {
+            "$ref": "#/components/schemas/PoolInfo"
+          },
+          "app": {
+            "$ref": "#/components/schemas/AppInfo"
+          },
+          "jvm": {
+            "$ref": "#/components/schemas/JvmInfo"
+          }
+        }
+      },
+      "TableStat": {
+        "type": "object",
+        "properties": {
+          "tableName": {
+            "type": "string"
+          },
+          "rowCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MetricSample": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "heapUsedMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "heapMaxMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "heapPct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "poolActive": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "poolMax": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "poolPct": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pgDbSizeMb": {
+            "type": "number",
+            "format": "double"
+          },
+          "pgActiveConns": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "MetricsHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricSample"
+            }
+          },
+          "windowSeconds": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DockerStatus": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "dockerHost": {
+            "type": "string"
+          },
+          "errorMessage": {
+            "type": "string"
+          }
+        }
+      },
+      "DayCount": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DeploymentActivityResponse": {
+        "type": "object",
+        "properties": {
+          "deploymentsByDay": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayCount"
+            }
+          },
+          "instancesByDbType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabelCount"
+            }
+          },
+          "instancesByStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabelCount"
+            }
+          }
+        }
+      },
+      "LabelCount": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CpuMetrics": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "physicalCores": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "logicalCores": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalLoadPct": {
+            "type": "number",
+            "format": "double"
+          },
+          "perCoreLoadPct": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "loadAverage": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "maxFreqHz": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentFreqHz": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "GpuMetrics": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "vramBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "utilizationPct": {
+            "type": "number",
+            "format": "double"
+          },
+          "memoryUsedBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tempC": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "HostInfo": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string"
+          },
+          "os": {
+            "type": "string"
+          },
+          "arch": {
+            "type": "string"
+          },
+          "uptimeSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "processCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "threadCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "HostMetricsResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "host": {
+            "$ref": "#/components/schemas/HostInfo"
+          },
+          "cpu": {
+            "$ref": "#/components/schemas/CpuMetrics"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/MemoryMetrics"
+          },
+          "sensors": {
+            "$ref": "#/components/schemas/SensorMetrics"
+          },
+          "gpus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GpuMetrics"
+            }
+          }
+        }
+      },
+      "MemoryMetrics": {
+        "type": "object",
+        "properties": {
+          "totalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usedBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "availableBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usedPct": {
+            "type": "number",
+            "format": "double"
+          },
+          "swapTotalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "swapUsedBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SensorMetrics": {
+        "type": "object",
+        "properties": {
+          "cpuTempC": {
+            "type": "number",
+            "format": "double"
+          },
+          "fanSpeedsRpm": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "cpuVoltage": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "ModelDefinition": {
+        "type": "object",
+        "properties": {
+          "ollamaTag": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHAT",
+              "CODE",
+              "EMBEDDING",
+              "VISION",
+              "REASONING"
+            ]
+          },
+          "paramsBillions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultQuant": {
+            "type": "string",
+            "enum": [
+              "Q4_K_M",
+              "Q5_K_M",
+              "Q6_K",
+              "Q8_0",
+              "F16",
+              "MXFP4"
+            ]
+          },
+          "minVramMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "minRamMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": {
+            "type": "string"
+          },
+          "toolCalling": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ModelSuggestion": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/ModelDefinition"
+          },
+          "compatibility": {
+            "type": "string",
+            "enum": [
+              "FAST",
+              "OK",
+              "CPU_ONLY",
+              "TOO_LARGE"
+            ]
+          },
+          "speedTier": {
+            "type": "string"
+          }
+        }
+      },
+      "PullState": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completedBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RuntimeDashboard": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "gpuVendor": {
+            "type": "string"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "managedInstanceName": {
+            "type": "string"
+          },
+          "managedInstanceStatus": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuntimeModelView"
+            }
+          },
+          "pulls": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PullState"
+            }
+          }
+        }
+      },
+      "RuntimeModelView": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantization": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "loaded": {
+            "type": "boolean"
+          },
+          "sizeVramBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "temperature": {
+            "type": "number",
+            "format": "double"
+          },
+          "numCtx": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "keepAlive": {
+            "type": "string"
+          }
+        }
+      },
+      "ModelShow": {
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "modifiedAt": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "families": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parameterSize": {
+            "type": "string"
+          },
+          "quantizationLevel": {
+            "type": "string"
+          },
+          "architecture": {
+            "type": "string"
+          },
+          "contextLength": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "embeddingLength": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "parameterCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RuntimeModelDetail": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "baseUrl": {
+            "type": "string"
+          },
+          "managedInstanceId": {
+            "type": "string"
+          },
+          "managedInstanceName": {
+            "type": "string"
+          },
+          "managedInstanceStatus": {
+            "type": "string"
+          },
+          "gpuVendor": {
+            "type": "string"
+          },
+          "model": {
+            "$ref": "#/components/schemas/RuntimeModelView"
+          },
+          "show": {
+            "$ref": "#/components/schemas/ModelShow"
+          },
+          "pull": {
+            "$ref": "#/components/schemas/PullState"
+          }
+        }
+      },
+      "SystemProfile": {
+        "type": "object",
+        "properties": {
+          "gpuVendor": {
+            "type": "string",
+            "enum": [
+              "NVIDIA",
+              "AMD",
+              "APPLE",
+              "NONE"
+            ]
+          },
+          "vramMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalRamMb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cpuCores": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "containerGpu": {
+            "type": "boolean"
+          },
+          "appleSilicon": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OllamaLibraryModel": {
+        "type": "object",
+        "properties": {
+          "modelIdentifier": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "capability": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pulls": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tagCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "officialSource": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerSentEventComparisonChunk": {
+        "type": "object"
+      },
+      "PipelineResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "configId": {
+            "type": "string"
+          },
+          "deploymentContainerId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PipelineStatus.PENDING",
+              "PipelineStatus.RUNNING",
+              "PipelineStatus.SUCCESS",
+              "PipelineStatus.FAILED"
+            ]
+          },
+          "errorCode": {
+            "type": "string",
+            "enum": [
+              "DeployErrorCode.IMAGE_NOT_FOUND",
+              "DeployErrorCode.IMAGE_PULL_TIMEOUT",
+              "DeployErrorCode.IMAGE_PULL_FAILED",
+              "DeployErrorCode.PORT_ALREADY_IN_USE",
+              "DeployErrorCode.VOLUME_CREATE_FAILED",
+              "DeployErrorCode.CONTAINER_NAME_CONFLICT",
+              "DeployErrorCode.CONTAINER_CREATE_FAILED",
+              "DeployErrorCode.CONTAINER_START_FAILED",
+              "DeployErrorCode.CONTAINER_EXITED_IMMEDIATELY",
+              "DeployErrorCode.DOCKER_NOT_AVAILABLE",
+              "DeployErrorCode.MODEL_PULL_FAILED",
+              "DeployErrorCode.UNEXPECTED_ERROR"
+            ]
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PipelineStepResponse"
+            }
+          }
+        }
+      },
+      "PipelineStepResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stepType": {
+            "type": "string",
+            "enum": [
+              "StepType.PULL_IMAGE",
+              "StepType.CREATE_CONTAINER",
+              "StepType.START_CONTAINER",
+              "StepType.FINALISE",
+              "StepType.PULL_MODEL"
+            ]
+          },
+          "stepOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "StepStatus.PENDING",
+              "StepStatus.RUNNING",
+              "StepStatus.SUCCESS",
+              "StepStatus.FAILED",
+              "StepStatus.SKIPPED"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ContainerMetricsResponse": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "cpuPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "cpuCores": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cpuThrottledPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "memUsageBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memMaxUsageBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memLimitBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "netRxBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netTxBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netRxPackets": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netTxPackets": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netRxErrors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "netTxErrors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "blockReadBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "blockWriteBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "blockReadOps": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "blockWriteOps": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pids": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pidsLimit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "restartCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "image": {
+            "type": "string"
+          },
+          "containerState": {
+            "type": "string"
+          },
+          "healthStatus": {
+            "type": "string"
+          },
+          "oomKilled": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "uptimeSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "portReachable": {
+            "type": "boolean"
+          },
+          "portLatencyMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "toolMetrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "InstanceStatsResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "running": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "restarting": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stopped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deploying": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "removing": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "removed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "untracked": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DiscoveredContainerDto": {
+        "type": "object",
+        "properties": {
+          "containerId": {
+            "type": "string"
+          },
+          "containerName": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "suggestedDbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "suggestedDbTypeDisplay": {
+            "type": "string"
+          },
+          "suggestedDbVersion": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "suggestedHostPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "containerPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ImageCheckResponse": {
+        "type": "object",
+        "properties": {
+          "dbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "imageRef": {
+            "type": "string"
+          },
+          "dockerHubManaged": {
+            "type": "boolean"
+          },
+          "localStatus": {
+            "type": "string",
+            "enum": [
+              "ImageAvailabilityState.AVAILABLE",
+              "ImageAvailabilityState.MISSING",
+              "ImageAvailabilityState.UNKNOWN",
+              "ImageAvailabilityState.NOT_APPLICABLE"
+            ]
+          },
+          "dockerHubStatus": {
+            "type": "string",
+            "enum": [
+              "ImageAvailabilityState.AVAILABLE",
+              "ImageAvailabilityState.MISSING",
+              "ImageAvailabilityState.UNKNOWN",
+              "ImageAvailabilityState.NOT_APPLICABLE"
+            ]
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ImageValidationDecision.ALLOW",
+              "ImageValidationDecision.ALLOW_WITH_WARNING",
+              "ImageValidationDecision.BLOCK"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "localCheckedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dockerHubCheckedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImageToolDetailResponse": {
+        "type": "object",
+        "properties": {
+          "dbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "totalTags": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warningCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blockedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "localAvailableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dockerHubAvailableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageCheckResponse"
+            }
+          }
+        }
+      },
+      "ImageToolSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "dbType": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "totalTags": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warningCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blockedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "localAvailableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dockerHubAvailableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ServerSentEventChatToken": {
+        "type": "object"
+      },
+      "ChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "role": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ServerSentEventAgentEvent": {
+        "type": "object"
+      },
+      "DbDefinition": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "DbType.POSTGRESQL",
+              "DbType.MYSQL",
+              "DbType.H2",
+              "DbType.MARIADB",
+              "DbType.MSSQL",
+              "DbType.MONGODB",
+              "DbType.COUCHDB",
+              "DbType.NEO4J",
+              "DbType.DYNAMODB_LOCAL",
+              "DbType.REDIS",
+              "DbType.CASSANDRA",
+              "DbType.CLICKHOUSE",
+              "DbType.ELASTICSEARCH",
+              "DbType.RABBITMQ",
+              "DbType.KAFKA",
+              "DbType.CONDUKTOR",
+              "DbType.GRAFANA",
+              "DbType.PROMETHEUS",
+              "DbType.LOKI",
+              "DbType.MINIO",
+              "DbType.KEYCLOAK",
+              "DbType.VAULT",
+              "DbType.NGINX",
+              "DbType.ADMINER",
+              "DbType.PGADMIN",
+              "DbType.OLLAMA"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "dockerImage": {
+            "type": "string"
+          },
+          "defaultPort": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "credentialEnvVars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVar"
+            }
+          },
+          "connectionStringTemplate": {
+            "type": "string"
+          },
+          "dataVolumePath": {
+            "type": "string"
+          },
+          "supportsDatabase": {
+            "type": "boolean"
+          },
+          "supportsUsername": {
+            "type": "boolean"
+          },
+          "supportsPassword": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EnvVar": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "PASSWORD",
+              "DATABASE"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
