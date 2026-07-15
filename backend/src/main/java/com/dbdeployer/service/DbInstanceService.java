@@ -12,6 +12,7 @@ import com.dbdeployer.deploy.BrewDeployEngine;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.deploy.ToolMetricsProbe;
+import com.dbdeployer.event.InstanceRemovedEvent;
 import com.dbdeployer.model.DbType;
 import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
@@ -21,6 +22,7 @@ import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.PipelineOrchestrator;
 import com.dbdeployer.pipeline.store.DeploymentPipelineRepository;
 import com.dbdeployer.pipeline.store.PipelineStepRepository;
+import com.dbdeployer.runtime.ModelRuntimeService;
 import com.dbdeployer.store.DeployedContainerRepository;
 import com.dbdeployer.store.DeploymentConfigRepository;
 import com.dbdeployer.validations.DeploymentValidations;
@@ -36,6 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +55,8 @@ public class DbInstanceService {
   private final DeployedContainerRepository containerRepo;
   private final DeploymentPipelineRepository pipelineRepo;
   private final DeploymentValidations deploymentValidations;
+  private final ModelRuntimeService modelRuntimeService;
+  private final ApplicationEventPublisher events;
 
   public DbInstanceService(
       BrewDeployEngine brew,
@@ -62,7 +67,9 @@ public class DbInstanceService {
       DeploymentConfigRepository configRepo,
       DeployedContainerRepository containerRepo,
       DeploymentPipelineRepository pipelineRepo,
-      DeploymentValidations deploymentValidations) {
+      DeploymentValidations deploymentValidations,
+      ModelRuntimeService modelRuntimeService,
+      ApplicationEventPublisher events) {
     this.brew = brew;
     this.docker = docker;
     this.toolMetrics = toolMetrics;
@@ -72,6 +79,8 @@ public class DbInstanceService {
     this.containerRepo = containerRepo;
     this.pipelineRepo = pipelineRepo;
     this.deploymentValidations = deploymentValidations;
+    this.modelRuntimeService = modelRuntimeService;
+    this.events = events;
   }
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -271,6 +280,12 @@ public class DbInstanceService {
     container.setStatus(InstanceStatus.REMOVED);
     container.setRemovedAt(Instant.now());
     containerRepo.save(container);
+
+    // If this instance backed a registered LLM runtime, deregister it.
+    modelRuntimeService.removeForConfig(config.getId());
+
+    // Fan out (RAG document cleanup) without coupling this service to the AI layer.
+    events.publishEvent(new InstanceRemovedEvent(container.getId()));
   }
 
   /**

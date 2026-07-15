@@ -1,0 +1,20 @@
+# Compose override: adds a Caddy reverse proxy so the whole app is reachable
+# at http://portwrangler.local (port 80) — UI at the root, API under /api.
+#
+# Used automatically by start_macos_setup.sh / update.sh:
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml up -d
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: portwrangler-caddy
+    restart: unless-stopped
+    ports:
+      # Loopback-only by default — portwrangler.local resolves to 127.0.0.1.
+      - "${APP_BIND:-127.0.0.1}:${HTTP_PORT:-80}:80"
+    environment:
+      PORTWRANGLER_DOMAIN: ${PORTWRANGLER_DOMAIN:-portwrangler.local}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - app
+      - frontend

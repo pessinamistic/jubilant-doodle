@@ -31,6 +31,23 @@ dependencies {
     implementation("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
+    // ── Spring AI 1.1.8 GA (Phase 3+) ────────────────────────────────────────
+    // BOM pins all Spring AI artifacts to the 1.1.x GA line ("GA only" constraint).
+    // Bumped 1.0.3 → 1.1.8 to get the modern Streamable-HTTP MCP server transport
+    // (protocol=STREAMABLE), which replaces the deprecated SSE transport.
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.1.8"))
+    // Ollama: chat + embeddings in one starter.
+    implementation("org.springframework.ai:spring-ai-starter-model-ollama")
+    // JDBC-backed chat memory window (verbatim turns) → SPRING_AI_CHAT_MEMORY table.
+    implementation("org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc")
+    // pgvector vector store (extension on the existing Postgres 16) — Phase 4 RAG.
+    implementation("org.springframework.ai:spring-ai-starter-vector-store-pgvector")
+    // Phase 5: expose InfrastructureTools as an MCP server (VS Code / Claude / Cursor).
+    // WebMVC starter drives the Streamable-HTTP transport when protocol=STREAMABLE
+    // (see application.yml). Single endpoint at ${context-path}/mcp — no separate SSE
+    // message endpoint, so the servlet context-path advertising bug does not apply.
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+
     // PostgreSQL driver — used by the auto-provisioned system DB container (SystemDbProvisioner)
     runtimeOnly("org.postgresql:postgresql")
 
@@ -48,8 +65,16 @@ dependencies {
     // JSON
     implementation("com.fasterxml.jackson.core:jackson-databind")
 
-    // Utilities
+     // OpenAPI / Swagger — auto-generates API documentation from Spring MVC annotations.
+     // UI at /api/swagger-ui/index.html, spec JSON at /api/v3/api-docs
+     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+
+     // Utilities
     implementation("org.apache.commons:commons-lang3:3.17.0")
+
+    // OSHI — cross-platform (macOS/Windows/Linux) hardware & OS metrics for the
+    // System Health page: CPU load (total + per-core), memory, sensors, GPU inventory.
+    implementation("com.github.oshi:oshi-core:6.8.0")
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")

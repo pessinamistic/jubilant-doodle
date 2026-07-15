@@ -1,29 +1,52 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getInstances, getStats } from '../api/client'
+import { getInstances, getStats, getRuntimeDashboard } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { useUserProfile } from '../hooks/useUserProfile'
 import {
+  BookOpen,
+  Bot,
   CircleCheck,
   CircleOff,
   CircleX,
   Clock3,
   Database,
+  Gauge,
+  GitCompare,
+  MessageSquare,
   Plus,
   RefreshCw,
   Settings,
+  Sparkles,
   TriangleAlert,
   Play,
   Zap,
 } from 'lucide-react'
 
+// Keep ids in sync with LLM_OPTIONS in WelcomeWizard.
+const LLM_FEATURES = [
+  { id: 'CHAT',     to: '/chat',    icon: MessageSquare, title: 'Assistant', desc: 'Chat with any model running on your machine.' },
+  { id: 'AGENT',    to: '/agent',   icon: Bot,           title: 'Agent',     desc: 'A tool-using agent that works your local stack.' },
+  { id: 'COMPARE',  to: '/compare', icon: GitCompare,    title: 'Compare',   desc: 'Same prompt, two models, side by side.' },
+  { id: 'COOKBOOK', to: '/models',  icon: BookOpen,      title: 'Cookbook',  desc: 'Models scored against your detected hardware.' },
+  { id: 'RUNTIME',  to: '/runtime', icon: Gauge,         title: 'Runtime',   desc: 'Load, pause, pull and delete models.' },
+]
+
+const HERO_COPY = {
+  db:   { line1: 'Deploy & manage databases', line2: 'in seconds',        blurb: 'Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine using Docker — no config headaches.' },
+  llm:  { line1: 'Run local models',          line2: 'on your terms',     blurb: 'Chat, run agents and compare models — everything stays on your machine, sized to your hardware.' },
+  both: { line1: 'Databases & local LLMs,',   line2: 'one workbench',     blurb: 'Deploy databases with one click and run local models beside them — all on your machine, no config headaches.' },
+}
+
 export function HomePage() {
   const [instances, setInstances] = useState([])
   const [stats, setStats]         = useState(null)
+  const [llm, setLlm]             = useState(null)   // runtime dashboard, null until loaded
   const navigate = useNavigate()
   const openDeployPage = useCallback(() => navigate('/deploy'), [navigate])
   const { profile } = useUserProfile()
+  const focus = profile?.focus ?? 'both'
 
   const load = useCallback(async () => {
     try {
@@ -31,6 +54,9 @@ export function HomePage() {
       setInstances(inst)
       setStats(statsData)
     } catch { /* silent */ }
+    try {
+      setLlm(await getRuntimeDashboard())
+    } catch { /* runtime optional — keep last known state */ }
   }, [])
 
   useEffect(() => {
@@ -46,6 +72,18 @@ export function HomePage() {
     .filter(i => i.status !== 'REMOVED')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5)
+
+  const models       = llm?.models ?? []
+  const loadedModels = models.filter(m => m.loaded)
+  const pullCount    = Object.keys(llm?.pulls ?? {}).length
+
+  const favTools = profile?.favTools ?? []
+  const favLlm   = (profile?.favLlm ?? [])
+    .map(id => LLM_FEATURES.find(f => f.id === id))
+    .filter(Boolean)
+  const hasPins = favTools.length > 0 || favLlm.length > 0
+
+  const hero = HERO_COPY[focus] ?? HERO_COPY.both
 
   const statCards = stats ? [
     { label: 'Total Instances', value: stats.total,    icon: <Database className="w-5 h-5" />, color: 'text-[var(--status-deploying)]', bg: 'bg-[var(--status-deploying-bg)]', border: 'border-[var(--status-deploying-border)]' },
@@ -74,101 +112,165 @@ export function HomePage() {
               color: 'var(--status-deploying)',
             }}>
               <Zap className="w-3.5 h-3.5" />
-              {profile ? `${greetingFor(new Date())}, ${profile.name}` : 'Local Developer Database Manager'}
+              {profile ? `${greetingFor(new Date())}, ${profile.name}` : 'Local databases & LLMs, self-served'}
             </div>
             <h1 className="text-4xl xl:text-5xl font-bold text-[var(--text-primary)] mb-4 tracking-tight animate-fade-up delay-100">
-              {profile ? <>Ready to wrangle some<br/></> : <>Deploy &amp; manage databases<br/></>}
+              {profile ? <>Ready to wrangle some<br/></> : <>{hero.line1}<br/></>}
               <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--status-deploying)] bg-clip-text text-transparent">
-                {profile ? 'ports today?' : 'in seconds'}
+                {profile ? (focus === 'llm' ? 'models today?' : focus === 'both' ? 'ports & prompts today?' : 'ports today?') : hero.line2}
               </span>
             </h1>
             <p className="text-[var(--text-muted)] text-lg mb-8 max-w-lg animate-fade-up delay-150">
               {profile?.role
-                ? `Tools tuned for a ${profile.role.toLowerCase()}. Spin up databases on your machine — no config headaches.`
-                : 'Spin up PostgreSQL, MySQL, MongoDB, Redis and more on your local machine using Docker - no config headaches.'}
+                ? `Tools tuned for a ${profile.role.toLowerCase()}. ${hero.blurb}`
+                : hero.blurb}
             </p>
             <div className="flex items-center gap-3 flex-wrap animate-fade-up delay-200">
-              <button onClick={openDeployPage}
-                className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
-                <Plus className="w-5 h-5" />
-                Deploy a Database
-              </button>
-              <Link to="/instances" className="btn-secondary flex items-center gap-2 px-6 py-2.5 text-base">
-                <Database className="w-5 h-5" />
-                View Instances
-              </Link>
+              {focus === 'llm' ? (
+                <>
+                  <Link to="/chat" className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
+                    <MessageSquare className="w-5 h-5" />
+                    Open Assistant
+                  </Link>
+                  <Link to="/models" className="btn-secondary flex items-center gap-2 px-6 py-2.5 text-base">
+                    <Sparkles className="w-5 h-5" />
+                    Browse Models
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button onClick={openDeployPage}
+                    className="btn-primary flex items-center gap-2 px-6 py-2.5 text-base">
+                    <Plus className="w-5 h-5" />
+                    Deploy a Database
+                  </button>
+                  {focus === 'both' ? (
+                    <Link to="/chat" className="btn-secondary flex items-center gap-2 px-6 py-2.5 text-base">
+                      <MessageSquare className="w-5 h-5" />
+                      Open Assistant
+                    </Link>
+                  ) : (
+                    <Link to="/instances" className="btn-secondary flex items-center gap-2 px-6 py-2.5 text-base">
+                      <Database className="w-5 h-5" />
+                      View Instances
+                    </Link>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
-          {/* Right — quick-step card */}
+          {/* Right — live AI snapshot, or quick-step card */}
           <div className="hidden lg:flex flex-col gap-3 w-72 xl:w-80 shrink-0 stagger-children">
-            {[
-              { icon: <Plus className="w-4 h-4" />, step: '1', title: 'Click Deploy', desc: 'Choose a database from the catalog.' },
-              { icon: <Settings className="w-4 h-4" />, step: '2', title: 'Configure', desc: 'Set port, credentials & name.' },
-              { icon: <CircleCheck className="w-4 h-4" />, step: '3', title: 'Connect', desc: 'Copy the connection string and go.' },
-            ].map(card => card.step === '1' ? (
-              <button
-                key={card.step}
-                type="button"
-                onClick={openDeployPage}
-                className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] hover:-translate-y-0.5 transition-all duration-200 text-left cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
-                  background: 'var(--status-deploying-bg)',
-                  borderColor: 'var(--status-deploying-border)',
-                  color: 'var(--status-deploying)',
-                }}>
-                  {card.icon}
-                </div>
-                <div>
-                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Step {card.step}</p>
-                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-0.5">{card.title}</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{card.desc}</p>
-                </div>
-              </button>
+            {focus !== 'db' && llm?.reachable ? (
+              <RuntimeSnapshot models={models} loadedModels={loadedModels} pullCount={pullCount} />
+            ) : focus === 'llm' ? (
+              <QuickSteps
+                steps={[
+                  { icon: <BookOpen className="w-4 h-4" />, step: '1', title: 'Pick a model', desc: 'The Cookbook scores models against your hardware.', to: '/models' },
+                  { icon: <Gauge className="w-4 h-4" />, step: '2', title: 'Pull & load', desc: 'Runtime pulls the weights and loads them into memory.' },
+                  { icon: <MessageSquare className="w-4 h-4" />, step: '3', title: 'Chat', desc: 'Open the Assistant, Agent, or Compare two models.' },
+                ]}
+                navigate={navigate}
+              />
             ) : (
-              <div key={card.step} className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] transition-all duration-200">
-                <div className="w-8 h-8 rounded-[4px] border flex items-center justify-center shrink-0" style={{
-                  background: 'var(--status-deploying-bg)',
-                  borderColor: 'var(--status-deploying-border)',
-                  color: 'var(--status-deploying)',
-                }}>
-                  {card.icon}
-                </div>
-                <div>
-                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Step {card.step}</p>
-                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-0.5">{card.title}</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{card.desc}</p>
-                </div>
-              </div>
-            ))}
+              <QuickSteps
+                steps={[
+                  { icon: <Plus className="w-4 h-4" />, step: '1', title: 'Click Deploy', desc: 'Choose a database from the catalog.', to: '/deploy' },
+                  { icon: <Settings className="w-4 h-4" />, step: '2', title: 'Configure', desc: 'Set port, credentials & name.' },
+                  { icon: <CircleCheck className="w-4 h-4" />, step: '3', title: 'Connect', desc: 'Copy the connection string and go.' },
+                ]}
+                navigate={navigate}
+              />
+            )}
           </div>
         </div>
       </section>
 
-      {/* ── Favorite tools quick deploy ── */}
-      {profile?.favTools?.length > 0 && (
+      {/* ── Pinned favourites (databases + AI shortcuts) ── */}
+      {hasPins && (
         <section className="mb-10 animate-fade-up delay-150">
           <p className="section-label">Your Pinned Tools</p>
           <div className="flex flex-wrap gap-2 stagger-children">
-            {profile.favTools.map(t => (
+            {favTools.map(t => (
               <button
                 key={t}
-                onClick={() => navigate(`/deploy?dbType=${t}`)}
+                onClick={() => navigate(`/deploy?tool=${t}`)}
                 className="brutal-chip px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:-translate-y-0.5 transition-transform animate-fade-up"
               >
                 <Plus className="w-3.5 h-3.5 inline mr-1" />
                 {t.replace('_', ' ')}
               </button>
             ))}
+            {favLlm.map(f => (
+              <button
+                key={f.id}
+                onClick={() => navigate(f.to)}
+                className="brutal-chip px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:-translate-y-0.5 transition-transform animate-fade-up"
+              >
+                <f.icon className="w-3.5 h-3.5 inline mr-1" />
+                {f.title}
+              </button>
+            ))}
           </div>
+        </section>
+      )}
+
+      {/* ── Local AI ── */}
+      {focus !== 'db' && (
+        <section className="mb-10 animate-fade-up delay-200">
+          <div className="flex items-center justify-between mb-4">
+            <p className="section-label mb-0">Local AI</p>
+            {llm && (
+              <span className="text-xs text-[var(--text-muted)]">
+                {llm.reachable
+                  ? <>{loadedModels.length}/{models.length} models loaded{pullCount > 0 && <> · {pullCount} pull{pullCount > 1 ? 's' : ''} in flight</>}</>
+                  : 'Runtime offline — open Runtime to get started'}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 stagger-children">
+            {LLM_FEATURES.map(f => (
+              <Link
+                key={f.id}
+                to={f.to}
+                className="card p-4 flex flex-col gap-2 hover:bg-[var(--bg-surface-2)] hover:-translate-y-0.5 transition-all duration-200 animate-fade-up group"
+              >
+                <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{
+                  background: 'var(--status-deploying-bg)',
+                  borderColor: 'var(--status-deploying-border)',
+                  color: 'var(--status-deploying)',
+                }}>
+                  <f.icon className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">{f.title}</h3>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">{f.desc}</p>
+              </Link>
+            ))}
+          </div>
+          {loadedModels.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <span className="text-xs text-[var(--text-muted)]">Loaded now:</span>
+              {loadedModels.map(m => (
+                <button
+                  key={m.name}
+                  onClick={() => navigate('/chat')}
+                  title={`Chat with ${m.name}`}
+                  className="brutal-chip px-3 py-1.5 text-xs font-mono hover:-translate-y-0.5 transition-transform"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full inline-block mr-1.5 animate-pulse" style={{ backgroundColor: 'var(--status-running)' }} />
+                  {m.name}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
       {/* ── Stat cards ── */}
       {statCards.length > 0 && (
         <section className="mb-10 animate-fade-up delay-200">
-          <p className="section-label">Overview</p>
+          <p className="section-label">Database Overview</p>
           <div className="flex flex-wrap gap-4 stagger-children">
             {statCards.map(s => (
               <Link
@@ -229,51 +331,111 @@ export function HomePage() {
           <p className="section-label">Quick Start</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
             {[
-              { icon: <Plus className="w-5 h-5" />, step: '1', title: 'Click Deploy', desc: 'Choose a database engine from the catalog - PostgreSQL, MySQL, MongoDB, Redis and more.' },
+              { icon: <Plus className="w-5 h-5" />, step: '1', title: 'Click Deploy', desc: 'Choose a database engine from the catalog - PostgreSQL, MySQL, MongoDB, Redis and more.', to: '/deploy' },
               { icon: <Settings className="w-5 h-5" />, step: '2', title: 'Configure', desc: 'Set a port, credentials and database name. Sensible defaults are pre-filled for you.' },
               { icon: <CircleCheck className="w-5 h-5" />, step: '3', title: 'Connect', desc: 'Copy the generated connection string and start building. Your data persists across restarts.' },
-            ].map(card => card.step === '1' ? (
+            ].map(card => card.to ? (
               <button
                 key={card.step}
                 type="button"
-                onClick={openDeployPage}
+                onClick={() => navigate(card.to)}
                 className="card p-5 flex gap-4 animate-fade-up transition-all duration-200 text-left cursor-pointer hover:bg-[var(--bg-surface-2)]"
               >
-                <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
-                  background: 'var(--status-deploying-bg)',
-                  borderColor: 'var(--status-deploying-border)',
-                  color: 'var(--status-deploying)',
-                }}>
-                  {card.icon}
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--text-muted)] mb-1">Step {card.step}</p>
-                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{card.title}</h3>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{card.desc}</p>
-                </div>
+                <StepIcon>{card.icon}</StepIcon>
+                <StepBody card={card} />
               </button>
             ) : (
               <div key={card.step} className="card p-5 flex gap-4 animate-fade-up transition-all duration-200">
-                <div className="w-9 h-9 rounded-[4px] border flex items-center justify-center shrink-0" style={{
-                  background: 'var(--status-deploying-bg)',
-                  borderColor: 'var(--status-deploying-border)',
-                  color: 'var(--status-deploying)',
-                }}>
-                  {card.icon}
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--text-muted)] mb-1">Step {card.step}</p>
-                  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{card.title}</h3>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{card.desc}</p>
-                </div>
+                <StepIcon>{card.icon}</StepIcon>
+                <StepBody card={card} />
               </div>
             ))}
           </div>
         </section>
       )}
-
-      {/* Removed DeployModal as per the new navigation */}
     </AppShell>
+  )
+}
+
+// ── Right-side hero widgets ──────────────────────────────────────────────────
+
+function RuntimeSnapshot({ models, loadedModels, pullCount }) {
+  return (
+    <div className="card p-4 animate-slide-right">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--status-running)' }} />
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">AI Runtime</h3>
+        </div>
+        <Link to="/runtime" className="text-xs text-[var(--status-deploying)] hover:opacity-80 transition-colors">
+          Manage →
+        </Link>
+      </div>
+      <p className="text-xs text-[var(--text-muted)] mb-3">
+        {loadedModels.length}/{models.length} models loaded
+        {pullCount > 0 && <> · {pullCount} pull{pullCount > 1 ? 's' : ''} in flight</>}
+      </p>
+      {loadedModels.length > 0 ? (
+        <div className="space-y-1.5">
+          {loadedModels.slice(0, 3).map(m => (
+            <Link
+              key={m.name}
+              to="/chat"
+              className="flex items-center gap-2 px-2.5 py-2 rounded-[4px] border-2 border-[var(--border-soft)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface-2)] transition-all text-xs font-mono text-[var(--text-primary)] truncate"
+            >
+              <MessageSquare className="w-3.5 h-3.5 shrink-0 text-[var(--status-deploying)]" />
+              <span className="truncate">{m.name}</span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Link to="/models" className="btn-secondary w-full flex items-center justify-center gap-2 text-xs py-2">
+          <Sparkles className="w-3.5 h-3.5" />
+          Find a model that fits
+        </Link>
+      )}
+    </div>
+  )
+}
+
+function QuickSteps({ steps, navigate }) {
+  return steps.map(card => card.to ? (
+    <button
+      key={card.step}
+      type="button"
+      onClick={() => navigate(card.to)}
+      className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] hover:-translate-y-0.5 transition-all duration-200 text-left cursor-pointer"
+    >
+      <StepIcon small>{card.icon}</StepIcon>
+      <StepBody card={card} small />
+    </button>
+  ) : (
+    <div key={card.step} className="card p-4 flex gap-3 items-start animate-slide-right hover:bg-[var(--bg-surface-2)] transition-all duration-200">
+      <StepIcon small>{card.icon}</StepIcon>
+      <StepBody card={card} small />
+    </div>
+  ))
+}
+
+function StepIcon({ children, small }) {
+  return (
+    <div className={`${small ? 'w-8 h-8' : 'w-9 h-9'} rounded-[4px] border flex items-center justify-center shrink-0`} style={{
+      background: 'var(--status-deploying-bg)',
+      borderColor: 'var(--status-deploying-border)',
+      color: 'var(--status-deploying)',
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function StepBody({ card, small }) {
+  return (
+    <div>
+      <p className={`${small ? 'text-[10px] mb-0.5' : 'text-xs mb-1'} text-[var(--text-muted)]`}>Step {card.step}</p>
+      <h3 className={`text-sm font-semibold text-[var(--text-primary)] ${small ? 'mb-0.5' : 'mb-1'}`}>{card.title}</h3>
+      <p className={`text-xs text-[var(--text-muted)] ${small ? '' : 'leading-relaxed'}`}>{card.desc}</p>
+    </div>
   )
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getInstances, getStats } from '../api/client'
+import { getInstances, getStats, exportDockerCompose } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { InstanceCard } from '../components/InstanceCard'
 import { ImportModal } from '../components/ImportModal'
@@ -10,6 +10,7 @@ import {
   CircleX,
   CloudDownload,
   Database,
+  FileDown,
   Play,
   Plus,
   RefreshCw,
@@ -58,6 +59,7 @@ export function InstancesPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [showRemoved, setShowRemoved]     = useState(false)
   const [showUntracked, setShowUntracked] = useState(false)
+  const [exporting, setExporting]         = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +70,26 @@ export function InstancesPage() {
       toast.error('Failed to load instances')
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const handleExportCompose = useCallback(async () => {
+    setExporting(true)
+    try {
+      const blob = await exportDockerCompose()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'docker-compose.yml'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Exported docker-compose.yml')
+    } catch {
+      toast.error('Failed to export docker-compose.yml')
+    } finally {
+      setExporting(false)
     }
   }, [])
 
@@ -215,6 +237,15 @@ export function InstancesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCompose}
+            disabled={exporting}
+            title="Export all instances as a docker-compose.yml"
+            className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? 'Exporting…' : 'Export Compose'}
+          </button>
           <button
             onClick={() => setShowImport(true)}
             className="btn-secondary text-sm"

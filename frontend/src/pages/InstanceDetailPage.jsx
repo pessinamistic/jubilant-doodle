@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getInstance, startInstance, stopInstance, removeInstance, untrackInstance, reTrackInstance, getLogs, getPipeline,
-  getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics,
+  getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics, getSpringConfig,
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
@@ -1543,11 +1543,27 @@ function OverviewTab({ instance }) {
 function ConfigurationTab({ instance }) {
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(null)
+  const [springLoading, setSpringLoading] = useState(false)
 
   const copyValue = async (val, key) => {
     await navigator.clipboard.writeText(val)
     setCopied(key)
     setTimeout(() => setCopied(null), 2000)
+  }
+
+  const copySpringConfig = async () => {
+    setSpringLoading(true)
+    try {
+      const { springConfig } = await getSpringConfig(instance.id)
+      await navigator.clipboard.writeText(springConfig)
+      setCopied('spring')
+      toast.success('Spring config copied')
+      setTimeout(() => setCopied(null), 2000)
+    } catch {
+      toast.error('Failed to copy Spring config')
+    } finally {
+      setSpringLoading(false)
+    }
   }
 
   const sections = [
@@ -1618,7 +1634,20 @@ function ConfigurationTab({ instance }) {
       {/* Connection string full widget */}
       {instance.connectionString && (
         <div className="card p-5">
-          <p className="section-label">Full Connection String</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="section-label mb-0">Full Connection String</p>
+            <button
+              onClick={copySpringConfig}
+              disabled={springLoading}
+              title="Copy a ready-to-paste Spring Boot application.properties block"
+              className="btn-secondary text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {copied === 'spring'
+                ? <ClipboardCheck className="w-3.5 h-3.5" />
+                : <FileText className="w-3.5 h-3.5" />}
+              {springLoading ? 'Copying…' : 'Copy Spring config'}
+            </button>
+          </div>
           <ConnectionString value={instance.connectionString} masked={instance.connectionStringMasked} />
         </div>
       )}

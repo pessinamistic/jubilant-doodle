@@ -1,0 +1,27 @@
+# Caddy config for the Port Wrangler local domain.
+# Plain HTTP on port 80 — no TLS cert warnings for a local dev domain.
+# UI at the root (frontend service), API under /api (app service) — same
+# origin, so no CORS in play. Domain overridable via PORTWRANGLER_DOMAIN.
+http://{$PORTWRANGLER_DOMAIN:portwrangler.local} {
+	handle /api/* {
+		reverse_proxy app:8080 {
+			# Required for SSE streams (agent chat) — disable response buffering.
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+# Convenience: hitting localhost on the Caddy port also works.
+http://localhost {
+	handle /api/* {
+		reverse_proxy app:8080 {
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy frontend:80
+	}
+}

@@ -1,25 +1,36 @@
 package com.dbdeployer.pipeline.step;
 
 import com.dbdeployer.deploy.DockerDeployEngine;
+import com.dbdeployer.event.InstanceDeployedEvent;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.model.StepType;
+import com.dbdeployer.runtime.ModelRuntimeService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
  * Step 4 — Finalise the deployment: verify the container is still running and capture the {@code
- * startedAt} timestamp from Docker.
+ * startedAt} timestamp from Docker. LLM-runtime deployments (Ollama) are additionally registered in
+ * the {@code model_runtime} registry so the model layer can discover them.
  */
 @Slf4j
 @Component
 public class FinaliseStep implements DeployStep {
 
   private final DockerDeployEngine docker;
+  private final ModelRuntimeService modelRuntimeService;
+  private final ApplicationEventPublisher events;
 
-  public FinaliseStep(DockerDeployEngine docker) {
+  public FinaliseStep(
+      DockerDeployEngine docker,
+      ModelRuntimeService modelRuntimeService,
+      ApplicationEventPublisher events) {
     this.docker = docker;
+    this.modelRuntimeService = modelRuntimeService;
+    this.events = events;
   }
 
   @Override
@@ -61,6 +72,16 @@ public class FinaliseStep implements DeployStep {
           com.dbdeployer.pipeline.model.DeployErrorCode.CONTAINER_EXITED_IMMEDIATELY,
           "Container exited immediately after start — status: " + status);
     }
+
+    // Best-effort: a registry failure must never fail an otherwise-healthy deploy.
+    try {
+      modelRuntimeService.registerIfModelRuntime(config, container);
+    } catch (Exception e) {
+      log.warn("[pipeline] model-runtime registration failed: {}", e.getMessage());
+    }
+
+    // Fan out to interested listeners (RAG ingestion) without coupling the pipeline to them.
+    events.publishEvent(new InstanceDeployedEvent(container.getId()));
 
     return "Container is RUNNING";
   }

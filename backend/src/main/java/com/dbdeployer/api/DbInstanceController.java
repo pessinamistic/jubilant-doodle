@@ -157,6 +157,13 @@ public class DbInstanceController {
         "connectionString", connBuilder.build(config), "masked", connBuilder.buildMasked(config));
   }
 
+  /** Get a ready-to-paste Spring Boot application.properties block for an instance */
+  @GetMapping("/{id}/spring-config")
+  public Map<String, String> springConfig(@PathVariable String id) {
+    DeploymentConfig config = configTemplateService.getById(id, true);
+    return Map.of("springConfig", connBuilder.springBootProperties(config));
+  }
+
   /** Discover running Docker containers that look like databases but are not yet tracked. */
   @GetMapping("/discover")
   public List<DiscoveredContainerDto> discover() {

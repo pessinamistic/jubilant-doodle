@@ -1,71 +1,76 @@
 services:
 
-  # ── System database (Postgres 16) ─────────────────────────────────────────
-  # Provides Port Wrangler's own metadata store (instances, pipelines, etc.).
-  # In standalone mode (java -jar or ./gradlew bootRun) the SystemDbProvisioner
-  # ApplicationContextInitializer handles this automatically — you DON'T need
-  # docker-compose for local dev.  This service is only for the compose stack.
-  postgres:
-    image: postgres:16-alpine
-    container_name: dbdeployer-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: dbdeployer
-      POSTGRES_USER: dbdeployer
-      POSTGRES_PASSWORD: dbdeployer_internal
-      TZ: UTC
-      PGTZ: UTC
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dbdeployer -d dbdeployer"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   # ── DB Deployer application ───────────────────────────────────────────────
-  # In compose mode the system Postgres is provided by the service above,
-  # so SystemDbProvisioner auto-provisioning is disabled.
+  # There is deliberately NO postgres service here: the app provisions its own
+  # system database (SystemDbProvisioner) as a SIBLING container through the
+  # mounted Docker socket — "dbdeployer-system-db" (pgvector/pgvector:pg16,
+  # host port 5499, data in ~/.db-deployer/system-db). That is the exact same
+  # container standalone mode (./gradlew bootRun) uses, so both modes share
+  # one system DB and one data dir.
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: dbdeployer-app
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
-      - "8080:8080"
+      # Direct backend API (bypasses Caddy). Deliberately NOT host port 8080 —
+      # that stays free for tools deployed through Port Wrangler. Loopback-only
+      # by default; set APP_BIND=0.0.0.0 in .env to expose on your LAN.
+      - "${APP_BIND:-127.0.0.1}:${API_PORT:-8590}:8080"
     environment:
       # Docker socket URI — bind-mounted from the host below.
       DOCKER_HOST: unix:///var/run/docker.sock
 
-      # Disable the standalone auto-provisioner; compose provides Postgres above.
-      DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION: "false"
+      # The system DB and Ollama runtimes are sibling containers publishing
+      # ports on the Docker host — from inside this container "localhost" is
+      # the app itself, so reach them via host.docker.internal (mapped below
+      # through extra_hosts for Colima/Linux engines too).
+      DBDEPLOYER_SYSTEM_DB_HOST: host.docker.internal
+      DBDEPLOYER_SYSTEM_DB_PORT: ${SYSTEM_DB_PORT:-5499}
+      PORTWRANGLER_RUNTIME_HOST: host.docker.internal
+      PORTWRANGLER_OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
-      # Connect to the compose postgres service via internal network.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dbdeployer
-      SPRING_DATASOURCE_USERNAME: dbdeployer
-      SPRING_DATASOURCE_PASSWORD: dbdeployer_internal
+      # Bind-mount SOURCES the app hands to Docker (system-DB and deployed-DB
+      # data dirs, derived from user.home) are resolved by the daemon on the
+      # HOST — so user.home inside the JVM must be the host's home, not the
+      # container's /root. Compose expands ${HOME} on the host; the volume
+      # below mounts ~/.db-deployer at the IDENTICAL path inside the container
+      # so the app's own reads/writes line up with the daemon's view.
+      JAVA_TOOL_OPTIONS: "-Duser.home=${HOME}"
 
       # Optional: set a custom CORS allowed-origins pattern (comma-separated)
       # DBDEPLOYER_CORS_ORIGINS: "http://localhost:8080,http://myhost:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       # ── Docker socket ──────────────────────────────────────────────────────
       # Colima: the socket lives at ~/.colima/default/docker.sock on the host.
       # We expose it at the standard /var/run/docker.sock path inside the
       # container so the app's DockerSocketResolver picks it up automatically.
       #
-      # If you use Docker Desktop, replace the source path with:
+      # If you use Docker Desktop, the default source path just works:
       #   /var/run/docker.sock:/var/run/docker.sock
       - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
 
-      # ── Managed DB data directory ─────────────────────────────────────────
-      # Volumes for user-deployed databases live under ~/.db-deployer/data/ on
-      # the host so they survive container rebuilds and restarts.
-      - ${HOME}/.db-deployer:/root/.db-deployer
+      # ── Managed data directory (host path == container path) ──────────────
+      # System-DB + deployed-DB data live under ~/.db-deployer on the host and
+      # survive container rebuilds. Mounted at the identical path so the bind
+      # sources the app computes are valid on both sides (see JAVA_TOOL_OPTIONS).
+      - ${HOME}/.db-deployer:${HOME}/.db-deployer
 
-# ── Named volumes ──────────────────────────────────────────────────────────────
-volumes:
-  db-data:
+  # ── Frontend (React SPA served by nginx) ───────────────────────────────────
+  # Serves the UI and proxies /api to the app, so the direct UI port is fully
+  # functional on its own. Through Caddy (docker-compose.proxy.yml) the UI is
+  # at http://portwrangler.local/ and the API at /api on the same origin.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dbdeployer-frontend
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      # Direct UI (bypasses Caddy). Loopback-only by default (see APP_BIND).
+      - "${APP_BIND:-127.0.0.1}:${UI_PORT:-8591}:80"

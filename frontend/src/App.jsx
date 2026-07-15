@@ -10,6 +10,14 @@ import { ConfigurationFormPage } from './pages/ConfigurationFormPage'
 import { ImageManagementPage } from './pages/ImageManagementPage'
 import { ImageToolPage } from './pages/ImageToolPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ModelCookbookPage } from './pages/ModelCookbookPage'
+import { ModelDetailPage } from './pages/ModelDetailPage'
+import { RuntimePage } from './pages/RuntimePage'
+import { RuntimeModelDetailPage } from './pages/RuntimeModelDetailPage'
+import { ChatPage } from './pages/ChatPage'
+import { AgentPage } from './pages/AgentPage'
+import { ComparePage } from './pages/ComparePage'
+import { SystemHealthPage } from './pages/SystemHealthPage'
 import { SplashScreen } from './components/SplashScreen'
 import { WelcomeWizard } from './components/WelcomeWizard'
 import { useUserProfile } from './hooks/useUserProfile'
@@ -50,7 +58,16 @@ export default function App() {
         <Route path="/configurations/:id/edit" element={<ConfigurationFormPage />} />
         <Route path="/images"                  element={<ImageManagementPage />} />
         <Route path="/images/:dbType" element={<ImageToolPage />} />
+        <Route path="/models"                  element={<ModelCookbookPage />} />
+        {/* Splat routes: model tags/identifiers carry ':' and '/', so they ride after the prefix. */}
+        <Route path="/runtime/models/*"        element={<RuntimeModelDetailPage />} />
+        <Route path="/models/*"                element={<ModelDetailPage />} />
+        <Route path="/runtime"                 element={<RuntimePage />} />
+        <Route path="/chat"                    element={<ChatPage />} />
+        <Route path="/agent"                   element={<AgentPage />} />
+        <Route path="/compare"                 element={<ComparePage />} />
         <Route path="/dashboard"              element={<DashboardPage />} />
+        <Route path="/system"                 element={<SystemHealthPage />} />
       </Routes>
       {!profile && <WelcomeWizard onComplete={save} />}
     </BrowserRouter>

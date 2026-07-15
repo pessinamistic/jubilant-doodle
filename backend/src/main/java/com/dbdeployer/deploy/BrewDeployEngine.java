@@ -206,6 +206,8 @@ public class BrewDeployEngine {
 
       case String s when s.contains("adminer") -> DbType.ADMINER;
 
+      case String s when s.contains("ollama") -> DbType.OLLAMA;
+
       default -> null;
     };
   }

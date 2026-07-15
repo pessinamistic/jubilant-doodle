@@ -100,9 +100,28 @@ export const untrackInstance = (id)     => api.post(`/instances/${id}/untrack`)
 export const reTrackInstance = (id)     => api.post(`/instances/${id}/retrack`).then(r => r.data)
 export const getLogs        = (id, tail=100) => api.get(`/instances/${id}/logs?tail=${tail}`).then(r => r.data)
 export const getConnectionString = (id) => api.get(`/instances/${id}/connection-string`).then(r => r.data)
+export const getSpringConfig      = (id) => api.get(`/instances/${id}/spring-config`).then(r => r.data)
+export const exportDockerCompose  = ()   => api.get('/export/docker-compose', { responseType: 'blob' }).then(r => r.data)
 export const syncStatuses        = ()             => api.post('/instances/sync')
 export const getCatalog          = ()             => api.get('/catalog').then(r => r.data)
 export const getCatalogVersions  = (dbType, refresh=false) => api.get(`/catalog/${dbType}/versions`, { params: { refresh } }).then(r => r.data)
+
+// ── Model Cookbook ─────────────────────────────────────────────────────────
+export const getSystemProfile    = ()             => api.get('/models/profile').then(r => r.data)
+export const getModelSuggestions = (type, compat) => api.get('/models/suggestions', { params: { type: type || undefined, compat: compat || undefined } }).then(r => r.data)
+// Fallback discovery for models outside the curated catalog — proxies a community Ollama library
+// index. Best-effort: the backend degrades to [] on any failure rather than throwing.
+export const searchOllamaLibrary = (q, limit=15)  => api.get('/models/library-search', { params: { q, limit } }).then(r => r.data)
+
+// ── Model runtime dashboard ────────────────────────────────────────────────
+export const getRuntimeDashboard  = ()      => api.get('/models/runtime').then(r => r.data)
+// Detail card for one tag — /api/show data + residency + managed-instance link for logs.
+export const getRuntimeModelDetail = (model) => api.get('/models/runtime/detail', { params: { model } }).then(r => r.data)
+export const loadRuntimeModel     = (model) => api.post('/models/runtime/load', { model }).then(r => r.data)
+export const unloadRuntimeModel   = (model) => api.post('/models/runtime/unload', { model }).then(r => r.data)
+export const deleteRuntimeModel   = (model) => api.post('/models/runtime/delete', { model }).then(r => r.data)
+export const pullRuntimeModel     = (model) => api.post('/models/runtime/pull', { model })
+export const saveRuntimeModelSettings = (model, settings) => api.post('/models/runtime/settings', { model, ...settings })
 export const getSystemInfo       = ()             => api.get('/system').then(r => r.data)
 export const discoverContainers  = ()             => api.get('/instances/discover').then(r => r.data)
 export const importContainer     = (data)         => api.post('/instances/import', data).then(r => r.data)
@@ -112,6 +131,7 @@ export const getPipeline         = (id)           => api.get(`/instances/${id}/p
 export const getSystemStats      = ()             => api.get('/system/stats').then(r => r.data)
 export const getMetricsHistory   = ()             => api.get('/system/metrics/history').then(r => r.data)
 export const getDeploymentActivity = ()           => api.get('/system/metrics/activity').then(r => r.data)
+export const getHostMetrics      = ()             => api.get('/system/host-metrics').then(r => r.data)
 export const getContainerMetrics = (id)           => api.get(`/instances/${id}/container-metrics`).then(r => r.data)
 
 export const checkImageStatus = (dbType, tag, refresh=false) =>
@@ -131,6 +151,12 @@ export const getImageToolDetails = (dbType, refresh=false) =>
 
 export const refreshImageTool = (dbType, scope='all') =>
 	api.post(`/images/tools/${dbType}/refresh`, null, { params: { scope } }).then(r => r.data)
+
+// ── Chat sessions ──────────────────────────────────────────────────────────
+export const getChatSessions       = ()          => api.get('/chat/sessions').then(r => r.data)
+export const getChatHistory        = (id)        => api.get(`/chat/sessions/${id}/messages`).then(r => r.data)
+export const renameChatSession     = (id, title) => api.patch(`/chat/sessions/${id}`, { title }).then(r => r.data)
+export const deleteChatSession     = (id)        => api.delete(`/chat/sessions/${id}`)
 
 // ── Config Templates ───────────────────────────────────────────────────────
 export const getTemplates      = ()           => api.get('/templates').then(r => r.data)

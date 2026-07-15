@@ -1,0 +1,11 @@
+2026-07-11T13:22:12.047+05:30  WARN 3632 --- [nio-8080-exec-6] o.util.platform.windows.WmiQueryHandler  : COM exception querying MSAcpi_ThermalZoneTemperature, which might not be on your system. Will not attempt to query it again. Error was -2147217396: Failed to enumerate results.
+2026-07-11T13:22:12.065+05:30  WARN 3632 --- [nio-8080-exec-6] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:12.098+05:30  WARN 3632 --- [nio-8080-exec-6] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:14.020+05:30  WARN 3632 --- [nio-8080-exec-1] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:14.082+05:30  WARN 3632 --- [nio-8080-exec-1] o.util.platform.windows.WmiQueryHandler  : COM exception querying MSAcpi_ThermalZoneTemperature, which might not be on your system. Will not attempt to query it again. Error was -2147217396: Failed to enumerate results.
+2026-07-11T13:22:14.091+05:30  WARN 3632 --- [nio-8080-exec-1] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:14.196+05:30  WARN 3632 --- [nio-8080-exec-1] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:16.008+05:30  WARN 3632 --- [nio-8080-exec-3] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:16.053+05:30  WARN 3632 --- [nio-8080-exec-3] o.util.platform.windows.WmiQueryHandler  : COM exception querying MSAcpi_ThermalZoneTemperature, which might not be on your system. Will not attempt to query it again. Error was -2147217396: Failed to enumerate results.
+2026-07-11T13:22:16.073+05:30  WARN 3632 --- [nio-8080-exec-3] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig
+2026-07-11T13:22:16.113+05:30  WARN 3632 --- [nio-8080-exec-3] o.h.platform.windows.WindowsSensors      : Reflect exception: io.github.pandalxb.jlibrehardwaremonitor.config.ComputerConfig

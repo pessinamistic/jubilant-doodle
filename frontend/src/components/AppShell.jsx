@@ -1,19 +1,25 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
+  Activity,
   BarChart3,
   ChevronLeft,
   ChevronRight,
   Database,
+  Gauge,
+  GitCompare,
   HardDrive,
   House,
   Laptop,
   Menu,
+  MessageSquare,
   Moon,
   Plus,
   RefreshCw,
   SlidersHorizontal,
+  Sparkles,
   Sun,
+  Wrench,
   X,
 } from 'lucide-react'
 import { syncStatuses, getSystemInfo } from '../api/client'
@@ -23,6 +29,82 @@ import toast from 'react-hot-toast'
 const SIDEBAR_EXPANDED = 224
 const SIDEBAR_COLLAPSED = 56
 const LS_KEY = 'sidebar-collapsed'
+
+// ── Navigation config — single source of truth for desktop + mobile ──────────
+// To add a page: add one entry here. Order within a section = display order.
+const NAV_SECTIONS = [
+  {
+    label: 'Overview',
+    items: [
+      { to: '/', label: 'Home', icon: House, end: true },
+      { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Databases',
+    items: [
+      { to: '/instances', label: 'Instances', icon: Database },
+      { to: '/configurations', label: 'Configurations', icon: SlidersHorizontal },
+      { to: '/images', label: 'Images', icon: HardDrive },
+    ],
+  },
+  {
+    label: 'LLM',
+    items: [
+      { to: '/models', label: 'Models', icon: Sparkles },
+      { to: '/runtime', label: 'Runtime', icon: Gauge },
+      { to: '/compare', label: 'Compare', icon: GitCompare },
+    ],
+  },
+  {
+    label: 'AI Tools',
+    items: [
+      { to: '/chat', label: 'Assistant', icon: MessageSquare },
+      { to: '/agent', label: 'Agent', icon: Wrench },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/system', label: 'System Health', icon: Activity },
+    ],
+  },
+]
+
+// Staggered entrance delay per nav row (uses delay classes already defined in CSS)
+const ROW_DELAYS = ['delay-200', 'delay-225', 'delay-250', 'delay-300']
+const rowDelay = i => `animate-fade-up ${ROW_DELAYS[Math.min(i, ROW_DELAYS.length - 1)]}`
+
+function SideNav({ collapsed, onNavigate }) {
+  let row = 0
+  return (
+    <nav className="flex-1 space-y-0.5 px-2 overflow-y-auto">
+      {NAV_SECTIONS.map((section, si) => (
+        <div key={section.label}>
+          {collapsed
+            ? si > 0 && <div className="mx-2 my-2 border-t border-(--border-soft)" />
+            : (
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 pt-3 pb-1 animate-fade-in delay-150">
+                {section.label}
+              </p>
+            )}
+          {section.items.map(({ to, label, icon: Icon, end }) => (
+            <SideNavItem
+              key={to}
+              to={to}
+              end={end}
+              icon={<Icon className="w-4 h-4" />}
+              label={label}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+              className={rowDelay(row++)}
+            />
+          ))}
+        </div>
+      ))}
+    </nav>
+  )
+}
 
 export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }) {
   const navigate = useNavigate()
@@ -134,38 +216,7 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
           <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0 animate-fade-in delay-150" />
 
           {/* Nav */}
-          <nav className={`flex-1 space-y-0.5 ${collapsed ? 'px-2' : 'px-2'}`}>
-            {!collapsed && (
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2 animate-fade-in delay-150">
-                Navigation
-              </p>
-            )}
-            <SideNavItem
-              to="/" icon={<House className="w-4 h-4" />}
-              label="Home" end collapsed={collapsed}
-              className="animate-fade-up delay-200"
-            />
-            <SideNavItem
-              to="/dashboard" icon={<BarChart3 className="w-4 h-4" />}
-              label="Dashboard" collapsed={collapsed}
-              className="animate-fade-up delay-225"
-            />
-            <SideNavItem
-              to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />}
-              label="Configurations" collapsed={collapsed}
-              className="animate-fade-up delay-250"
-            />
-            <SideNavItem
-              to="/instances" icon={<Database className="w-4 h-4" />}
-              label="Instances" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-            <SideNavItem
-              to="/images" icon={<HardDrive className="w-4 h-4" />}
-              label="Images" collapsed={collapsed}
-              className="animate-fade-up delay-300"
-            />
-          </nav>
+          <SideNav collapsed={collapsed} />
 
           {/* Collapse toggle */}
           <div className={`shrink-0 border-t-2 border-(--border-strong) py-3 animate-fade-up delay-300 ${collapsed ? 'px-2' : 'px-3'}`}>
@@ -210,14 +261,7 @@ export function AppShell({ children, onDeploy, onRefresh, fullWidthTop = false }
                 <SidebarBtn icon={<Plus className="w-4 h-4 shrink-0" />} label="Deploy DB" collapsed={false} onClick={() => { goToDeploy(); setMobileOpen(false) }} primary />
               </div>
               <div className="mx-3 border-t-2 border-(--border-strong) mb-2 shrink-0" />
-              <nav className="flex-1 space-y-0.5 px-2 animate-fade-up delay-100">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--text-muted) px-3 py-2">Navigation</p>
-                <SideNavItem to="/" icon={<House className="w-4 h-4" />} label="Home" end collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-150" />
-                <SideNavItem to="/dashboard" icon={<BarChart3 className="w-4 h-4" />} label="Dashboard" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-160" />
-                <SideNavItem to="/configurations" icon={<SlidersHorizontal className="w-4 h-4" />} label="Configurations" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-175" />
-                <SideNavItem to="/instances" icon={<Database className="w-4 h-4" />} label="Instances" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-                <SideNavItem to="/images" icon={<HardDrive className="w-4 h-4" />} label="Images" collapsed={false} onNavigate={() => setMobileOpen(false)} className="animate-fade-up delay-200" />
-              </nav>
+              <SideNav collapsed={false} onNavigate={() => setMobileOpen(false)} />
             </div>
           </aside>
         </>
@@ -310,7 +354,7 @@ function Tooltip({ children }) {
         px-2.5 py-1 text-xs shadow-lg
         opacity-0 group-hover:opacity-100
         -translate-y-1 group-hover:translate-y-0
-        transition-all duration-150 z-100
+        transition-all duration-150
       "
       style={{
         background: 'var(--bg-surface)',
@@ -318,6 +362,7 @@ function Tooltip({ children }) {
         color: 'var(--text-primary)',
         boxShadow: 'var(--shadow-raised)',
         left: SIDEBAR_COLLAPSED + 8,
+        zIndex: 100,
       }}
     >
       {children}
@@ -330,16 +375,18 @@ function DockerPill({ info }) {
   const ok = info.dockerAvailable
   const os = info.osType === 'MACOS' ? 'macOS' : (info.osType ?? 'Docker')
   if (!ok) return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2" style={{
+    <Link to="/system" title="Open System Health — live CPU, memory, temperature and GPU metrics"
+      className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-pointer transition-all duration-200 hover:brightness-110" style={{
       background: 'var(--status-error-bg)',
       borderColor: 'var(--status-error-border)',
       color: 'var(--status-error)',
     }}>
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: 'var(--status-error)' }} />Docker offline
-    </div>
+    </Link>
   )
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-default transition-all duration-200" style={{
+    <Link to="/system" title="Open System Health — live CPU, memory, temperature and GPU metrics"
+      className="group flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-medium border-2 cursor-pointer transition-all duration-200 hover:brightness-110" style={{
       background: 'var(--status-running-bg)',
       borderColor: 'var(--status-running-border)',
       color: 'var(--status-running)',
@@ -347,7 +394,8 @@ function DockerPill({ info }) {
       <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: 'var(--status-running)' }} />
       <HardDrive className="w-3.5 h-3.5" />
       Docker {os} · {info.arch}
-    </div>
+      <ChevronRight className="w-3 h-3 ml-auto opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+    </Link>
   )
 }
 
@@ -356,9 +404,9 @@ function DockerDot({ info }) {
   const ok = info.dockerAvailable
   const os = info.osType === 'MACOS' ? 'macOS' : (info.osType ?? 'Docker')
   return (
-    <div className="group relative flex items-center justify-center py-2.5 w-full cursor-default rounded-sm">
+    <Link to="/system" className="group relative flex items-center justify-center py-2.5 w-full cursor-pointer rounded-sm">
       <span className={`w-2 h-2 rounded-full ${ok ? 'animate-pulse' : ''}`} style={{ backgroundColor: ok ? 'var(--status-running)' : 'var(--status-error)' }} />
-      <Tooltip>{ok ? `Docker · ${os} · ${info.arch}` : 'Docker offline'}</Tooltip>
-    </div>
+      <Tooltip>{ok ? `Docker · ${os} · ${info.arch} — System Health` : 'Docker offline — System Health'}</Tooltip>
+    </Link>
   )
 }
