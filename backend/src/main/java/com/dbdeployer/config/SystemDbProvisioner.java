@@ -26,8 +26,13 @@ import org.springframework.core.env.ConfigurableEnvironment;
 /**
  * Runs before any Spring bean is created. Ensures the dedicated system Postgres container
  * ("dbdeployer-system-db") is up and accepting connections before HikariCP tries to connect to it.
- * Flow: 1. Connect to Docker daemon 2. If container doesn't exist → pull postgres:16 + create it 3.
- * If container exists but stopped → start it 4. Poll port 5499 until Postgres is ready (max 60 s)
+ * Flow: 1. Connect to Docker daemon 2. If container doesn't exist → pull the configured pgvector
+ * image + create it 3. If container exists but stopped → start it 4. Poll until Postgres is ready
+ * (max 60 s).
+ *
+ * <p>When the app itself runs in a container (docker-compose), the system DB is a SIBLING container
+ * publishing its port on the Docker host — dbdeployer.system-db.host points the readiness probe
+ * (and the datasource default) at host.docker.internal instead of localhost.
  */
 @Slf4j
 public class SystemDbProvisioner
@@ -54,8 +59,9 @@ public class SystemDbProvisioner
 
     String containerName =
         env.getProperty("dbdeployer.system-db.container-name", "dbdeployer-system-db");
-    String image = env.getProperty("dbdeployer.system-db.image", "postgres:16");
+    String image = env.getProperty("dbdeployer.system-db.image", "pgvector/pgvector:pg16");
     int hostPort = Integer.parseInt(env.getProperty("dbdeployer.system-db.host-port", "5499"));
+    String host = env.getProperty("dbdeployer.system-db.host", "localhost");
     String username = env.getProperty("dbdeployer.system-db.username", "dbdeployer");
     String password = env.getProperty("dbdeployer.system-db.password", "dbdeployer_internal");
     String database = env.getProperty("dbdeployer.system-db.database", "dbdeployer");
@@ -90,9 +96,9 @@ public class SystemDbProvisioner
     System.setProperty(RUNTIME_CONTAINER_NAME_PROPERTY, containerName);
     System.setProperty(RUNTIME_HOST_PORT_PROPERTY, String.valueOf(hostPort));
 
-    waitForPostgres(hostPort, username, password, database, 60);
+    waitForPostgres(host, hostPort, username, password, database, 60);
 
-    log.info("System Postgres is ready at localhost:{}", hostPort);
+    log.info("System Postgres is ready at {}:{}", host, hostPort);
   }
 
   // ── Container lifecycle ────────────────────────────────────────────────────
@@ -185,10 +191,10 @@ public class SystemDbProvisioner
   // ── Readiness probe ───────────────────────────────────────────────────────
 
   private void waitForPostgres(
-      int port, String username, String password, String database, int maxSeconds) {
-    log.info("Waiting for system Postgres to accept connections on port {}...", port);
+      String host, int port, String username, String password, String database, int maxSeconds) {
+    log.info("Waiting for system Postgres to accept connections on {}:{}...", host, port);
     int safeMaxSeconds = Math.max(1, maxSeconds);
-    String jdbcUrl = "jdbc:postgresql://localhost:" + port + "/" + database;
+    String jdbcUrl = "jdbc:postgresql://" + host + ":" + port + "/" + database;
 
     for (int elapsedSeconds = 0; elapsedSeconds < safeMaxSeconds; elapsedSeconds++) {
       if (canConnect(jdbcUrl, username, password)) {

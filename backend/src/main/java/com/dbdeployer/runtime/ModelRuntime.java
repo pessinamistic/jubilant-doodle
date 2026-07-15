@@ -48,8 +48,15 @@ public enum ModelRuntime {
     return dataVolumePath;
   }
 
-  /** Base URL for the runtime's OpenAI-compatible API on the given published host port. */
+  /**
+   * Base URL for the runtime's OpenAI-compatible API on the given published host port.
+   *
+   * <p>PORTWRANGLER_RUNTIME_HOST overrides the host: when the app itself runs in a container
+   * (docker-compose), runtimes are sibling containers publishing ports on the Docker host, so
+   * "localhost" would point back at the app — compose sets it to "host.docker.internal".
+   */
   public String baseUrl(int hostPort) {
-    return "http://localhost:" + hostPort;
+    String host = System.getenv().getOrDefault("PORTWRANGLER_RUNTIME_HOST", "localhost");
+    return "http://" + host + ":" + hostPort;
   }
 }

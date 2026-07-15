@@ -23,7 +23,7 @@ Port Wrangler lets developers spin up any of 14 popular databases locally with a
 | Java                    | 21             | Backend language (Spring Boot)                        |
 | Spring Boot             | 3.4.2          | REST API, JPA, validation, scheduling                 |
 | Spring Data JPA         | (managed)      | ORM / repository layer                                |
-| PostgreSQL              | 16             | System config store (auto-provisioned on first start) |
+| PostgreSQL (pgvector)   | 16             | System config store + RAG vector store (auto-provisioned on first start) |
 | Docker Java SDK         | 3.4.1          | Docker daemon integration (zerodep Unix socket)       |
 | Jackson                 | (managed)      | JSON serialisation                                    |
 | Apache Commons Lang     | 3.17.0         | Utility helpers                                       |
@@ -89,7 +89,15 @@ Port Wrangler lets developers spin up any of 14 popular databases locally with a
 ```
 db_deployer/
 ├── Dockerfile                           # Multi-stage build (frontend → backend → runtime)
-├── docker-compose.yml                   # Full-stack compose (app + system Postgres)
+├── docker-compose.yml                   # Compose stack (frontend + app; system DB auto-provisioned by the app)
+├── docker-compose.proxy.yml             # Compose override: Caddy proxy for portwrangler.local
+├── caddy/Caddyfile                      # Caddy config (UI at /, API at /api, SSE-friendly, no TLS)
+├── .env.example                         # Optional overrides: ports, bind address, domain
+├── start_macos_setup.sh                 # One-shot macOS setup (Docker + hosts entry + stack)
+├── update.sh                            # Pull origin/master, rebuild image, restart, health-check
+├── pause.sh                             # Stop everything (stack + system DB + managed DBs), keep everything
+├── resume.sh                            # Restart everything pause.sh stopped, exactly as it was
+├── cleanup.sh                           # Tear down the stack; --all for a full reset (data + hosts entry)
 │
 ├── backend/                             # Spring Boot 3 + Java 21
 │   ├── build.gradle.kts
@@ -128,8 +136,10 @@ db_deployer/
 │           └── DeploymentRecovery.java      # Recovers in-progress deployments on restart
 │
 └── frontend/                            # React 19 + Vite + TailwindCSS
+    ├── Dockerfile                       # UI image: Vite build → nginx
+    ├── nginx.conf                       # SPA fallback + /api proxy to the app (SSE-friendly)
     └── src/
-        ├── api/client.js                # Axios API layer (all backend calls)
+        ├── api/client.js                # Axios API layer (all backend calls, relative /api)
         ├── components/
         │   ├── InstanceCard.jsx         # Instance row (status, actions)
         │   ├── ConnectionString.jsx     # Masked connection string + copy button
@@ -157,6 +167,70 @@ db_deployer/
 ---
 
 ## Getting Started
+
+### Quick start — macOS one-shot script
+
+```bash
+./start_macos_setup.sh
+```
+
+One command sets up the whole stack on a Mac:
+
+1. Verifies prerequisites (git, Docker) — offers to install Docker Desktop via Homebrew if missing.
+2. Starts the Docker daemon if it isn't running (Docker Desktop or Colima, auto-detected; Colima's socket is exported as `DOCKER_SOCKET` automatically).
+3. Adds `127.0.0.1 portwrangler.local` to `/etc/hosts` (one sudo prompt) and flushes the DNS cache.
+4. Builds and starts the stack (frontend + app + Caddy reverse proxy) via `docker compose -f docker-compose.yml -f docker-compose.proxy.yml up --build -d`. On first boot the app auto-provisions its pgvector system DB (`dbdeployer-system-db`, port `5499`) as a sibling container — the same one standalone mode uses.
+5. Waits for the API to become healthy, then opens **http://portwrangler.local**.
+
+Every step is idempotent — safe to re-run any time. Ports, binding, and the domain are overridable via a `.env` file — copy `.env.example` to `.env` and adjust; the defaults work out of the box.
+
+| URL                                                 | What                                              |
+|-----------------------------------------------------|---------------------------------------------------|
+| http://portwrangler.local                           | UI (via Caddy on port 80)                         |
+| http://portwrangler.local/api                       | REST API (also the MCP endpoint at `/api/mcp`)    |
+| http://portwrangler.local/api/swagger-ui/index.html | Swagger UI                                        |
+| http://localhost:8591                               | Direct UI (bypasses the proxy)                    |
+| http://localhost:8590/api                           | Direct API — host port 8080 stays **free** for tools deployed through Port Wrangler |
+
+The local domain is served by Caddy (`docker-compose.proxy.yml` + `caddy/Caddyfile`): the UI (nginx-served React build) at the root, the backend under `/api` — same origin, so no CORS. Response buffering is disabled (`flush_interval -1`) so the agent-chat SSE streams work through the proxy. All published ports bind to `127.0.0.1` by default (set `APP_BIND=0.0.0.0` in `.env` to expose on your LAN).
+
+To stop everything:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.proxy.yml down
+```
+
+#### Updating a running install
+
+```bash
+./update.sh           # pull origin/master; rebuild + restart only if there are new commits
+./update.sh --force   # rebuild & restart even with no new commits
+```
+
+`update.sh` fetches `origin/master`, shows the incoming commits, fast-forward pulls, rebuilds the image (the multi-stage Dockerfile compiles both the React frontend and the Spring Boot backend — one run updates the UI **and** the API), restarts the stack, and health-checks it. It refuses to run from a non-master branch and exits early when already up to date. Data is safe: the system-DB volume and `~/.db-deployer` are never touched.
+
+#### Pausing & resuming
+
+```bash
+./pause.sh    # stop everything, keep everything
+./resume.sh   # bring it all back exactly as it was
+```
+
+`pause.sh` is for when you're not using Port Wrangler and want the resources and ports back: it stops the app stack (frontend + app + Caddy), the system DB, and every running managed database container — removing nothing. The set of running databases is recorded in `~/.db-deployer/paused-instances` so `resume.sh` restores exactly that set (starting the Docker daemon first if needed, e.g. after a reboot). Imported containers are never touched, and neither script rebuilds anything — containers are started, not recreated.
+
+#### Cleaning up
+
+```bash
+./cleanup.sh              # stop & remove the app stack — all data survives
+./cleanup.sh --all        # full reset (asks for confirmation first)
+./cleanup.sh --all --yes  # full reset, no prompt
+```
+
+The default mode tears down the compose stack (app + Caddy) and stops the auto-provisioned system-DB container; re-running `./start_macos_setup.sh` brings everything back with data intact. `--all` is the nuke option: it additionally removes the system-DB container, every managed `dbdeployer-*` database container, the whole `~/.db-deployer` data directory (instance metadata, chat history, RAG vectors, managed DB data), the compose-built app image, and the `portwrangler.local` `/etc/hosts` entry. Containers you imported into Port Wrangler (created outside it) are never touched.
+
+To reset only the system DB (keeping deployed databases), use `backend/scripts/reset-system-db.sh` — it wipes the `dbdeployer-system-db` container and its data directory so the next boot re-runs Liquibase from scratch.
+
+---
 
 ### Option A — Local development (backend + frontend separately)
 
@@ -188,7 +262,8 @@ Navigate to [http://localhost:5173](http://localhost:5173) in your browser.
 
 ```bash
 docker compose up --build
-# App available at http://localhost:8080 (serves frontend from /static/)
+# UI:  http://localhost:8591   (nginx-served React build, proxies /api itself)
+# API: http://localhost:8590/api
 ```
 
 Colima socket override:
@@ -196,6 +271,14 @@ Colima socket override:
 ```bash
 DOCKER_SOCKET=$HOME/.colima/default/docker.sock docker compose up --build
 ```
+
+Compose-mode notes:
+
+- There is **no postgres service** in the compose file — the app auto-provisions its own system DB (`SystemDbProvisioner`) as a **sibling** container through the mounted Docker socket: `dbdeployer-system-db`, image `pgvector/pgvector:pg16` (Liquibase runs `CREATE EXTENSION vector` for the RAG store), host port `5499`, data in `~/.db-deployer/system-db`. It's the exact same container standalone mode (`./gradlew bootRun`) uses, so both modes share one system DB. Inspect it any time at `localhost:5499` (user/db `dbdeployer`).
+- The system DB and Ollama runtimes publish ports on the Docker **host**, so the app container reaches them via `host.docker.internal` (`DBDEPLOYER_SYSTEM_DB_HOST` / `PORTWRANGLER_RUNTIME_HOST` / `PORTWRANGLER_OLLAMA_BASE_URL`, pre-wired in `docker-compose.yml` together with an `extra_hosts: host-gateway` mapping for Colima/Linux engines).
+- Bind-mount paths the app hands to Docker are resolved on the host, so the compose file sets `JAVA_TOOL_OPTIONS=-Duser.home=$HOME` and mounts `~/.db-deployer` at the identical path inside the container — data for the system DB and deployed databases lands in your real home directory, not in the Docker VM.
+- The backend's **host** port is `8590` (not 8080) so 8080 stays free for tools deployed through Port Wrangler; the UI is a separate nginx service on `8591` that proxies `/api` to the app. All ports/binds are `.env`-configurable (`API_PORT`, `UI_PORT`, `HTTP_PORT`, `APP_BIND`, `SYSTEM_DB_PORT`, `PORTWRANGLER_DOMAIN` — see `.env.example`).
+- External MCP clients (VS Code / Claude / Cursor) reach the MCP server at `http://portwrangler.local/api/mcp` or `http://localhost:8590/api/mcp`.
 
 ---
 
@@ -252,7 +335,7 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5499/dbdeployer}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DBDEPLOYER_SYSTEM_DB_HOST:localhost}:${DBDEPLOYER_SYSTEM_DB_PORT:5499}/dbdeployer}
     username: ${SPRING_DATASOURCE_USERNAME:dbdeployer}
     password: ${SPRING_DATASOURCE_PASSWORD:dbdeployer_internal}
 
@@ -260,6 +343,7 @@ dbdeployer:
   system-db:
     auto-provision: true              # false when system DB is supplied externally
     host-port: 5499                   # local port for the auto-provisioned system Postgres
+    host: localhost                   # host.docker.internal when the app runs in a container
   cors:
     allowed-origins: ${DBDEPLOYER_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080}
   pipeline:
@@ -276,10 +360,11 @@ dbdeployer:
 | Variable                              | Default                                       | Description                                          |
 |---------------------------------------|-----------------------------------------------|------------------------------------------------------|
 | `SERVER_PORT`                         | `8080`                                        | Backend HTTP port                                    |
-| `SPRING_DATASOURCE_URL`               | `jdbc:postgresql://localhost:5499/dbdeployer` | System DB JDBC URL                                   |
+| `SPRING_DATASOURCE_URL`               | derived from system-db host + port            | System DB JDBC URL override                          |
 | `SPRING_DATASOURCE_USERNAME`          | `dbdeployer`                                  | System DB username                                   |
 | `SPRING_DATASOURCE_PASSWORD`          | `dbdeployer_internal`                         | System DB password                                   |
 | `DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION` | `true`                                        | Set to `false` when system DB is externally provided |
+| `DBDEPLOYER_SYSTEM_DB_HOST`           | `localhost`                                   | Host the app dials to reach the system DB (`host.docker.internal` in compose) |
 | `DBDEPLOYER_CORS_ORIGINS`             | `http://localhost:5173,...`                   | Comma-separated allowed CORS origins                 |
 | `DBDEPLOYER_API_LOG_VERBOSE`          | `false`                                       | Verbose backend API request logging (`/api/**`)      |
 | `VITE_API_LOG_LEVEL`                  | `verbose` in dev / `basic` in prod            | Frontend API console logging (`off`, `basic`, `verbose`) |
@@ -388,7 +473,7 @@ Port Wrangler stores all metadata in a self-managed PostgreSQL database:
 | System Postgres (auto-provisioned)   | Instance configs, container records, pipeline + step history |
 | `~/.db-deployer/data/<instance-id>/` | Volume data for user-deployed databases (survives restarts)  |
 
-The system Postgres container (`dbdeployer-system-db`) is automatically pulled and started by `SystemDbProvisioner` before any Spring bean initializes. JPA (`ddl-auto: update`) manages the schema.
+The system Postgres container (`dbdeployer-system-db`, `pgvector/pgvector:pg16`) is automatically pulled and started by `SystemDbProvisioner` before any Spring bean initializes — in standalone mode and in Docker Compose alike. Liquibase owns the schema (`ddl-auto: validate`).
 
 ### Core entities
 

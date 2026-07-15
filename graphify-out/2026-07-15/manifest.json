@@ -1035,8 +1035,8 @@
     "semantic_hash": "01e42db93d5508e4108bec4ddad03904"
   },
   "README.md": {
-    "mtime": 1784129471.4939404,
-    "ast_hash": "24f50e655e2012e26087d8e31325cd1a",
+    "mtime": 1784128994.6082628,
+    "ast_hash": "6167a235cf9f297ba4cce0b929b455c4",
     "semantic_hash": ""
   },
   "backend/docs/port-wrangler-roadmap.md": {
@@ -1370,8 +1370,8 @@
     "semantic_hash": "7d021a18cece8872fb75bd12a8c0fbf3"
   },
   "start_macos_setup.sh": {
-    "mtime": 1784129458.168229,
-    "ast_hash": "12ceda2664cf6f52499fc7c1034b156d",
+    "mtime": 1784128925.5964272,
+    "ast_hash": "358161ced8b0550c7e0862c1a5a5c064",
     "semantic_hash": ""
   },
   "update.sh": {
@@ -1387,16 +1387,6 @@
   "cleanup.sh": {
     "mtime": 1784128906.2044916,
     "ast_hash": "d0e2a4b200c4f9273ac824f2c77b238c",
-    "semantic_hash": ""
-  },
-  "pause.sh": {
-    "mtime": 1784129430.7809713,
-    "ast_hash": "df91b009f4970c49c8b9bbbe74b6d750",
-    "semantic_hash": ""
-  },
-  "resume.sh": {
-    "mtime": 1784129447.9800673,
-    "ast_hash": "8a7bdf3bb15716e971e85cc96fcb54d8",
     "semantic_hash": ""
   }
 }

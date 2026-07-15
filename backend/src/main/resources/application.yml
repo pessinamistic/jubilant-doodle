@@ -8,16 +8,14 @@ application:
   version: dev
 
 # ── System database ───────────────────────────────────────────────────────────
-# Standalone / local dev:
-#   SystemDbProvisioner auto-launches a postgres:16 container on host port 5499
-#   before Spring starts.  No extra config needed.
-#
-# Docker Compose mode:
-#   Set DBDEPLOYER_SYSTEM_DB_AUTO_PROVISION=false and override SPRING_DATASOURCE_URL
-#   to point at the compose 'postgres' service (see docker-compose.yml).
+# SystemDbProvisioner auto-launches the pgvector system-DB container on host
+# port 5499 before Spring starts — in standalone mode AND in docker-compose
+# (where it is created as a sibling via the mounted Docker socket and reached
+# through DBDEPLOYER_SYSTEM_DB_HOST=host.docker.internal; see docker-compose.yml).
+# Both modes share the same container and data dir.
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5499/dbdeployer}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DBDEPLOYER_SYSTEM_DB_HOST:localhost}:${DBDEPLOYER_SYSTEM_DB_PORT:5499}/dbdeployer}
     username: ${SPRING_DATASOURCE_USERNAME:dbdeployer}
     password: ${SPRING_DATASOURCE_PASSWORD:dbdeployer_internal}
     driver-class-name: org.postgresql.Driver
@@ -113,6 +111,10 @@ dbdeployer:
     container-name: ${DBDEPLOYER_SYSTEM_DB_CONTAINER_NAME:dbdeployer-system-db}
     image: pgvector/pgvector:pg16
     host-port: ${DBDEPLOYER_SYSTEM_DB_PORT:5499}
+    # Hostname the app uses to REACH the DB (readiness probe + datasource
+    # default): localhost normally; host.docker.internal when the app itself
+    # runs in a container and the DB is a sibling publishing on the host.
+    host: ${DBDEPLOYER_SYSTEM_DB_HOST:localhost}
     username: ${DBDEPLOYER_SYSTEM_DB_USERNAME:dbdeployer}
     password: ${DBDEPLOYER_SYSTEM_DB_PASSWORD:dbdeployer_internal}
     database: dbdeployer
