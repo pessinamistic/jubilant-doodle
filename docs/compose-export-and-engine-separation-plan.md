@@ -1,7 +1,14 @@
 # Remediation Plan: Compose Export UX + Docker/Brew Engine Distinction
 
-> Status: **PLANNED** (2026-07-18). These two fixes block the on-hold MCP tool expansion
-> (`docs/mcp-tools-expansion-plan.md`). Investigated by tech-lead with file:line grounding.
+> Status: **IMPLEMENTED** (2026-07-19), awaiting merge. Problem 1 on `fix/compose-export-ux` (a0593ed);
+> Problem 2 on `fix/docker-brew-engine-separation` (17aec2e backend, 2891b34 DTO/UI + review fixes).
+> Verified: backend 162 tests / 0 failures / 1 skipped (Docker-gated IT); frontend lint at pre-existing
+> baseline, build green. Senior review: no blockers; 500→400 exception fix and
+> `InstanceResponse`-uses-`effectiveDeployMethod()` nit applied.
+> Merge notes: small expected conflict in `frontend/src/pages/InstancesPage.jsx` (toolbar/state block);
+> post-merge cosmetic follow-up — hide the detail-page export button for non-Docker instances;
+> first backend start applies the idempotent V3 backfill. These fixes unblock the MCP tool expansion
+> (`docs/mcp-tools-expansion-plan.md`).
 
 ## Problem 1 — Compose export is whole-stack only, on the wrong page
 
