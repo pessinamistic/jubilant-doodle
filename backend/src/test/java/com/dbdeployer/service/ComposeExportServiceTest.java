@@ -5,10 +5,12 @@ import static org.mockito.Mockito.when;
 
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -124,5 +126,66 @@ class ComposeExportServiceTest {
 
     // Only one "cache:" service block.
     assertThat(yaml.split("  cache:", -1)).hasSize(2); // split yields n+1 parts for n occurrences
+  }
+
+  @Test
+  void configIds_filter_restricts_export_to_the_selected_instances() {
+    var cache = container(DbType.REDIS, "cache", "7.4", 6390, 6379, InstanceStatus.RUNNING);
+    var db = container(DbType.POSTGRESQL, "db", "16", 5544, 5432, InstanceStatus.RUNNING);
+    when(instanceService.listAll()).thenReturn(List.of(cache, db));
+    when(docker.resolveEnv(cache.getConfig())).thenReturn(List.of());
+
+    String yaml = service().exportYaml(List.of(cache.getConfig().getId()));
+
+    assertThat(yaml).contains("  cache:").doesNotContain("  db:");
+  }
+
+  @Test
+  void null_or_empty_configIds_exports_all_instances() {
+    var cache = container(DbType.REDIS, "cache", "7.4", 6390, 6379, InstanceStatus.RUNNING);
+    var db = container(DbType.POSTGRESQL, "db", "16", 5544, 5432, InstanceStatus.RUNNING);
+    when(instanceService.listAll()).thenReturn(List.of(cache, db));
+    when(docker.resolveEnv(cache.getConfig())).thenReturn(List.of());
+    when(docker.resolveEnv(db.getConfig())).thenReturn(List.of());
+
+    assertThat(service().exportYaml((List<String>) null)).contains("  cache:").contains("  db:");
+    assertThat(service().exportYaml(List.of())).contains("  cache:").contains("  db:");
+  }
+
+  @Test
+  void unknown_configId_is_silently_ignored() {
+    var cache = container(DbType.REDIS, "cache", "7.4", 6390, 6379, InstanceStatus.RUNNING);
+    when(instanceService.listAll()).thenReturn(List.of(cache));
+
+    String yaml = service().exportYaml(List.of("does-not-exist"));
+
+    assertThat(yaml).contains("services: {}").doesNotContain("  cache:");
+  }
+
+  @Test
+  void non_docker_deploy_method_is_excluded_even_when_selected() {
+    var brewed = container(DbType.POSTGRESQL, "brewed", "16", 5433, 5432, InstanceStatus.RUNNING);
+    brewed.getConfig().setDeployMethod(DeployMethod.HOMEBREW);
+    var docked = container(DbType.POSTGRESQL, "docked", "16", 5434, 5432, InstanceStatus.RUNNING);
+    docked.getConfig().setDeployMethod(DeployMethod.DOCKER);
+    var legacy = container(DbType.POSTGRESQL, "legacy", "16", 5435, 5432, InstanceStatus.RUNNING);
+    // deployMethod left null — legacy rows default to DOCKER.
+
+    when(instanceService.listAll()).thenReturn(List.of(brewed, docked, legacy));
+    when(docker.resolveEnv(docked.getConfig())).thenReturn(List.of());
+    when(docker.resolveEnv(legacy.getConfig())).thenReturn(List.of());
+
+    String yaml = service().exportYaml();
+
+    assertThat(yaml).contains("  docked:").contains("  legacy:").doesNotContain("  brewed:");
+  }
+
+  @Test
+  void resolveInstanceName_finds_the_config_name_by_id() {
+    var cache = container(DbType.REDIS, "cache", "7.4", 6390, 6379, InstanceStatus.RUNNING);
+    when(instanceService.listAll()).thenReturn(List.of(cache));
+
+    assertThat(service().resolveInstanceName(cache.getConfig().getId())).contains("cache");
+    assertThat(service().resolveInstanceName("does-not-exist")).isEqualTo(Optional.empty());
   }
 }

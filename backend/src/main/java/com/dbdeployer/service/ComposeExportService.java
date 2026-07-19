@@ -3,13 +3,17 @@ package com.dbdeployer.service;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
@@ -18,9 +22,11 @@ import org.springframework.stereotype.Service;
 /**
  * Renders the current set of managed instances as a portable {@code docker-compose.yml}.
  *
- * <p>Walks every non-REMOVED, non-system, non-template {@link DeployedContainer} and emits one
- * Compose service block per instance, reusing the same image tag, port bindings, environment
- * variables ({@link DockerDeployEngine#resolveEnv}) and volume path the live deploy path uses.
+ * <p>Walks every non-REMOVED, non-system, non-template, Docker-deployed {@link DeployedContainer}
+ * and emits one Compose service block per instance, reusing the same image tag, port bindings,
+ * environment variables ({@link DockerDeployEngine#resolveEnv}) and volume path the live deploy
+ * path uses. Instances deployed via a non-Docker method (brew/apt/…) are skipped — they have no
+ * compose representation. Callers can optionally restrict the export to a subset of config ids.
  *
  * <p>Volumes are emitted as <em>named</em> volumes (not host bind mounts) so the output is portable
  * across machines. The result is a starting point, not a production spec — {@code version: "3.9"}
@@ -40,7 +46,17 @@ public class ComposeExportService {
 
   /** Builds a complete {@code docker-compose.yml} document for all exportable instances. */
   public String exportYaml() {
-    List<DeployedContainer> exportable = exportableContainers();
+    return exportYaml(null);
+  }
+
+  /**
+   * Builds a {@code docker-compose.yml} document restricted to the given config ids.
+   *
+   * @param configIds config ids to include; {@code null} or empty means all exportable instances.
+   *     Ids that don't match any exportable instance are silently ignored.
+   */
+  public String exportYaml(Collection<String> configIds) {
+    List<DeployedContainer> exportable = exportableContainers(configIds);
 
     StringBuilder services = new StringBuilder();
     StringBuilder namedVolumes = new StringBuilder();
@@ -75,8 +91,15 @@ public class ComposeExportService {
 
   /**
    * Distinct, live (non-REMOVED) instances owned by the user — one per config, RUNNING preferred.
+   *
+   * @param configIds optional id filter; {@code null}/empty means no filtering (all instances).
+   *     Unknown ids are silently ignored. Instances deployed via a non-Docker method (brew/apt/…)
+   *     are always excluded — they have no compose representation.
    */
-  private List<DeployedContainer> exportableContainers() {
+  private List<DeployedContainer> exportableContainers(Collection<String> configIds) {
+    Set<String> idFilter =
+        (configIds == null || configIds.isEmpty()) ? null : new HashSet<>(configIds);
+
     // Keyed by config id; first writer wins, so order containers by status priority first.
     Map<String, DeployedContainer> byConfig = new LinkedHashMap<>();
     instanceService.listAll().stream()
@@ -84,9 +107,30 @@ public class ComposeExportService {
         .filter(c -> c.getStatus() != InstanceStatus.REMOVED)
         .filter(c -> !c.getConfig().isSystem())
         .filter(c -> !c.getConfig().isTemplate())
+        .filter(c -> idFilter == null || idFilter.contains(c.getConfig().getId()))
+        .filter(ComposeExportService::isDockerDeployed)
         .sorted((a, b) -> Integer.compare(statusRank(a.getStatus()), statusRank(b.getStatus())))
         .forEach(c -> byConfig.putIfAbsent(c.getConfig().getId(), c));
     return new ArrayList<>(byConfig.values());
+  }
+
+  /** Only DOCKER (or null, the legacy default) deploy methods have a compose representation. */
+  private static boolean isDockerDeployed(DeployedContainer container) {
+    DeployMethod method = container.getConfig().getDeployMethod();
+    return method == null || method == DeployMethod.DOCKER;
+  }
+
+  /**
+   * Resolves the display name for a single config id — used to build a friendlier download filename
+   * when exporting exactly one instance. Empty if the id doesn't match any known instance
+   * (removed/system/template rows included, since the name still identifies the request).
+   */
+  public Optional<String> resolveInstanceName(String configId) {
+    return instanceService.listAll().stream()
+        .filter(c -> c.getConfig() != null)
+        .filter(c -> configId.equals(c.getConfig().getId()))
+        .map(c -> c.getConfig().getName())
+        .findFirst();
   }
 
   /** Lower rank = preferred when multiple containers exist for one config. */
