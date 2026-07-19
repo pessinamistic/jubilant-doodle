@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DeploymentResponse;
@@ -195,6 +197,19 @@ class InfrastructureToolsTest {
     assertThatThrownBy(() -> tools().createKafkaTopic("db", "t", 1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("not a Kafka instance");
+  }
+
+  @Test
+  void createKafkaTopic_rejects_non_docker_instance() {
+    // A Homebrew Kafka has a synthetic "brew:" id; topic creation must not docker-exec against it.
+    var kafka = container("events", InstanceStatus.RUNNING, DbType.KAFKA, "brew:kafka");
+    kafka.getConfig().setDeployMethod(DeployMethod.HOMEBREW);
+    when(service.listAll()).thenReturn(List.of(kafka));
+
+    assertThatThrownBy(() -> tools().createKafkaTopic("events", "orders", 1))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("not Docker-managed");
+    verify(docker, never()).execCapture(any(), any(), anyInt());
   }
 
   @Test

@@ -5,6 +5,7 @@ import com.dbdeployer.deploy.ConnectionStringBuilder;
 import com.dbdeployer.deploy.DatabaseCatalog;
 import com.dbdeployer.deploy.DockerDeployEngine;
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
 import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.DeploymentResponse;
@@ -195,6 +196,16 @@ public class InfrastructureTools {
               + "' is not a Kafka instance (it is "
               + config.getDbType()
               + ")");
+    }
+    if (config.effectiveDeployMethod() != DeployMethod.DOCKER) {
+      // Topic creation runs `docker exec` against the container; a non-Docker instance (e.g. a
+      // Homebrew service, whose id is a synthetic "brew:<service>") has no container to exec into.
+      throw new IllegalStateException(
+          "Kafka instance '"
+              + instanceName
+              + "' is not Docker-managed (deploy method "
+              + config.effectiveDeployMethod()
+              + "); topic creation requires a Docker container.");
     }
     if (container.getContainerId() == null) {
       throw new IllegalStateException(

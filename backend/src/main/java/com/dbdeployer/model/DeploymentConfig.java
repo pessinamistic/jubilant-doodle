@@ -90,6 +90,19 @@ public class DeploymentConfig {
   @Column(name = "updated_at")
   private Instant updatedAt;
 
+  /**
+   * The deploy engine this config is bound to, resolving the legacy default.
+   *
+   * <p>A {@code null} {@link #deployMethod} means <b>legacy Docker</b>: rows written before the
+   * {@code deploy_method} column existed (and template rows, which are engine-agnostic blueprints)
+   * carry NULL, and the historical behaviour for those was always Docker. All engine-routing and
+   * Docker-only guards must funnel through this accessor rather than reading {@link #deployMethod}
+   * directly, so the null-is-Docker convention lives in exactly one place.
+   */
+  public DeployMethod effectiveDeployMethod() {
+    return deployMethod != null ? deployMethod : DeployMethod.DOCKER;
+  }
+
   @PrePersist
   protected void onCreate() {
     if (createdAt == null) createdAt = Instant.now();
