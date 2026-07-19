@@ -572,10 +572,15 @@ public class DbInstanceService {
    * CHOCOLATEY, WINGET, EMBEDDED). No production path creates such rows today ({@link
    * #detectImportMethod} only ever yields DOCKER or HOMEBREW) — this is a defensive guard so a
    * future/hand-inserted row can never be silently routed to Docker with a non-Docker container id.
+   *
+   * <p>{@link IllegalArgumentException} (not {@code UnsupportedOperationException}) so the
+   * controller's existing {@code @ExceptionHandler(IllegalArgumentException.class)} renders a clean
+   * 400 {@code {"error": ...}} — matching {@link #requireNotSystem}'s convention — rather than a
+   * 500.
    */
-  private static UnsupportedOperationException unsupportedDeployMethod(
+  private static IllegalArgumentException unsupportedDeployMethod(
       DeploymentConfig config, String action) {
-    return new UnsupportedOperationException(
+    return new IllegalArgumentException(
         "Cannot "
             + action
             + " instance '"

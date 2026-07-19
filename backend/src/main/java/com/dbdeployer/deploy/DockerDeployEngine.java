@@ -548,6 +548,7 @@ public class DockerDeployEngine {
           new DiscoveredContainerDto(
               c.getId(),
               name,
+              DeployMethod.DOCKER,
               c.getImage(),
               dbType,
               displayName,

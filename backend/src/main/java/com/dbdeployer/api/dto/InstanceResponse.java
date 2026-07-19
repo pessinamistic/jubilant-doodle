@@ -63,7 +63,7 @@ public record InstanceResponse(
         container != null ? container.getContainerId() : null,
         container != null ? container.getContainerName() : null,
         container != null ? container.getStatus() : InstanceStatus.DEPLOYING,
-        config.getDeployMethod(),
+        config.effectiveDeployMethod(),
         container != null ? container.getDataDirectory() : null,
         connectionString,
         connectionStringMasked,

@@ -177,7 +177,7 @@ class DbInstanceServiceTest {
       when(containerRepo.findById(c.getId())).thenReturn(Optional.of(c));
 
       assertThatThrownBy(() -> svc.startInstance(c.getId()))
-          .isInstanceOf(UnsupportedOperationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("is not supported by any engine");
     }
 

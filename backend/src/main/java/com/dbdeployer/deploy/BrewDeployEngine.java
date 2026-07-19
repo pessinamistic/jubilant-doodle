@@ -2,6 +2,7 @@ package com.dbdeployer.deploy;
 
 import com.dbdeployer.api.dto.DiscoveredContainerDto;
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.InstanceStatus;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,6 +61,7 @@ public class BrewDeployEngine {
           new DiscoveredContainerDto(
               syntheticId,
               serviceName,
+              DeployMethod.HOMEBREW,
               "homebrew/" + serviceName,
               dbType,
               displayName,

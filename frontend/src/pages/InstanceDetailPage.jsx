@@ -6,6 +6,7 @@ import {
 } from '../api/client'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
+import { EngineBadge } from '../components/EngineBadge'
 import { ConnectionString } from '../components/ConnectionString'
 import { ImportModal } from '../components/ImportModal'
 import { ConfirmModal } from '../components/ConfirmModal'
@@ -57,7 +58,7 @@ import {
 const TABS = [
   { id: 'overview',       label: 'Overview',          icon: <BarChart3 className="w-4 h-4" /> },
   { id: 'internals',      label: 'System Internals',  icon: <Cpu className="w-4 h-4" />,      systemOnly: true },
-  { id: 'metrics',        label: 'Metrics',           icon: <Activity className="w-4 h-4" />, nonSystemOnly: true },
+  { id: 'metrics',        label: 'Metrics',           icon: <Activity className="w-4 h-4" />, nonSystemOnly: true, dockerOnly: true },
   { id: 'pipeline',       label: 'Pipeline',           icon: <Rocket className="w-4 h-4" /> },
   { id: 'configuration',  label: 'Configuration',     icon: <Settings className="w-4 h-4" /> },
   { id: 'logs',           label: 'Logs',               icon: <FileText className="w-4 h-4" /> },
@@ -130,6 +131,7 @@ export function InstanceDetailPage() {
   const isRemoved   = instance.status === 'REMOVED'
   const isUntracked = instance.status === 'UNTRACKED'
   const isBusy      = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
+  const isNonDocker = !!instance.deployMethod && instance.deployMethod !== 'DOCKER'
 
   return (
     <AppShell onRefresh={load}>
@@ -152,6 +154,7 @@ export function InstanceDetailPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl font-bold text-[var(--text-primary)]">{instance.name}</h1>
                 <StatusBadge status={instance.status} />
+                <EngineBadge method={instance.deployMethod} />
                 {instance.isSystem && (
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-violet-500/15 text-violet-300 border border-violet-500/25">
                     SYSTEM
@@ -262,7 +265,7 @@ export function InstanceDetailPage() {
 
       {/* ── Tab bar ── */}
       <div className="tab-bar mb-6 w-fit animate-fade-up delay-100">
-        {TABS.filter(t => (!t.systemOnly || instance.isSystem) && (!t.nonSystemOnly || !instance.isSystem)).map(t => (
+        {TABS.filter(t => (!t.systemOnly || instance.isSystem) && (!t.nonSystemOnly || !instance.isSystem) && (!t.dockerOnly || !isNonDocker)).map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={`tab-item ${activeTab === t.id ? 'tab-active' : 'tab-inactive'}`}>
             {t.icon}
@@ -275,7 +278,7 @@ export function InstanceDetailPage() {
       <div key={activeTab} className="animate-fade-up">
         {activeTab === 'overview'      && <OverviewTab          instance={instance} />}
         {activeTab === 'internals'     && instance.isSystem  && <SystemInternalsTab />}
-        {activeTab === 'metrics'       && !instance.isSystem && <InstanceMetricsTab instanceId={id} instance={instance} />}
+        {activeTab === 'metrics'       && !instance.isSystem && !isNonDocker && <InstanceMetricsTab instanceId={id} instance={instance} />}
         {activeTab === 'pipeline'      && <PipelineTab          instanceId={id} instance={instance} />}
         {activeTab === 'configuration' && <ConfigurationTab     instance={instance} />}
         {activeTab === 'logs'          && <LogsTab              instanceId={id} isRunning={isRunning} />}
