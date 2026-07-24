@@ -22,11 +22,11 @@ import org.springframework.stereotype.Service;
 /**
  * Renders the current set of managed instances as a portable {@code docker-compose.yml}.
  *
- * <p>Walks every non-REMOVED, non-system, non-template, Docker-deployed {@link DeployedContainer}
- * and emits one Compose service block per instance, reusing the same image tag, port bindings,
- * environment variables ({@link DockerDeployEngine#resolveEnv}) and volume path the live deploy
- * path uses. Instances deployed via a non-Docker method (brew/apt/…) are skipped — they have no
- * compose representation. Callers can optionally restrict the export to a subset of config ids.
+ * <p>Walks every non-REMOVED, non-system, Docker-deployed {@link DeployedContainer} and emits one
+ * Compose service block per instance, reusing the same image tag, port bindings, environment
+ * variables ({@link DockerDeployEngine#resolveEnv}) and volume path the live deploy path uses.
+ * Instances deployed via a non-Docker method (brew/apt/…) are skipped — they have no compose
+ * representation. Callers can optionally restrict the export to a subset of config ids.
  *
  * <p>Volumes are emitted as <em>named</em> volumes (not host bind mounts) so the output is portable
  * across machines. The result is a starting point, not a production spec — {@code version: "3.9"}
@@ -106,7 +106,6 @@ public class ComposeExportService {
         .filter(c -> c.getConfig() != null)
         .filter(c -> c.getStatus() != InstanceStatus.REMOVED)
         .filter(c -> !c.getConfig().isSystem())
-        .filter(c -> !c.getConfig().isTemplate())
         .filter(c -> idFilter == null || idFilter.contains(c.getConfig().getId()))
         .filter(ComposeExportService::isDockerDeployed)
         .sorted((a, b) -> Integer.compare(statusRank(a.getStatus()), statusRank(b.getStatus())))

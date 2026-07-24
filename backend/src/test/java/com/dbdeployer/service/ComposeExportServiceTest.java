@@ -75,21 +75,36 @@ class ComposeExportServiceTest {
   }
 
   @Test
-  void excludes_system_template_and_removed_instances() {
+  void excludes_system_and_removed_instances() {
     var system = container(DbType.POSTGRESQL, "system", "16", 5499, 5432, InstanceStatus.RUNNING);
     system.getConfig().setSystem(true);
-    var template = container(DbType.POSTGRESQL, "tmpl", "16", 5400, 5432, InstanceStatus.STOPPED);
-    template.getConfig().setTemplate(true);
     var removed = container(DbType.REDIS, "gone", "7.4", 6391, 6379, InstanceStatus.REMOVED);
     var live = container(DbType.POSTGRESQL, "db", "16", 5544, 5432, InstanceStatus.RUNNING);
 
-    when(instanceService.listAll()).thenReturn(List.of(system, template, removed, live));
+    when(instanceService.listAll()).thenReturn(List.of(system, removed, live));
     when(docker.resolveEnv(live.getConfig())).thenReturn(List.of("POSTGRES_USER=postgres"));
 
     String yaml = service().exportYaml();
 
     assertThat(yaml).contains("  db:");
-    assertThat(yaml).doesNotContain("system:").doesNotContain("tmpl:").doesNotContain("gone:");
+    assertThat(yaml).doesNotContain("system:").doesNotContain("gone:");
+  }
+
+  @Test
+  void deployed_instance_flagged_as_template_is_still_exported() {
+    // ConfigTemplateService.create() sets isTemplate=true on every config it creates, including
+    // ones later deployed via the normal UI/agent path — so the flag alone can't mean "unused
+    // blueprint". A real DeployedContainer row only exists once something has actually deployed.
+    var deployedFromTemplate =
+        container(DbType.POSTGRESQL, "postgresql-1", "16", 5544, 5432, InstanceStatus.RUNNING);
+    deployedFromTemplate.getConfig().setTemplate(true);
+
+    when(instanceService.listAll()).thenReturn(List.of(deployedFromTemplate));
+    when(docker.resolveEnv(deployedFromTemplate.getConfig())).thenReturn(List.of());
+
+    String yaml = service().exportYaml();
+
+    assertThat(yaml).contains("  postgresql-1:");
   }
 
   @Test
