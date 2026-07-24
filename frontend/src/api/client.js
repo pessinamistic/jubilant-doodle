@@ -101,7 +101,10 @@ export const reTrackInstance = (id)     => api.post(`/instances/${id}/retrack`).
 export const getLogs        = (id, tail=100) => api.get(`/instances/${id}/logs?tail=${tail}`).then(r => r.data)
 export const getConnectionString = (id) => api.get(`/instances/${id}/connection-string`).then(r => r.data)
 export const getSpringConfig      = (id) => api.get(`/instances/${id}/spring-config`).then(r => r.data)
-export const exportDockerCompose  = ()   => api.get('/export/docker-compose', { responseType: 'blob' }).then(r => r.data)
+export const exportDockerCompose  = (configIds)   => api.get('/export/docker-compose', {
+  responseType: 'blob',
+  params: configIds?.length ? { configIds: configIds.join(',') } : undefined,
+}).then(r => r.data)
 export const syncStatuses        = ()             => api.post('/instances/sync')
 export const getCatalog          = ()             => api.get('/catalog').then(r => r.data)
 export const getCatalogVersions  = (dbType, refresh=false) => api.get(`/catalog/${dbType}/versions`, { params: { refresh } }).then(r => r.data)

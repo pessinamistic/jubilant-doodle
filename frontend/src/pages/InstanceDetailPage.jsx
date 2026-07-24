@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getInstance, startInstance, stopInstance, removeInstance, untrackInstance, reTrackInstance, getLogs, getPipeline,
-  getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics, getSpringConfig,
+  getSystemStats, getMetricsHistory, getDeploymentActivity, getContainerMetrics, getSpringConfig, exportDockerCompose,
 } from '../api/client'
+import { downloadBlob } from '../utils/downloadBlob'
 import { AppShell } from '../components/AppShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { ConnectionString } from '../components/ConnectionString'
@@ -21,6 +22,7 @@ import {
   Database,
   Eye,
   EyeOff,
+  FileDown,
   FileText,
   Folder,
   Globe,
@@ -76,6 +78,7 @@ export function InstanceDetailPage() {
   const [showReImport, setShowReImport] = useState(false)
   const [showConfirmUntrack, setShowConfirmUntrack] = useState(false)
   const [showConfirmRemove, setShowConfirmRemove] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -109,6 +112,19 @@ export function InstanceDetailPage() {
       toast.error(e.response?.data?.error ?? `${label} failed`)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const handleExportCompose = async () => {
+    setExporting(true)
+    try {
+      const blob = await exportDockerCompose([id])
+      downloadBlob(blob, `${instance.name}-compose.yml`)
+      toast.success(`Exported "${instance.name}" to docker-compose.yml`)
+    } catch (e) {
+      toast.error(e.response?.data?.error ?? 'Failed to export docker-compose.yml')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -178,6 +194,16 @@ export function InstanceDetailPage() {
               <RefreshCw className={`w-4 h-4 ${busy ? 'animate-spin' : ''}`} />
               Refresh
             </button>
+            {!instance.isSystem && !isRemoved && (
+              <button
+                onClick={handleExportCompose}
+                disabled={exporting}
+                title={`Export "${instance.name}" as a docker-compose.yml`}
+                className="btn-ghost flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                <FileDown className="w-4 h-4" />
+                {exporting ? 'Exporting…' : 'Export Compose'}
+              </button>
+            )}
             {!instance.isSystem && isStopped && (
               <button
                 onClick={async () => {
