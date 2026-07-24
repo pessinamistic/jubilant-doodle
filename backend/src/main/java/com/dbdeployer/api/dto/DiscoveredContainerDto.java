@@ -1,6 +1,7 @@
 package com.dbdeployer.api.dto;
 
 import com.dbdeployer.model.DbType;
+import com.dbdeployer.model.DeployMethod;
 
 /**
  * A Docker container that is running but not yet tracked by DB Deployer. Returned by GET
@@ -9,6 +10,7 @@ import com.dbdeployer.model.DbType;
 public record DiscoveredContainerDto(
     String containerId,
     String containerName, // Docker name (no leading slash)
+    DeployMethod source, // engine that discovered this entry (DOCKER, HOMEBREW, ...)
     String image,
     DbType suggestedDbType, // null if we couldn't detect
     String suggestedDbTypeDisplay,

@@ -130,6 +130,12 @@ public class DbInstanceService {
     if (container == null || container.getContainerId() == null) {
       return ContainerMetricsResponse.unavailable();
     }
+    DeploymentConfig config = container.getConfig();
+    if (config != null && config.effectiveDeployMethod() != DeployMethod.DOCKER) {
+      // Metrics come from `docker stats` on a real container id; non-Docker engines (e.g. Homebrew,
+      // whose id is a synthetic "brew:<service>") have nothing to probe.
+      return ContainerMetricsResponse.unavailable();
+    }
     ContainerMetricsResponse base =
         docker.getContainerMetrics(container.getContainerId(), container.getConfig().getHostPort());
     if (!base.available()) return base;
@@ -211,17 +217,17 @@ public class DbInstanceService {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     requireNotSystem(config, "start");
-    if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+    DeployMethod method = config.effectiveDeployMethod();
+    if (method == DeployMethod.HOMEBREW) {
       brew.startServiceByContainerId(container.getContainerId(), container.getContainerName());
-    } else {
+      container.setStartedAt(Instant.now());
+    } else if (method == DeployMethod.DOCKER) {
       docker.start(container);
+      container.setStartedAt(docker.getStartedAt(container.getContainerId()));
+    } else {
+      throw unsupportedDeployMethod(config, "start");
     }
     container.setStatus(InstanceStatus.RUNNING);
-    if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
-      container.setStartedAt(Instant.now());
-    } else {
-      container.setStartedAt(docker.getStartedAt(container.getContainerId()));
-    }
     containerRepo.save(container);
     return new DeploymentResponse(config, container);
   }
@@ -231,10 +237,13 @@ public class DbInstanceService {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
     requireNotSystem(config, "stop");
-    if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+    DeployMethod method = config.effectiveDeployMethod();
+    if (method == DeployMethod.HOMEBREW) {
       brew.stopServiceByContainerId(container.getContainerId(), container.getContainerName());
-    } else {
+    } else if (method == DeployMethod.DOCKER) {
       docker.stop(container);
+    } else {
+      throw unsupportedDeployMethod(config, "stop");
     }
     container.setStatus(InstanceStatus.STOPPED);
     containerRepo.save(container);
@@ -250,10 +259,8 @@ public class DbInstanceService {
     container.setStatus(InstanceStatus.REMOVING);
     containerRepo.save(container);
 
-    if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
-      log.info(
-          "Untracking Homebrew instance '{}' — Homebrew service left intact", config.getName());
-    } else {
+    DeployMethod method = config.effectiveDeployMethod();
+    if (method == DeployMethod.DOCKER) {
       try {
         log.info("Removing Docker container for instance '{}'", config.getName());
         docker.remove(container);
@@ -274,6 +281,16 @@ public class DbInstanceService {
               "Could not remove data directory for '{}': {}", config.getName(), e.getMessage());
         }
       }
+    } else if (method == DeployMethod.HOMEBREW) {
+      log.info(
+          "Untracking Homebrew instance '{}' — Homebrew service left intact", config.getName());
+    } else {
+      // Defensive: no production path creates these rows today. Untrack only — never issue a Docker
+      // remove against a resource this engine doesn't own.
+      log.warn(
+          "Untracking instance '{}' with unsupported deploy method {} — no engine action taken",
+          config.getName(),
+          method);
     }
 
     // Mark container as REMOVED (retain for history) — do NOT delete the rows
@@ -316,13 +333,17 @@ public class DbInstanceService {
       throw new IllegalArgumentException(
           "Instance '" + config.getName() + "' is not currently untracked");
     }
-    DeployMethod method =
-        config.getDeployMethod() != null ? config.getDeployMethod() : DeployMethod.DOCKER;
-    InstanceStatus liveStatus =
-        method == DeployMethod.HOMEBREW
-            ? brew.getServiceStatusByContainerId(
-                container.getContainerId(), container.getContainerName())
-            : docker.getStatus(container);
+    DeployMethod method = config.effectiveDeployMethod();
+    InstanceStatus liveStatus;
+    if (method == DeployMethod.HOMEBREW) {
+      liveStatus =
+          brew.getServiceStatusByContainerId(
+              container.getContainerId(), container.getContainerName());
+    } else if (method == DeployMethod.DOCKER) {
+      liveStatus = docker.getStatus(container);
+    } else {
+      throw unsupportedDeployMethod(config, "re-track");
+    }
     log.info("Re-tracking instance '{}' — live status: {}", config.getName(), liveStatus);
     container.setStatus(liveStatus);
     containerRepo.save(container);
@@ -446,20 +467,30 @@ public class DbInstanceService {
               if (container.getContainerId() == null) return;
               DeployMethod method =
                   container.getConfig() != null
-                      ? container.getConfig().getDeployMethod()
+                      ? container.getConfig().effectiveDeployMethod()
                       : DeployMethod.DOCKER;
 
-              InstanceStatus current =
-                  method == DeployMethod.HOMEBREW
-                      ? brew.getServiceStatusByContainerId(
-                          container.getContainerId(), container.getContainerName())
-                      : docker.getStatus(container);
+              InstanceStatus current;
+              if (method == DeployMethod.HOMEBREW) {
+                current =
+                    brew.getServiceStatusByContainerId(
+                        container.getContainerId(), container.getContainerName());
+              } else if (method == DeployMethod.DOCKER) {
+                current = docker.getStatus(container);
+              } else {
+                // Defensive: don't probe Docker with a non-Docker id during the background sweep.
+                log.warn(
+                    "syncStatuses: skipping instance '{}' with unsupported deploy method {}",
+                    container.getContainerName(),
+                    method);
+                return;
+              }
 
               boolean changed = current != container.getStatus();
               if (changed) container.setStatus(current);
               if (current == InstanceStatus.RUNNING
                   && container.getStartedAt() == null
-                  && method != DeployMethod.HOMEBREW) {
+                  && method == DeployMethod.DOCKER) {
                 Instant sa = docker.getStartedAt(container.getContainerId());
                 if (sa != null) {
                   container.setStartedAt(sa);
@@ -505,7 +536,17 @@ public class DbInstanceService {
     }
     container.setContainerName(
         trimmed); // keep container name in sync with instance name for easier identification
-    docker.renameContainer(container, trimmed);
+    if (config.effectiveDeployMethod() == DeployMethod.DOCKER) {
+      docker.renameContainer(container, trimmed);
+    } else {
+      // Config-only rename: the underlying Homebrew (or other non-Docker) service name is not ours
+      // to change; the Homebrew handle is derived from the synthetic containerId, not this field.
+      log.info(
+          "Config-only rename for non-Docker instance '{}' → '{}' (deploy method {})",
+          config.getName(),
+          trimmed,
+          config.effectiveDeployMethod());
+    }
     containerRepo.save(container);
     return new DeploymentResponse(config, container);
   }
@@ -513,14 +554,41 @@ public class DbInstanceService {
   public String getLogs(String configId, int tail) throws InterruptedException {
     DeployedContainer container = getById(configId);
     DeploymentConfig config = container.getConfig();
-    if (config.getDeployMethod() == DeployMethod.HOMEBREW) {
+    DeployMethod method = config.effectiveDeployMethod();
+    if (method == DeployMethod.DOCKER) {
+      return docker.getLogs(container, tail);
+    }
+    if (method == DeployMethod.HOMEBREW) {
       return "Logs are not available for Homebrew-managed services in this view. Use: brew services log "
           + (container.getContainerName() != null ? container.getContainerName() : "<service>");
     }
-    return docker.getLogs(container, tail);
+    return "Logs are not available for " + method + "-managed services in this view.";
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /**
+   * Raised when a lifecycle op is asked of a deploy method that has no engine wired up (APT,
+   * CHOCOLATEY, WINGET, EMBEDDED). No production path creates such rows today ({@link
+   * #detectImportMethod} only ever yields DOCKER or HOMEBREW) — this is a defensive guard so a
+   * future/hand-inserted row can never be silently routed to Docker with a non-Docker container id.
+   *
+   * <p>{@link IllegalArgumentException} (not {@code UnsupportedOperationException}) so the
+   * controller's existing {@code @ExceptionHandler(IllegalArgumentException.class)} renders a clean
+   * 400 {@code {"error": ...}} — matching {@link #requireNotSystem}'s convention — rather than a
+   * 500.
+   */
+  private static IllegalArgumentException unsupportedDeployMethod(
+      DeploymentConfig config, String action) {
+    return new IllegalArgumentException(
+        "Cannot "
+            + action
+            + " instance '"
+            + config.getName()
+            + "': deploy method "
+            + config.effectiveDeployMethod()
+            + " is not supported by any engine (only DOCKER and HOMEBREW are wired up).");
+  }
 
   private void requireNotSystem(DeploymentConfig config, String action) {
     if (config.isSystem()) {

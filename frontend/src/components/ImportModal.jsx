@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { discoverContainers, importContainer, reImportInstance } from '../api/client'
+import { EngineBadge } from './EngineBadge'
 import {
   CheckCircle2,
   CloudDownload,
@@ -230,6 +231,7 @@ export function ImportModal({ onClose, onImported, reImportInstance: existingIns
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                             c.status === 'RUNNING' ? 'bg-(--status-running-bg) text-(--status-running)' : 'bg-(--status-stopped-bg) text-(--status-stopped)'
                           }`}>{c.status}</span>
+                          <EngineBadge method={c.source} />
                         </div>
                         <p className="text-xs text-(--text-muted) mt-0.5 truncate">
                           {c.suggestedDbTypeDisplay} · port {c.suggestedHostPort ?? '?'}:{c.containerPort ?? '?'}

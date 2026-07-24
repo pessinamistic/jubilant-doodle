@@ -1,7 +1,9 @@
 package com.dbdeployer.config;
 
 import com.dbdeployer.deploy.DockerDeployEngine;
+import com.dbdeployer.model.DeployMethod;
 import com.dbdeployer.model.DeployedContainer;
+import com.dbdeployer.model.DeploymentConfig;
 import com.dbdeployer.model.InstanceStatus;
 import com.dbdeployer.pipeline.model.DeploymentPipeline;
 import com.dbdeployer.pipeline.model.PipelineStatus;
@@ -72,6 +74,17 @@ public class DeploymentRecovery implements ApplicationRunner {
     for (DeployedContainer container : stuck) {
       String name =
           container.getConfig() != null ? container.getConfig().getName() : container.getId();
+
+      DeploymentConfig config = container.getConfig();
+      if (config != null && config.effectiveDeployMethod() != DeployMethod.DOCKER) {
+        // Non-Docker rows never enter the async Docker pipeline, so a stuck DEPLOYING here means a
+        // synthetic (e.g. "brew:<service>") id that Docker lookups would misresolve. Leave it be.
+        log.info(
+            "DeploymentRecovery: '{}' uses deploy method {} — skipping Docker recovery",
+            name,
+            config.effectiveDeployMethod());
+        continue;
+      }
 
       if (container.getContainerId() == null) {
         log.warn("DeploymentRecovery: '{}' has no containerId — marking ERROR", name);

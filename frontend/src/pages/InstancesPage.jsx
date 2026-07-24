@@ -40,6 +40,10 @@ function getStatusSortOrder(status) {
   return STATUS_SORT_ORDER[status] ?? 99
 }
 
+function isNonDocker(instance) {
+  return !!instance.deployMethod && instance.deployMethod !== 'DOCKER'
+}
+
 function sortInstances(a, b) {
   const statusDiff = getStatusSortOrder(a.status) - getStatusSortOrder(b.status)
   if (statusDiff !== 0) return statusDiff
@@ -61,6 +65,7 @@ export function InstancesPage() {
   const [showRemoved, setShowRemoved]     = useState(false)
   const [showUntracked, setShowUntracked] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
+  const [homebrewOnly, setHomebrewOnly]   = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -184,21 +189,26 @@ export function InstancesPage() {
 
   const filtered = (showingRemoved ? removedInstances : showingUntracked ? untrackedInstances : activeInstances)
     .filter(i => showingRemoved || showingUntracked || statusFilter === 'ALL' || i.status === statusFilter)
+    .filter(i => !homebrewOnly || isNonDocker(i))
     .filter(i => !search
       || i.name.toLowerCase().includes(search.toLowerCase())
       || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase()))
 
-  const filteredRemoved = removedInstances.filter(i =>
-    !search
-    || i.name.toLowerCase().includes(search.toLowerCase())
-    || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredRemoved = removedInstances
+    .filter(i => !homebrewOnly || isNonDocker(i))
+    .filter(i =>
+      !search
+      || i.name.toLowerCase().includes(search.toLowerCase())
+      || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
+    )
 
-  const filteredUntracked = untrackedInstances.filter(i =>
-    !search
-    || i.name.toLowerCase().includes(search.toLowerCase())
-    || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredUntracked = untrackedInstances
+    .filter(i => !homebrewOnly || isNonDocker(i))
+    .filter(i =>
+      !search
+      || i.name.toLowerCase().includes(search.toLowerCase())
+      || i.dbTypeDisplay?.toLowerCase().includes(search.toLowerCase())
+    )
 
   return (
     <AppShell onRefresh={load}>
@@ -295,6 +305,17 @@ export function InstancesPage() {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => setHomebrewOnly(v => !v)}
+          aria-pressed={homebrewOnly}
+          className={`px-3 py-1.5 rounded-[4px] text-xs font-semibold transition-colors border-2 ${
+            homebrewOnly
+              ? 'bg-[var(--accent-soft)] border-[var(--border-strong)] text-[var(--text-primary)] shadow-[var(--shadow-raised)]'
+              : 'bg-[var(--bg-surface-2)] border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+          }`}
+        >
+          Homebrew
+        </button>
       </div>
 
       {/* ── Card grid ── */}

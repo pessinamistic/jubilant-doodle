@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatusBadge } from './StatusBadge'
+import { EngineBadge } from './EngineBadge'
 import { ConfirmModal } from './ConfirmModal'
 import {
   Check,
@@ -36,6 +37,11 @@ export function InstanceCard({ instance, onRefresh }) {
   const isUntracked = instance.status === 'UNTRACKED'
   const isBusy      = ['DEPLOYING', 'REMOVING'].includes(instance.status) || busy
   const isImported  = instance.isImported
+
+  const isNonDocker = instance.deployMethod && instance.deployMethod !== 'DOCKER'
+  const renameScopeNote = isNonDocker
+    ? `Renames the Port Wrangler label only — the ${instance.deployMethod === 'HOMEBREW' ? 'Homebrew service' : 'underlying service'} name is unchanged.`
+    : null
 
   // ── Action helpers ──────────────────────────────────────────────────────────
   const action = (fn, label) => async (e) => {
@@ -164,6 +170,7 @@ export function InstanceCard({ instance, onRefresh }) {
                         if (e.key === 'Escape') cancelEdit(e)
                       }}
                       onBlur={saveEdit}
+                      title={renameScopeNote ?? undefined}
                       className="input py-0.5 px-2 text-sm h-7 w-44"
                     />
                     <button
@@ -187,7 +194,7 @@ export function InstanceCard({ instance, onRefresh }) {
                     </span>
                     <button
                       onClick={startEdit}
-                      title="Rename"
+                      title={renameScopeNote ?? 'Rename'}
                       className="opacity-0 group-hover:opacity-50 hover:!opacity-100 p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-opacity shrink-0"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -199,6 +206,7 @@ export function InstanceCard({ instance, onRefresh }) {
               {/* Badges */}
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <StatusBadge status={instance.status} />
+                <EngineBadge method={instance.deployMethod} />
                 {instance.isSystem && (
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border" style={{
                     background: 'var(--status-skipped-bg)',
