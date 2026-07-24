@@ -197,7 +197,7 @@ export function InstanceDetailPage() {
               <RefreshCw className={`w-4 h-4 ${busy ? 'animate-spin' : ''}`} />
               Refresh
             </button>
-            {!instance.isSystem && !isRemoved && (
+            {!instance.isSystem && !isRemoved && !isNonDocker && (
               <button
                 onClick={handleExportCompose}
                 disabled={exporting}
