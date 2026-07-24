@@ -1,7 +1,8 @@
 # Remediation Plan: Compose Export UX + Docker/Brew Engine Distinction
 
-> Status: **IMPLEMENTED** (2026-07-19), awaiting merge. Problem 1 on `fix/compose-export-ux` (a0593ed);
-> Problem 2 on `fix/docker-brew-engine-separation` (17aec2e backend, 2891b34 DTO/UI + review fixes).
+> Status: **IMPLEMENTED** (2026-07-19), awaiting merge. Problem 1 on `fix/compose-export-ux` (a0593ed,
+> +41daa3e follow-up fix below); Problem 2 on `fix/docker-brew-engine-separation` (17aec2e backend,
+> 2891b34 DTO/UI + review fixes).
 > Verified: backend 162 tests / 0 failures / 1 skipped (Docker-gated IT); frontend lint at pre-existing
 > baseline, build green. Senior review: no blockers; 500→400 exception fix and
 > `InstanceResponse`-uses-`effectiveDeployMethod()` nit applied.
@@ -9,6 +10,25 @@
 > post-merge cosmetic follow-up — hide the detail-page export button for non-Docker instances;
 > first backend start applies the idempotent V3 backfill. These fixes unblock the MCP tool expansion
 > (`docs/mcp-tools-expansion-plan.md`).
+>
+> **Post-implementation fix (2026-07-24, commit `41daa3e` on `fix/compose-export-ux`):** live
+> verification against the user's real data surfaced a second, more fundamental export bug —
+> `exportableContainers()` filtered out any config with `isTemplate()==true`, but
+> `ConfigTemplateService.create()` sets that flag on *every* config it creates, including ones
+> deployed through the normal UI/agent path (both reuse the same `DeploymentConfig` row). This
+> silently dropped almost all normally-deployed instances from export; only imported (non-template)
+> instances survived. Fix: removed the `!isTemplate()` filter — it was also redundant, since
+> `instanceService.listAll()` already scopes to real `DeployedContainer` rows, so a pure blueprint
+> with no deployment never reaches this list regardless of the flag. Kept the `isDockerDeployed`
+> filter. Test `excludes_system_template_and_removed_instances` replaced with
+> `excludes_system_and_removed_instances` (template case dropped) + new
+> `deployed_instance_flagged_as_template_is_still_exported`. Re-verified: 162/0/1 (same baseline).
+> Also investigated ground truth on the user's live `kafka` instance (`HOMEBREW`, `version="0.0"`)
+> per this doc's original open question: `docker ps -a` shows no kafka container and `brew services
+> list` shows it genuinely running as a brew service — the `HOMEBREW` detection is correct, not a
+> bug. The `version="0.0"` placeholder is cosmetic only (never reaches a Docker code path for a
+> HOMEBREW-tagged config; only appears in display/RAG text) — no code change needed. No other
+> `isTemplate()`-based filtering was found elsewhere in the backend (grep-checked).
 
 ## Problem 1 — Compose export is whole-stack only, on the wrong page
 
