@@ -1,16 +1,16 @@
-# Graph Report - jubilant-doodle  (2026-07-24)
+# Graph Report - jubilant-doodle  (2026-07-15)
 
 ## Corpus Check
-- 274 files · ~160,296 words
+- 264 files · ~154,692 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3185 nodes · 6708 edges · 545 communities (151 shown, 394 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 702 edges (avg confidence: 0.8)
+- 3099 nodes · 6446 edges · 554 communities (157 shown, 397 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 664 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `490507c3`
+- Built from commit: `a245b72c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -130,6 +130,8 @@
 - [[_COMMUNITY_Chat Schema & Embedding Decisions|Chat Schema & Embedding Decisions]]
 - [[_COMMUNITY_Icon Sprite Sheet|Icon Sprite Sheet]]
 - [[_COMMUNITY_Status Sync Scheduler|Status Sync Scheduler]]
+- [[_COMMUNITY_Community 115|Community 115]]
+- [[_COMMUNITY_Model Comparison Service Tests|Model Comparison Service Tests]]
 - [[_COMMUNITY_Graphify Hooks & Cluster-Only|Graphify Hooks & Cluster-Only]]
 - [[_COMMUNITY_Windows Sensor Error Notes|Windows Sensor Error Notes]]
 - [[_COMMUNITY_RAG Handover Notes|RAG Handover Notes]]
@@ -544,22 +546,29 @@
 - [[_COMMUNITY_Community 540|Community 540]]
 - [[_COMMUNITY_Community 541|Community 541]]
 - [[_COMMUNITY_Community 542|Community 542]]
+- [[_COMMUNITY_Community 543|Community 543]]
+- [[_COMMUNITY_Community 544|Community 544]]
+- [[_COMMUNITY_Community 545|Community 545]]
+- [[_COMMUNITY_Community 546|Community 546]]
 - [[_COMMUNITY_Community 547|Community 547]]
+- [[_COMMUNITY_Community 548|Community 548]]
 - [[_COMMUNITY_Community 549|Community 549]]
 - [[_COMMUNITY_Community 550|Community 550]]
+- [[_COMMUNITY_Community 551|Community 551]]
 - [[_COMMUNITY_Community 552|Community 552]]
+- [[_COMMUNITY_Community 553|Community 553]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `DeployedContainer` - 93 edges
-2. `DockerDeployEngine` - 90 edges
-3. `DeploymentConfig` - 88 edges
+1. `DeployedContainer` - 88 edges
+2. `DockerDeployEngine` - 86 edges
+3. `DeploymentConfig` - 84 edges
 4. `DbType` - 70 edges
-5. `DbInstanceService` - 70 edges
+5. `DbInstanceService` - 68 edges
 6. `ImageValidationService` - 52 edges
-7. `DeployedContainerRepository` - 45 edges
-8. `ModelRuntimeService` - 37 edges
-9. `DeploymentConfigRepository` - 33 edges
-10. `InfrastructureTools` - 32 edges
+7. `DeployedContainerRepository` - 41 edges
+8. `ModelRuntimeService` - 35 edges
+9. `InfrastructureTools` - 32 edges
+10. `ModelDashboardService` - 31 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Release — Build & Publish Installers Workflow` --semantically_similar_to--> `Full CI/CD Pipeline (all phases, docker-publish + native-installers)`  [INFERRED] [semantically similar]
@@ -590,7 +599,7 @@
 - **Confirmed gaps in Ollama model management (G1-G6) forming the plan's problem statement** — docs_model_management_plan_gap_g1, docs_model_management_plan_gap_g2, docs_model_management_plan_gap_g3, docs_model_management_plan_gap_g4, docs_model_management_plan_gap_g5, docs_model_management_plan_gap_g6 [EXTRACTED 1.00]
 - **Four-phase implementation plan for Ollama model management** — docs_model_management_plan_phase1_cookbook_manage, docs_model_management_plan_phase2_streaming_progress, docs_model_management_plan_phase3_unify_discovery, docs_model_management_plan_phase4_agent_progress [EXTRACTED 1.00]
 
-## Communities (545 total, 394 thin omitted)
+## Communities (554 total, 397 thin omitted)
 
 ### Community 0 - "Agentic Chat Streaming"
 Cohesion: 0.06
@@ -601,55 +610,55 @@ Cohesion: 0.07
 Nodes (25): Document, Instant, List, Object, Service, Slf4j, VectorStore, MemoryRetriever (+17 more)
 
 ### Community 2 - "System Metrics & Health"
-Cohesion: 0.07
-Nodes (36): DayCount, DeploymentActivityResponse, List, String, LabelCount, List, String, MetricSample (+28 more)
+Cohesion: 0.18
+Nodes (12): ApplicationRunner, DockerHealthChecker, DockerStatus, Component, Slf4j, String, DockerStartupCheck, ApplicationArguments (+4 more)
 
 ### Community 3 - "Port Wrangler Roadmap PDF"
 Cohesion: 0.05
 Nodes (41): Full CI/CD Pipeline (all phases, docker-publish + native-installers), Port Wrangler ASCII Startup Banner, Release — Build & Publish Installers Workflow, 1. Start the backend, 2. Start the frontend, 3. Open the portal, API Reference, Building for Production (+33 more)
 
 ### Community 4 - "System DB & Image Tracking Config"
-Cohesion: 0.07
-Nodes (36): ComparisonChunk, String, Flux, ServerSentEvent, Service, String, ModelComparisonService, Flux (+28 more)
+Cohesion: 0.10
+Nodes (27): ComparisonChunk, String, Flux, ServerSentEvent, Service, String, ModelComparisonService, Flux (+19 more)
 
 ### Community 5 - "RAG Ingestion Pipeline"
 Cohesion: 0.08
 Nodes (26): IngestionService, Document, List, Service, Slf4j, String, VectorStore, Async (+18 more)
 
 ### Community 6 - "Docker Deploy Engine"
-Cohesion: 0.12
-Nodes (16): DockerDeployEngine, Component, DockerClient, HostConfig, Instant, List, Map, ObjectMapper (+8 more)
+Cohesion: 0.10
+Nodes (17): DockerDeployEngine, Component, DockerClient, HostConfig, Instant, List, Map, ObjectMapper (+9 more)
 
 ### Community 7 - "Deploy Pipeline Steps"
-Cohesion: 0.09
-Nodes (19): Bean, Configuration, List, PipelineConfiguration, ContainerCreateStep, Component, Override, Slf4j (+11 more)
+Cohesion: 0.06
+Nodes (28): DeploymentConfig, Data, Entity, Instant, PrePersist, PreUpdate, String, Table (+20 more)
 
 ### Community 8 - "Instance Service & DTOs"
-Cohesion: 0.14
-Nodes (14): AllArgsConstructor, DiscoveredContainerDto, Integer, String, DeploymentResponse, Data, DeployMethod, ToString (+6 more)
+Cohesion: 0.11
+Nodes (17): AllArgsConstructor, Component, Scheduled, StatusSyncScheduler, DeploymentResponse, Data, DeployMethod, ToString (+9 more)
 
 ### Community 9 - "Model Runtime Persistence"
-Cohesion: 0.10
-Nodes (23): Data, Entity, Instant, PrePersist, String, Table, ModelRuntimeEntity, ModelRuntime (+15 more)
+Cohesion: 0.11
+Nodes (21): Data, Entity, Instant, PrePersist, String, Table, ModelRuntimeEntity, baseUrl() (+13 more)
 
 ### Community 10 - "Frontend API Client & Instances UI"
-Cohesion: 0.08
-Nodes (19): api, checkImageStatus(), deleteChatSession(), deleteTemplate(), deployFromTemplate(), getChatHistory(), getChatSessions(), getRuntimeDashboard() (+11 more)
+Cohesion: 0.19
+Nodes (10): getRuntimeDashboard(), loadRuntimeModel(), unloadRuntimeModel(), ModelSelect(), AgentPage(), DESTRUCTIVE, prettyArgs(), STATUS_TONE (+2 more)
 
 ### Community 11 - "Ollama Admin Client"
-Cohesion: 0.18
-Nodes (14): AdminResult, Component, Duration, HttpClient, List, Long, ObjectMapper, Slf4j (+6 more)
+Cohesion: 0.19
+Nodes (13): AdminResult, Component, Duration, HttpClient, Long, ObjectMapper, Slf4j, String (+5 more)
 
 ### Community 12 - "Instance REST Controller"
 Cohesion: 0.13
-Nodes (17): DbInstanceController, DeleteMapping, ExceptionHandler, GetMapping, IllegalArgumentException, List, Map, PutMapping (+9 more)
+Nodes (20): DbInstanceController, DeleteMapping, ExceptionHandler, GetMapping, IllegalArgumentException, List, Map, PatchMapping (+12 more)
 
 ### Community 13 - "System DB Stats"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (26): AppInfo, DbInfo, List, String, JvmInfo, PoolInfo, SchemaInfo, SystemDbStatsResponse (+18 more)
 
 ### Community 14 - "Deployed Container Entity"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (25): DeployedContainer, Data, Entity, Instant, PrePersist, PreUpdate, String, Table (+17 more)
 
 ### Community 15 - "Host Hardware Metrics"
@@ -658,27 +667,27 @@ Nodes (28): CpuMetrics, GpuMetrics, HostInfo, HostMetricsResponse, Double, Integ
 
 ### Community 16 - "Instance Detail Page UI"
 Cohesion: 0.07
-Nodes (32): getContainerMetrics(), getInstance(), getPipeline(), getSpringConfig(), removeInstance(), renameInstance(), reTrackInstance(), startInstance() (+24 more)
+Nodes (36): getContainerMetrics(), getDeploymentActivity(), getInstance(), getMetricsHistory(), getPipeline(), getSpringConfig(), getSystemStats(), removeInstance() (+28 more)
 
 ### Community 17 - "App Shell & Onboarding UI"
-Cohesion: 0.11
-Nodes (16): App(), SplashScreen(), FOCUS_OPTIONS, LLM_OPTIONS, ROLES, TOOL_OPTIONS, WelcomeWizard(), useUserProfile() (+8 more)
+Cohesion: 0.12
+Nodes (14): App(), SplashScreen(), FOCUS_OPTIONS, LLM_OPTIONS, ROLES, TOOL_OPTIONS, WelcomeWizard(), useUserProfile() (+6 more)
 
 ### Community 18 - "Pulled Model Entity"
-Cohesion: 0.24
-Nodes (10): Data, Double, Entity, Instant, Integer, Long, PrePersist, String (+2 more)
+Cohesion: 0.17
+Nodes (15): Data, Double, Entity, Instant, Integer, Long, PrePersist, String (+7 more)
 
 ### Community 19 - "Image Validation Service"
-Cohesion: 0.14
-Nodes (19): ImageCheckResponse, LocalDateTime, String, ImageAvailabilityState, ToString, ImageValidationDecision, ToString, DecisionResult (+11 more)
+Cohesion: 0.16
+Nodes (16): ImageCheckResponse, LocalDateTime, String, ImageAvailabilityState, ToString, ImageValidationDecision, ToString, from() (+8 more)
 
 ### Community 20 - "Model Dashboard Service"
-Cohesion: 0.17
-Nodes (18): Double, Integer, List, Map, Optional, Service, Slf4j, String (+10 more)
+Cohesion: 0.19
+Nodes (16): Double, Integer, List, Map, Optional, Service, Slf4j, String (+8 more)
 
 ### Community 21 - "Config Template Service"
-Cohesion: 0.26
-Nodes (9): ConfigTemplateRequest, String, DeployFromTemplateRequest, String, ConfigTemplateService, Service, Slf4j, String (+1 more)
+Cohesion: 0.19
+Nodes (11): ConfigTemplateRequest, String, DeployFromTemplateRequest, String, EnvVarType, ConfigTemplateService, List, Service (+3 more)
 
 ### Community 22 - "Model Cookbook UI"
 Cohesion: 0.07
@@ -701,40 +710,40 @@ Cohesion: 0.07
 Nodes (29): 0. Finish the current arc (committed work from the handover), 1.1 Implement the classified-but-missing WRITE tools — **★★★, M**, 1.2 Stateful confirmation resume — **★★, M**, 1.3 Multi-turn agent memory — **★★, M**, 1.4 "Copy as .env / Spring config" affordance — **★, S**, 1.5 Richer tool result rendering — **★, S–M**, 1. Agent depth — the highest-leverage area (the confirmation loop is now live), 2.1 Ollama-as-managed-runtime — **★★★, L** (+21 more)
 
 ### Community 27 - "Chat Session Entity"
-Cohesion: 0.17
-Nodes (13): ChatSessionService, ChatMemory, List, Optional, Service, Slf4j, String, Transactional (+5 more)
+Cohesion: 0.13
+Nodes (15): ChatSessionService, ChatMemory, List, Optional, Service, Slf4j, String, Transactional (+7 more)
 
 ### Community 29 - "Frontend Package Manifest"
 Cohesion: 0.07
 Nodes (29): dependencies, axios, lucide-react, react, react-dom, react-hot-toast, react-router-dom, recharts (+21 more)
 
 ### Community 30 - "Docker Compose Export Service"
-Cohesion: 0.08
-Nodes (25): ComposeExportController, GetMapping, List, RequestMapping, ResponseEntity, RestController, Slf4j, String (+17 more)
+Cohesion: 0.12
+Nodes (17): ComposeExportController, GetMapping, RequestMapping, ResponseEntity, RestController, Slf4j, String, ComposeExportService (+9 more)
 
 ### Community 31 - "Chat Controller & SSE"
 Cohesion: 0.14
 Nodes (19): ChatToken, String, ChatController, DeleteMapping, Flux, GetMapping, List, Map (+11 more)
 
 ### Community 32 - "App Config & Request Logging"
-Cohesion: 0.10
-Nodes (24): ApiRequestLoggingInterceptor, Component, Exception, Object, Override, Slf4j, String, AppConfig (+16 more)
+Cohesion: 0.12
+Nodes (20): ApiRequestLoggingInterceptor, Component, Exception, Object, Override, Slf4j, String, AppConfig (+12 more)
 
 ### Community 33 - "Deploy Form UI"
-Cohesion: 0.08
-Nodes (14): createTemplate(), deployInstance(), getCatalog(), getCatalogVersions(), getTemplate(), updateTemplate(), CATALOG_GROUPS, DEFAULT_PORTS (+6 more)
+Cohesion: 0.05
+Nodes (27): api, checkImageStatus(), createTemplate(), deleteChatSession(), deleteTemplate(), deployFromTemplate(), deployInstance(), getCatalog() (+19 more)
 
 ### Community 34 - "Image Validation & Model Runtime Enum"
-Cohesion: 0.27
-Nodes (9): defaultPort(), defaultTag(), displayName(), dockerImage(), String, ImageValidationService, List, Transactional (+1 more)
+Cohesion: 0.32
+Nodes (4): displayName(), dockerImage(), List, Transactional
 
 ### Community 35 - "Runtime Page UI"
 Cohesion: 0.09
-Nodes (14): ModelFamilyCard(), COMPAT_DOT, expiryLabel(), gb(), gbProgress(), MODEL_FILTERS, MODEL_STATUS_TOKENS, ModelCard() (+6 more)
+Nodes (15): ModelFamilyCard(), COMPAT_DOT, expiryLabel(), gb(), gbProgress(), MODEL_FILTERS, MODEL_STATUS_TOKENS, ModelCard() (+7 more)
 
 ### Community 36 - "Infrastructure Tools (Agent @Tool)"
-Cohesion: 0.05
-Nodes (38): InfrastructureTools, Component, List, Slf4j, String, InstanceSummary, String, List (+30 more)
+Cohesion: 0.19
+Nodes (10): InfrastructureTools, Component, List, Slf4j, String, InstanceSummary, String, List (+2 more)
 
 ### Community 37 - "H2 Legacy Data Migrator"
 Cohesion: 0.22
@@ -749,24 +758,24 @@ Cohesion: 0.18
 Nodes (15): Double, ExceptionHandler, GetMapping, IllegalArgumentException, Integer, Map, PostMapping, RequestMapping (+7 more)
 
 ### Community 40 - "Ollama Model Puller"
-Cohesion: 0.10
-Nodes (18): Component, Slf4j, ModelPullStep, Component, HttpClient, ObjectMapper, Slf4j, String (+10 more)
+Cohesion: 0.12
+Nodes (15): Component, HttpClient, ObjectMapper, Slf4j, String, OllamaModelPuller, PullProgress, PullResult (+7 more)
 
 ### Community 41 - "Runtime Model Detail Page UI"
 Cohesion: 0.11
 Nodes (17): deleteRuntimeModel(), getLogs(), getRuntimeModelDetail(), pullRuntimeModel(), saveRuntimeModelSettings(), LogsTab(), CAPABILITY_META, ctxLabel() (+9 more)
 
 ### Community 42 - "Model Comparison Service"
-Cohesion: 0.11
-Nodes (15): DeploymentConfig, Data, Entity, Instant, PrePersist, PreUpdate, String, Table (+7 more)
+Cohesion: 0.21
+Nodes (9): BrewDeployEngine, Component, List, Map, Object, ObjectMapper, Set, Slf4j (+1 more)
 
 ### Community 43 - "Chat Message Entity"
 Cohesion: 0.15
 Nodes (14): ChatMessageResponse, Instant, String, ChatMessage, Data, Entity, Instant, PrePersist (+6 more)
 
 ### Community 44 - "Image Tool Controller"
-Cohesion: 0.13
-Nodes (19): ImageToolDetailResponse, List, LocalDateTime, String, ImageToolSummaryResponse, LocalDateTime, String, ImageController (+11 more)
+Cohesion: 0.16
+Nodes (14): ImageToolDetailResponse, List, LocalDateTime, String, ImageController, GetMapping, List, Map (+6 more)
 
 ### Community 45 - "Agentic Assistant Design Docs"
 Cohesion: 0.67
@@ -781,8 +790,8 @@ Cohesion: 0.08
 Nodes (24): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+16 more)
 
 ### Community 48 - "Image Tracking Entity"
-Cohesion: 0.17
-Nodes (14): ImageTrackingStatus, Data, Entity, LocalDateTime, PrePersist, PreUpdate, String, Table (+6 more)
+Cohesion: 0.18
+Nodes (13): ImageTrackingStatus, Data, Entity, LocalDateTime, PrePersist, PreUpdate, String, Table (+5 more)
 
 ### Community 49 - "RAG Chat Service Tests"
 Cohesion: 0.27
@@ -793,20 +802,20 @@ Cohesion: 0.09
 Nodes (21): 1. TL;DR — where we are, 2. What landed THIS session (since the previous handover @ `070ea56`), 3. Conventions (follow exactly), 4. Hard constraints (non-negotiable), 5. Inventory (current), 6. Remaining work (priority order — from `docs/port-wrangler-future-roadmap.md`), 6a. CI Docker boot test — **HIGH, do early**, 6b. The north-star feature — implement the WRITE tools — **HIGH** (+13 more)
 
 ### Community 51 - "Deployment Config Entity"
-Cohesion: 0.11
-Nodes (14): discoverContainers(), exportDockerCompose(), getStats(), importContainer(), reImportInstance(), ExportComposeModal(), ImportModal(), InstanceCard() (+6 more)
+Cohesion: 0.08
+Nodes (19): discoverContainers(), exportDockerCompose(), getInstances(), getStats(), importContainer(), reImportInstance(), ImportModal(), InstanceCard() (+11 more)
 
 ### Community 52 - "Deployment Pipeline Entity"
-Cohesion: 0.09
-Nodes (24): Instant, List, String, PipelineResponse, DeployErrorCode, ToString, DeploymentPipeline, Data (+16 more)
+Cohesion: 0.18
+Nodes (12): DeploymentPipeline, Data, Entity, Instant, PrePersist, String, Table, ToString (+4 more)
 
 ### Community 53 - "Ollama Library Search"
 Cohesion: 0.21
 Nodes (14): List, String, OllamaLibraryModel, CacheEntry, CacheEntry, Duration, HttpClient, List (+6 more)
 
 ### Community 54 - "Infrastructure Tools Tests"
-Cohesion: 0.09
-Nodes (20): getDeploymentActivity(), getHostMetrics(), getInstances(), getMetricsHistory(), getSystemStats(), AXIS, DashboardPage(), DB_TYPE_COLORS (+12 more)
+Cohesion: 0.18
+Nodes (9): getHostMetrics(), getSystemInfo(), AXIS, findPrimaryGpuIndex(), fmtGhz(), fmtUptime(), GRID, SystemHealthPage() (+1 more)
 
 ### Community 55 - "Tool Metrics Probe"
 Cohesion: 0.32
@@ -817,19 +826,19 @@ Cohesion: 0.60
 Nodes (5): die(), ok(), cleanup.sh script, step(), warn()
 
 ### Community 57 - "Database Catalog"
-Cohesion: 0.32
-Nodes (8): DatabaseCatalog, DbDefinition, EnvVar, EnvVarType, Collection, List, Map, String
+Cohesion: 0.22
+Nodes (12): ImageToolSummaryResponse, LocalDateTime, String, DatabaseCatalog, DbDefinition, EnvVar, Collection, List (+4 more)
 
 ### Community 58 - "System DB Registrar"
 Cohesion: 0.25
 Nodes (8): ApplicationArguments, Component, JdbcTemplate, Order, Override, Slf4j, String, SystemDbRegistrar
 
 ### Community 59 - "Pipeline Runner"
-Cohesion: 0.26
-Nodes (7): Component, List, String, TokenBudget, Test, TokenBudgetTest, Message
+Cohesion: 0.27
+Nodes (13): List, Service, Slf4j, Transactional, PipelineOrchestrator, List, Map, Service (+5 more)
 
 ### Community 60 - "Model Cookbook Controller Tests"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (7): String, ModelSuggestion, BeforeEach, ExtendWith, MockMvc, Test, ModelCookbookControllerTest
 
 ### Community 62 - "Deploy Pipeline Integration Test"
@@ -837,19 +846,19 @@ Cohesion: 0.23
 Nodes (10): AfterEach, DeployPipelineIT, Duration, String, Test, DynamicPropertyRegistry, DynamicPropertySource, PostgreSQLContainer (+2 more)
 
 ### Community 63 - "Token Budget"
-Cohesion: 0.18
-Nodes (12): LocalModel, List, Optional, Repository, String, PulledModelRepository, BeforeEach, ExtendWith (+4 more)
+Cohesion: 0.20
+Nodes (9): List, LoadedModel, LocalModel, BeforeEach, ExtendWith, Map, String, Test (+1 more)
 
 ### Community 64 - "Instance Response Assembler"
-Cohesion: 0.15
-Nodes (12): Design, Design, Optional severable phase — Homebrew tap explorer (macOS), Problem 1 — Compose export is whole-stack only, on the wrong page, Problem 2 — Docker vs. Brew distinction: EXISTS in the model, but leaky, Remediation Plan: Compose Export UX + Docker/Brew Engine Distinction, Risks, Root cause (+4 more)
+Cohesion: 0.70
+Nodes (4): ConfigurationProperties, PipelineProperties, Getter, Setter
 
 ### Community 65 - "Pipeline Response & Errors"
-Cohesion: 0.20
-Nodes (9): 1. Current state (verified 2026-07-18), 2. Proposed tools (15), 3. Thin-wrapper violations flagged, 4. Cross-cutting concerns, 5. Implementation sequence, MCP/Agent Tool Surface Expansion Plan, Tier 1 — high value, trivial thin wrapper, Tier 2 — high value, modest care (+1 more)
+Cohesion: 0.18
+Nodes (11): Instant, List, String, PipelineResponse, DeployErrorCode, Async, String, String (+3 more)
 
 ### Community 66 - "Model Cookbook Controller"
-Cohesion: 0.25
+Cohesion: 0.23
 Nodes (8): GetMapping, List, RequestMapping, RestController, Slf4j, String, ModelCookbookController, ModelType
 
 ### Community 67 - "GPU Host Configurer"
@@ -857,16 +866,16 @@ Cohesion: 0.26
 Nodes (6): GpuHostConfigurer, Component, HostConfig, Slf4j, GpuHostConfigurerTest, Test
 
 ### Community 68 - "Pipeline Step Entity"
-Cohesion: 0.09
-Nodes (32): Instant, String, PipelineStepResponse, Data, Entity, Instant, String, Table (+24 more)
+Cohesion: 0.17
+Nodes (13): Instant, String, PipelineStepResponse, Data, Entity, Instant, String, Table (+5 more)
 
 ### Community 69 - "Model Suggestion Service Tests"
 Cohesion: 0.32
 Nodes (5): String, SystemProfile, ExtendWith, Test, ModelSuggestionServiceTest
 
 ### Community 70 - "Community 70"
-Cohesion: 0.31
-Nodes (6): FinaliseStep, ApplicationEventPublisher, Component, Override, Slf4j, String
+Cohesion: 0.15
+Nodes (13): Bean, Configuration, List, PipelineConfiguration, ContainerCreateStep, Component, Override, Slf4j (+5 more)
 
 ### Community 71 - "Theme Initialization"
 Cohesion: 0.31
@@ -881,12 +890,12 @@ Cohesion: 0.23
 Nodes (5): GpuDetector, Component, Set, Slf4j, String
 
 ### Community 74 - "Model Catalog"
-Cohesion: 0.22
-Nodes (7): List, Map, String, ModelCatalog, String, ModelDefinition, Quantization
+Cohesion: 0.27
+Nodes (6): List, Map, String, ModelCatalog, String, ModelDefinition
 
 ### Community 76 - "Deployment Recovery"
-Cohesion: 0.31
-Nodes (8): ApplicationRunner, DeploymentRecovery, ApplicationArguments, Component, Order, Override, Slf4j, Transactional
+Cohesion: 0.36
+Nodes (7): DeploymentRecovery, ApplicationArguments, Component, Order, Override, Slf4j, Transactional
 
 ### Community 77 - "Chat Memory Ingestion Service"
 Cohesion: 0.33
@@ -909,8 +918,8 @@ Cohesion: 0.14
 Nodes (15): ChatClient, ChatMemory, ChatModel, Service, String, ModelRouter, Async, Component (+7 more)
 
 ### Community 82 - "Docker Hub Tag Client"
-Cohesion: 0.20
-Nodes (11): ImageValidationProperties, ConfigurationProperties, Data, DockerHubRepository, DockerHubTagClient, HubTagResult, Component, HttpClient (+3 more)
+Cohesion: 0.22
+Nodes (10): ImageValidationProperties, ConfigurationProperties, Data, DockerHubRepository, DockerHubTagClient, HubTagResult, Component, HttpClient (+2 more)
 
 ### Community 83 - "Zero-Extra-Service Config Principle"
 Cohesion: 0.33
@@ -921,8 +930,8 @@ Cohesion: 0.33
 Nodes (7): ChatClientConfig, Bean, ChatMemory, Configuration, String, ToolCallingManager, ChatMemoryRepository
 
 ### Community 88 - "Community 88"
-Cohesion: 0.36
-Nodes (6): ConfirmModal(), AgentPage(), DESTRUCTIVE, prettyArgs(), STATUS_TONE, ToolCallRow()
+Cohesion: 0.29
+Nodes (4): InfrastructureToolsTest, ExtendWith, String, Test
 
 ### Community 89 - "Compose Export Controller"
 Cohesion: 0.29
@@ -937,20 +946,20 @@ Cohesion: 0.39
 Nodes (6): DbDeployerApplication, EnableScheduling, Map, Slf4j, String, SpringBootApplication
 
 ### Community 93 - "Community 93"
-Cohesion: 0.47
-Nodes (3): Component, Scheduled, StatusSyncScheduler
+Cohesion: 0.24
+Nodes (10): List, String, MetricSample, MetricsHistoryResponse, DataSource, JdbcTemplate, Scheduled, Service (+2 more)
 
 ### Community 96 - "Community 96"
-Cohesion: 0.19
-Nodes (6): List, DeploymentConfigRepository, List, Optional, Repository, String
+Cohesion: 0.23
+Nodes (5): DeploymentConfigRepository, List, Optional, Repository, String
 
 ### Community 97 - "Image Management Page UI"
 Cohesion: 0.28
 Nodes (6): getImageSummary(), refreshImageTracking(), decisionTone(), ImageManagementPage(), shortTime(), ToolCard()
 
 ### Community 98 - "Container Metrics Response"
-Cohesion: 0.21
-Nodes (9): ContainerMetricsResponse, Map, Object, String, DbInstanceServiceTest, ApplicationEventPublisher, ExtendWith, String (+1 more)
+Cohesion: 0.60
+Nodes (4): ContainerMetricsResponse, Map, Object, String
 
 ### Community 99 - "Image Tracking Scheduler"
 Cohesion: 0.39
@@ -973,16 +982,24 @@ Cohesion: 0.17
 Nodes (11): 15. CI/CD Pipeline, 16. Resume Showcase Guide, 1. Project Vision, 2. Final Architecture, End-state vision (Phase 5), How to present each phase in interviews, Key design principles, Port Wrangler — Complete Project Roadmap & Build Guide (+3 more)
 
 ### Community 107 - "Pipeline Step Response"
-Cohesion: 0.40
-Nodes (4): 19:03:31 | clear, 19:03:38 | opencode, 19:03:54 | ollama, 2026-07-19 Terminal History
+Cohesion: 0.26
+Nodes (10): DayCount, DeploymentActivityResponse, List, String, LabelCount, GetMapping, JdbcTemplate, RequestMapping (+2 more)
 
 ### Community 113 - "Icon Sprite Sheet"
 Cohesion: 0.48
 Nodes (7): Bluesky Icon Symbol, Discord Icon Symbol, Documentation Icon Symbol, GitHub Icon Symbol, Social (Contacts/People) Icon Symbol, icons.svg (Icon Sprite Sheet), X (Twitter) Icon Symbol
 
 ### Community 114 - "Status Sync Scheduler"
-Cohesion: 0.40
-Nodes (4): .crystl-agent-history — Terminal Command History, Entry format, Files, Search examples
+Cohesion: 0.30
+Nodes (7): ToolCallback, ExtendWith, List, String, Test, ToolCallback, McpServerConfigTest
+
+### Community 115 - "Community 115"
+Cohesion: 0.28
+Nodes (5): Component, String, OsDetector, OsType, SystemInfo
+
+### Community 116 - "Model Comparison Service Tests"
+Cohesion: 0.26
+Nodes (7): List, Optional, Service, Slf4j, String, Transactional, ModelRuntimeService
 
 ### Community 118 - "Windows Sensor Error Notes"
 Cohesion: 0.33
@@ -997,24 +1014,24 @@ Cohesion: 0.50
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + Vite
 
 ### Community 216 - "Community 216"
-Cohesion: 0.18
-Nodes (12): ChatSession, Data, Entity, Instant, PrePersist, PreUpdate, String, Table (+4 more)
+Cohesion: 0.13
+Nodes (18): ChatSession, Data, Entity, Instant, PrePersist, PreUpdate, String, Table (+10 more)
 
 ### Community 217 - "Community 217"
 Cohesion: 0.17
 Nodes (10): AI feature constraints (see memory: Port Wrangler roadmap), API docs, Architecture, Backend package layout (`backend/src/main/java/com/dbdeployer/`), Common commands, Deployment pipeline (core flow), Frontend (`frontend/src/`), graphify (+2 more)
 
 ### Community 218 - "Community 218"
-Cohesion: 0.33
-Nodes (3): String, Test, OllamaAdminClientTest
+Cohesion: 0.26
+Nodes (4): Quantization, String, Test, OllamaAdminClientTest
 
 ### Community 219 - "Community 219"
 Cohesion: 0.22
 Nodes (9): 2.1 GPU detection, 2.2 Runtime catalog, 2.3 GPU-aware container configuration, 2.4 Model pull pipeline, 2.5 Model metrics polling, 2.6 New API endpoints, 2.7 Spring AI config snippet generation, 2.8 Frontend — AI Models page (+1 more)
 
 ### Community 220 - "Community 220"
-Cohesion: 0.47
-Nodes (3): DeploymentValidations, Component, Slf4j
+Cohesion: 0.25
+Nodes (8): DecisionResult, ImageValidationService, Set, String, DeploymentValidations, Component, Slf4j, Supplier
 
 ### Community 221 - "Community 221"
 Cohesion: 0.22
@@ -1136,6 +1153,22 @@ Nodes (4): 1.1 Capability matrix, 1.2 The gap, stated precisely, 1.3 Honest diff
 Cohesion: 0.67
 Nodes (3): ModelPullStep, Spring AI Ollama config (base-url, pull-model-strategy), ModelRouter
 
+### Community 543 - "Community 543"
+Cohesion: 0.33
+Nodes (5): ConnectionStringBuilder, Component, String, ResolvedCreds, SafeVarargs
+
+### Community 545 - "Community 545"
+Cohesion: 0.39
+Nodes (5): ComposeExportControllerTest, BeforeEach, ExtendWith, MockMvc, Test
+
+### Community 546 - "Community 546"
+Cohesion: 0.39
+Nodes (5): DbInstanceControllerSpringConfigTest, BeforeEach, ExtendWith, MockMvc, Test
+
+### Community 548 - "Community 548"
+Cohesion: 0.48
+Nodes (5): Bean, Configuration, Slf4j, McpServerConfig, ToolCallbackProvider
+
 ### Community 549 - "Community 549"
 Cohesion: 0.53
 Nodes (4): die(), ok(), pause.sh script, step()
@@ -1144,33 +1177,33 @@ Nodes (4): die(), ok(), pause.sh script, step()
 Cohesion: 0.60
 Nodes (5): die(), ok(), resume.sh script, step(), warn()
 
-### Community 552 - "Community 552"
-Cohesion: 0.20
-Nodes (7): PatchMapping, PostMapping, ImportRequest, String, InstanceResponse, Instant, String
+### Community 551 - "Community 551"
+Cohesion: 0.50
+Nodes (3): DiscoveredContainerDto, Integer, String
 
 ## Ambiguous Edges - Review These
 - `CI GitHub Actions Workflow` → `Replace ddl-auto with Flyway`  [AMBIGUOUS]
   .github/workflows/ci.yml · relation: references
 
 ## Knowledge Gaps
-- **713 isolated node(s):** `reset-system-db.sh script`, `name`, `private`, `version`, `type` (+708 more)
+- **690 isolated node(s):** `reset-system-db.sh script`, `name`, `private`, `version`, `type` (+685 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **394 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **397 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `CI GitHub Actions Workflow` and `Replace ddl-auto with Flyway`?**
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **Why does `DockerDeployEngine` connect `Docker Deploy Engine` to `Agentic Chat Streaming`, `Deploy Pipeline Steps`, `Instance Service & DTOs`, `Model Runtime Persistence`, `Deployed Container Entity`, `Image Validation Service`, `Docker Compose Export Service`, `Image Validation & Model Runtime Enum`, `Infrastructure Tools (Agent @Tool)`, `Ollama Model Puller`, `Model Comparison Service`, `Image Tool Controller`, `Tool Metrics Probe`, `GPU Host Configurer`, `Pipeline Step Entity`, `Community 70`, `GPU Detector`, `Deployment Recovery`, `Docker Hub Tag Client`, `Container Metrics Response`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
-- **Why does `DbType` connect `Image Tool Controller` to `Image Validation & Model Runtime Enum`, `Infrastructure Tools (Agent @Tool)`, `System DB & Image Tracking Config`, `Connection String Builder`, `Docker Deploy Engine`, `Community 552`, `Instance Service & DTOs`, `Model Comparison Service`, `Model Runtime Persistence`, `Catalog Controller`, `Deployed Container Entity`, `Image Tracking Entity`, `Image Validation Service`, `Config Template Service`, `Database Catalog`, `Community 220`, `Docker Compose Export Service`?**
-  _High betweenness centrality (0.042) - this node is a cross-community bridge._
-- **Why does `OsDetector` connect `System Metrics & Health` to `System DB & Image Tracking Config`, `System DB Stats`?**
+- **Why does `DockerDeployEngine` connect `Docker Deploy Engine` to `Agentic Chat Streaming`, `Deploy Pipeline Steps`, `Instance Service & DTOs`, `Model Runtime Persistence`, `Deployed Container Entity`, `Image Validation Service`, `Docker Compose Export Service`, `Image Validation & Model Runtime Enum`, `Infrastructure Tools (Agent @Tool)`, `Tool Metrics Probe`, `Database Catalog`, `Pipeline Runner`, `GPU Host Configurer`, `Community 70`, `GPU Detector`, `Deployment Recovery`, `Docker Hub Tag Client`, `Community 88`, `Community 220`, `Status Sync Scheduler`, `Model Comparison Service Tests`?**
+  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+- **Why does `OsDetector` connect `Community 115` to `Model Comparison Service`, `System Metrics & Health`, `System DB Stats`?**
   _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `DbInstanceService` connect `Instance Service & DTOs` to `Agentic Chat Streaming`, `RAG Ingestion Pipeline`, `Docker Deploy Engine`, `Instance REST Controller`, `Deployed Container Entity`, `Config Template Service`, `Docker Compose Export Service`, `Community 546`, `Community 547`, `Infrastructure Tools (Agent @Tool)`, `Model Comparison Service`, `Tool Metrics Probe`, `Pipeline Runner`, `Deploy Pipeline Integration Test`, `Community 88`, `Community 220`, `Community 96`, `Status Sync Scheduler`, `Model Comparison Service Tests`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `DeployedContainer` (e.g. with `.run()` and `.deploy_event_reindexes_the_instance_with_its_logs()`) actually correct?**
   _`DeployedContainer` has 3 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 13 inferred relationships involving `DeploymentConfig` (e.g. with `.run()` and `.container()`) actually correct?**
-  _`DeploymentConfig` has 13 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 11 inferred relationships involving `DeploymentConfig` (e.g. with `.run()` and `.container()`) actually correct?**
+  _`DeploymentConfig` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 5 inferred relationships involving `DbType` (e.g. with `.deploy()` and `.applyRequest()`) actually correct?**
   _`DbType` has 5 INFERRED edges - model-reasoned connections that need verification._
